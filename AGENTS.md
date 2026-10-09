@@ -36,3 +36,19 @@ This repository builds a privacy-first, offline-first Android document vault. Pr
 - Never say tests passed unless the test command actually completed successfully.
 - Prefer fakes over mocks when they make tests clearer; tests must not depend on real user documents or network services.
 - Use pull requests and small reviewable commits. Never commit secrets, private documents, real Aadhaar/PAN data, prescription images, or API credentials.
+
+## Skill routing and architecture records
+Use the focused repository skills when a task enters their domain; read the applicable skill before designing or reviewing that work:
+- `.agents/skills/android-engineering/SKILL.md` — Android/Compose architecture and lifecycle.
+- `.agents/skills/privacy-security/SKILL.md` — privacy boundaries and threat review.
+- `.agents/skills/ocr-action-extraction/SKILL.md` — OCR provenance, confidence, and field extraction.
+- `.agents/skills/testing-quality/SKILL.md` — test strategy and quality checks.
+- `.agents/skills/secure-storage-cryptography/SKILL.md` — key management and cryptographic storage.
+- `.agents/skills/encrypted-data-search/SKILL.md` — index leakage and local search design.
+- `.agents/skills/document-imaging-evaluation/SKILL.md` — capture/preprocessing quality and benchmark design.
+- `.agents/skills/reminders-action-safety/SKILL.md` — date extraction and reminder safety.
+- `.agents/skills/indian-language-documents/SKILL.md` — mixed-script data and dataset governance.
+- `.agents/skills/android-release-security/SKILL.md` — manifest, dependency, and artifact audits.
+- `.agents/skills/accessibility-performance/SKILL.md` — assistive technology and constrained-device performance.
+
+Record cross-cutting architectural choices in `docs/engineering/decisions/` using an ADR with context, options, decision/status, consequences, and evidence. Keep `docs/engineering/progress.md` current for substantial work, including what changed, verification actually performed, unresolved risks, and the next concrete step. A proposed ADR is a gate, not an approved implementation decision.
