@@ -6,7 +6,7 @@ import sys
 import xml.etree.ElementTree as ET
 
 ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
-INTERDITED_PERMISSION = "android.permission.INTERNET"
+INTERNET_PERMISSION = "android.permission.INTERNET"
 
 
 def main() -> int:
@@ -39,7 +39,7 @@ def main() -> int:
 
         for element in manifest.iter():
             if element.tag in {"uses-permission", "uses-permission-sdk-23", "uses-permission-sdk-m"}:
-                if element.attrib.get(f"{ANDROID_NS}name") == INTERDITED_PERMISSION:
+                if element.attrib.get(f"{ANDROID_NS}name") == INTERNET_PERMISSION:
                     failures.append(f"{path}: INTERNET permission is present")
 
         application = manifest.find("application")

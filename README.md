@@ -12,7 +12,7 @@ KAAGAZ VAULT is intended to help people capture, organize, search, and act on ev
 - Protect document content and sensitive metadata at rest.
 - Keep core workflows available offline, with no analytics, ads, or hidden network calls in the FOSS build.
 
-These are **product goals, not implemented or verified features**. The repository currently contains engineering standards and architecture research; it does not yet contain a buildable Android app. Do not store real identity documents, prescriptions, private records, API keys, or signing credentials in this repository.
+These are **product goals, not implemented or verified features**. The repository now contains an initial Android project shell labelled as an engineering preview. Build verification is pending, and the scanning, OCR, encrypted storage, search, and reminder features remain unimplemented. Do not store real identity documents, prescriptions, private records, API keys, or signing credentials in this repository.
 
 ## Engineering principles
 
