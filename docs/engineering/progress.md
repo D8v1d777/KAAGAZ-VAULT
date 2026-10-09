@@ -71,3 +71,33 @@ This log records repository work and evidence. It distinguishes documentation ch
 2. Bootstrap the smallest useful single-module Android app and test setup, keeping the FOSS manifest free of `INTERNET`.
 3. Verify dependency versions, license/permission impact, and build-tool compatibility before adding OCR, CameraX, Room, or encryption libraries.
 4. Run the build and tests in a real Android/Gradle environment if available; if the connected tooling cannot execute builds, state that limitation and keep CI/build evidence as an explicit gate.
+
+
+## 2026-10-09 — Phase 2: Android project bootstrap
+
+### Research before implementation
+- Read the repository Android engineering, privacy/security, testing-quality, and Android release-security skills before changing the build.
+- Official Android guidance recommends a distinct UI/data layer, repositories as the UI's entry point to data, and testable state-driven UI: https://developer.android.com/topic/architecture/recommendations
+- AGP 9.1.1 supports API 37, requires Gradle 9.3.1, and uses JDK 17: https://developer.android.com/build/releases/agp-9-1-0-release-notes
+- Compose's August 2026 stable BOM is `2026.08.00`; it requires compileSdk 37 and AGP 9.1.2 or newer: https://developer.android.com/blog/posts/what-s-new-in-the-jetpack-compose-august-26-release
+- The selected bootstrap therefore uses AGP 9.1.2, Gradle 9.3.1, JDK 17, compileSdk 37, targetSdk 36, minSdk 23, Compose BOM 2026.08.00, and the AGP built-in Kotlin path with Compose compiler plugin 2.2.10. These versions are pinned in the repository and must be validated by CI.
+- GitHub Actions' Gradle setup supports installing a pinned Gradle version for projects without a checked-in wrapper: https://github.com/gradle/actions/blob/main/docs/setup-gradle.md
+
+### Implemented in this phase
+- Added a minimal single-module Kotlin/Jetpack Compose Android app with an explicitly labelled engineering-preview screen.
+- Added a version catalog, Gradle settings/build scripts, Android manifest and theme resources, and a conservative initial ignore file.
+- Kept the FOSS app manifest free of `INTERNET`; explicitly disabled backup and cleartext traffic while key recovery and backup behavior remain undecided.
+- Added a CI workflow to provision JDK 17, Gradle 9.3.1, and Android SDK 37, then run assemble, unit-test task, lint, and a merged-manifest permission check.
+- Added a manifest audit script that fails if it cannot find the merged debug manifest or finds `android.permission.INTERNET` / enabled cleartext traffic.
+- No camera, OCR, database, cryptography, scheduler, analytics, or network dependencies were added. The preview stores no documents and does not claim those features exist.
+
+### Known limitations
+- A standard Gradle Wrapper is not yet checked into the repository. CI uses the pinned Gradle 9.3.1 distribution directly; a checked-in wrapper remains a portability requirement before treating local command-line builds as ready for contributors.
+- The CI workflow has been committed but has not yet produced a run result in this log. No build or test success is claimed.
+- No feature-level test exists yet because this phase adds only a status screen. Test-first domain behavior begins with the first real storage/OCR/review feature.
+- `minSdk 23` is a provisional bootstrap floor, not a product compatibility promise. Reassess it against the selected encryption and scanning libraries before those dependencies are adopted.
+
+### Next
+1. Verify the pushed build configuration through GitHub Actions and fix actual failures rather than guessing.
+2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
+3. Start the encrypted-storage prototype only after researching the Android Keystore, SQLCipher, Room, and backup/key-lifecycle compatibility constraints; keep ADR-0001 Proposed until prototype evidence exists.

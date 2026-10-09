@@ -28,12 +28,12 @@ These are **product goals, not implemented or verified features**. The repositor
 - [x] Engineering contract and focused engineering skills.
 - [x] Initial quality gates and proposed sensitive-search architecture decision record.
 - [x] Repository baseline audit.
-- [ ] Minimal Android project and verified build.
-- [ ] Encrypted persistence prototype and leakage tests.
+- [x] Minimal Android project bootstrap and CI build/test/lint workflow configured (first run pending).
+- [ ] Checked-in Gradle Wrapper and verified build evidence.
 - [ ] Capture/import → encrypted storage → OCR review vertical slice.
 - [ ] Local retrieval, date/reminder safety, accessibility, and release audits.
 
-See [engineering progress](docs/engineering/progress.md), [quality gates](docs/engineering/quality-gates.md), and [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md).
+CI uses pinned Gradle and Android SDK versions. A checked-in Gradle Wrapper is still pending; do not treat the first bootstrap as verified until CI completes successfully. See [engineering progress](docs/engineering/progress.md), [quality gates](docs/engineering/quality-gates.md), and [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md).
 
 ## Contributing
 
