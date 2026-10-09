@@ -45,3 +45,29 @@ This log records repository work and evidence. It distinguishes documentation ch
 ### Verification update
 - Primary documentation and artifact metadata were inspected.
 - No dependency was added and no prototype/build/test was run; compatibility remains unverified.
+
+
+## 2026-10-09 — Phase 1: repository baseline and public-exposure review
+
+### Completed
+- Confirmed the repository is public and PR #1 remains open/draft on `docs/engineering-hardening` → `main`.
+- Inspected recursive trees for `main` and the hardening branch, the visible main-branch commit list, the PR metadata, and the repository engineering skills.
+- Recorded the missing Android baseline in `docs/engineering/baseline-audit.md`: no Gradle wrapper/build scripts, manifest, Kotlin sources, tests, CI workflow, or `.gitignore` were present in the inspected trees.
+- Rewrote the README to distinguish intended product goals from features that exist or have been verified.
+- Reviewed official Android architecture and Gradle compatibility guidance, plus GitHub secret-scanning documentation.
+
+### Public-repository safety findings
+- The inspected current trees contain documentation only; no application source or real-document test fixtures were found.
+- The visible main commit history is documentation-only, but this is not a complete historical secret scan. No secret-scanning alert result was available through this audit. Do not interpret this as proof that no credential was ever exposed.
+- If a real credential is discovered, revoke/rotate it first; removing the latest copy does not invalidate historical exposure.
+
+### Verification
+- GitHub API tree and PR metadata responses were inspected.
+- README, audit document, and progress log are written to the hardening branch and must be fetched again to verify persistence.
+- No Android build or tests were run because no Android project/build files exist yet. No build or test success is claimed.
+
+### Next phase
+1. Research current official Android/Compose/Gradle setup guidance and compatible stable versions.
+2. Bootstrap the smallest useful single-module Android app and test setup, keeping the FOSS manifest free of `INTERNET`.
+3. Verify dependency versions, license/permission impact, and build-tool compatibility before adding OCR, CameraX, Room, or encryption libraries.
+4. Run the build and tests in a real Android/Gradle environment if available; if the connected tooling cannot execute builds, state that limitation and keep CI/build evidence as an explicit gate.
