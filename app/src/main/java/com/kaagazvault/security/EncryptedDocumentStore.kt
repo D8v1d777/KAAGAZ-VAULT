@@ -22,6 +22,7 @@ internal class EncryptedDocumentStore(
             throw IOException("Could not create encrypted document directory")
         }
         if (!directory.isDirectory) throw IOException("Encrypted document path is not a directory")
+        recoverTemporaryFiles()
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
@@ -56,6 +57,25 @@ internal class EncryptedDocumentStore(
         }
         val encrypted = file.readBytes()
         return envelope.decrypt(encrypted, keyProvider.getOrCreateKey(), id.toByteArray(Charsets.UTF_8))
+    }
+
+    private fun recoverTemporaryFiles() {
+        directory.listFiles()?.forEach { file ->
+            when {
+                file.name.startsWith(".") && file.name.endsWith(".backup") -> {
+                    val id = file.name.removePrefix(".").removeSuffix(".backup")
+                    val destination = runCatching { fileFor(id) }.getOrNull()
+                    if (destination == null) {
+                        file.delete()
+                    } else if (!destination.exists()) {
+                        file.renameTo(destination)
+                    } else {
+                        file.delete()
+                    }
+                }
+                file.name.startsWith(".") && file.name.endsWith(".pending") -> file.delete()
+            }
+        }
     }
 
     /**
