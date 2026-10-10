@@ -2,7 +2,7 @@
 
 ## Design
 
-- PDF bytes are read from the already-decrypted payload into memory and opened with PdfiumAndroidKt 2.0.3. No plaintext PDF, rendered page, or OCR temporary file is written to disk.
+- PDF bytes are read from the already-decrypted payload into memory and opened with PdfiumAndroidKt 2.0.0. No plaintext PDF, rendered page, or OCR temporary file is written to disk.
 - The engine extracts embedded PDF text first. Pages with little/no text are rendered one at a time and passed to the existing offline Tesseract engine.
 - Native text extraction reports null OCR confidence; confidence is reported only for pages actually processed by Tesseract.
 - PDF text and OCR results are stored in the existing AES-GCM encrypted payload, and the metadata/search index is updated through the repository.
@@ -18,9 +18,9 @@
 
 ## Dependency and platform trade-off
 
-- Uses PdfiumAndroidKt 2.0.3, which opens ByteArray input and provides native text extraction and page rendering. The maintained engine was preferred over older PDFium forks for processing untrusted PDFs.
-- This dependency requires Android API 24+ and Java 21 for the build environment. The app's provisional minSdk has therefore moved from 23 to 24; this is an explicit compatibility trade-off.
-- CI now uses JDK 21; Java/Kotlin bytecode targets remain 17 unless dependency compatibility requires a change.
+- Uses PdfiumAndroidKt 2.0.0, which opens ByteArray input and provides native text extraction and page rendering. The maintained engine was preferred over older PDFium forks for processing untrusted PDFs.
+- This dependency requires Android API 24+ and Java 21 for the build environment. The app's provisional minSdk has therefore moved from 23 to 24; this is an explicit compatibility trade-off. Version 2.0.0 is pinned because it supports compileSdk 36, unlike 2.0.3 which requires the Android 17/API 37 preview platform.
+- CI uses JDK 21; app Java and Kotlin bytecode targets remain 17. Kotlin 2.3.10 and KSP 2.3.4 are aligned with the PDFium 2.0.0 publication, and AGP's built-in Kotlin is explicitly disabled in favor of the external Kotlin Android/Compose plugins.
 - Apache-2.0 license text is already packaged in app/src/main/assets/licenses/Apache-2.0.txt and the dependency is listed in THIRD_PARTY_NOTICES.txt.
 
 ## Remaining verification
