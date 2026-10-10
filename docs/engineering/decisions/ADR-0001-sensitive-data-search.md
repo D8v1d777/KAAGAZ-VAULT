@@ -29,7 +29,7 @@ Primary references:
 - Maven Central artifact metadata: https://central.sonatype.com/artifact/net.zetetic/sqlcipher-android
 - Android Room driver/compatibility documentation: https://developer.android.com/training/data-storage/room/migration-2-to-3
 
-This is a **candidate, not an adoption decision**. The repository currently has no Android Gradle project to compile against. Before selection, verify the chosen Room generation, Kotlin/AGP/NDK/minSdk compatibility, supported ABIs, dependency graph, binary size, licence notices, passphrase/key lifecycle, WAL behavior, and real database sidecar leakage. Do not copy a static sample passphrase into production code.
+This remains a **proposed candidate, not an approved final decision**. A Room 2.8.4 + SQLCipher for Android 4.19.1 prototype has now been implemented on branch phase/04-encrypted-search-v2. Its first CI verification is pending, and device-level database/sidecar leakage tests have not been performed. Before approval, verify Kotlin/AGP/NDK/minSdk compatibility, supported ABIs, dependency graph, binary size, license notices, key lifecycle, WAL behavior, and actual database sidecar leakage. Do not copy a static sample passphrase into production code.
 
 ## Evaluation criteria
 - What an attacker can recover from a locked device, copied app data, backups, crash artifacts, and a compromised running process.
@@ -46,5 +46,14 @@ This is a **candidate, not an adoption decision**. The repository currently has 
 - Search correctness and performance measurements on a synthetic mixed-language corpus.
 - Explicit residual-risk statement and product implications.
 
+## Prototype status (2026-10-10)
+- Room 2 + SQLCipher 4.19.1 + AndroidX SQLite 2.7.0 is the current implementation candidate. KSP 2.2.10-2.0.2 is pinned to the project's Kotlin 2.2.10 toolchain.
+- Database key material is generated randomly and wrapped with a separate Android Keystore AES key. The wrapper file is in no-backup storage; an existing invalid wrapper fails closed.
+- The database stores a normalized copy of document names and OCR text. This field is sensitive but resides inside the SQLCipher database. Search is substring/phrase search; no plaintext FTS table is used.
+- The encrypted document files remain the source of truth. The index is rebuilt from those files after library refresh; cross-file/database operations are not atomic.
+- SQLCipher Java logging is redirected to NoopTarget. Native/core logging behavior still needs device verification.
+- Required license notices are packaged and a UI entry point exposes them.
+- CI and device tests have not yet validated the prototype. **ADR status remains Proposed** until dependency/build checks, encrypted DB open/reopen, wrong-key/tamper behavior, WAL/journal inspection, and performance tests pass.
+
 ## Consequences
-This gate may delay the search implementation, but it prevents a misleading security promise and expensive storage migrations later. The next implementation phase should establish key management and storage boundaries before indexing.
+This gate may delay final approval, but it prevents a misleading security promise and expensive storage migrations later. The implementation is a candidate prototype only; do not claim the metadata/search layer is verified or release-ready until the acceptance evidence is recorded.
