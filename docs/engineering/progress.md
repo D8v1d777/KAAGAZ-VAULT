@@ -1,3 +1,34 @@
+## 2026-10-10 — Offline OCR and human review slice
+
+### Research
+- Context7 documentation review confirmed ML Kit bundled Android OCR covers Latin and Devanagari, not Telugu, so it was not selected as the only OCR engine.
+- Tesseract4Android 4.9.0 wraps Tesseract 5.5.1 and requires language models under a private `tessdata` directory: https://github.com/adaptech-cz/Tesseract4Android
+- Official `tessdata_fast` model files for English, Hindi, and Telugu are pinned to commit `87416418657359cb625c412a48b6e1d6d41c29bd`: https://github.com/tesseract-ocr/tessdata_fast/tree/87416418657359cb625c412a48b6e1d6d41c29bd
+- Each model's Git blob SHA-1 is checked both during build-time asset generation and before copying to private storage.
+
+### Implemented in code
+- Added Tesseract4Android dependency and a Gradle task to fetch/pin/hash-check English, Hindi, and Telugu traineddata models, then package them as app assets. Model downloads occur during build; runtime OCR is offline.
+- Added image-only OCR with a bounds-first decode and downsampling to a maximum 2400 px dimension, worker-thread execution, explicit native-resource cleanup, and mean engine score.
+- Extended encrypted document payload format to v2 for OCR text, engine score, truncation, and review state; legacy v1 payloads remain readable.
+- Added encrypted same-ID payload replacement and startup recovery for interrupted replacement backup/pending files.
+- Added UI to run OCR on imported images, edit extracted text, and explicitly save it as reviewed. New OCR resets the review flag. No OCR result is automatically turned into an action.
+- Added `docs/engineering/offline-ocr.md` and a weighted product completion tracker.
+
+### Verification status
+- The latest CI run after the OCR dependency/model task was still queued/in progress at the last check: https://github.com/D8v1d777/KAAGAZ-VAULT/actions
+- **No passing result is claimed for the OCR changes yet.** The critical next step is to inspect the newest run after model downloads, Gradle dependency resolution, JNI packaging, compile, unit tests, lint, and offline-manifest checks.
+- OCR model assets add about 7.9 MB before packaging; installed app storage also holds a verified private copy.
+- Notion AI sub-agent discovery was attempted but blocked by the workspace entitlement (Business plan or higher); no sub-agent session was created. Independent review is therefore not claimed.
+
+### Next actions
+1. Wait for/check the latest CI result and fix actual build/test failures.
+2. Add payload format v1/v2 round-trip and encrypted OCR update/recovery tests.
+3. Add Android Keystore instrumentation coverage and device/emulator smoke tests when available.
+4. Continue with PDF page OCR only after designing a path that does not leave decrypted plaintext in temporary files.
+5. Build the encrypted metadata/search layer, then reminders, camera scanning, access-control, and release gates.
+
+---
+
 ## 2026-10-10 — Phase 3: encrypted local payload prototype
 
 ### Research before implementation
