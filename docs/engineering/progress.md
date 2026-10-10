@@ -1,3 +1,32 @@
+## 2026-10-10 — Phase 4 encrypted metadata/search prototype
+
+### Research
+- Read the encrypted-data-search, secure-storage, and implementation-quality skills and ADR-0001 before implementation.
+- Room 2.8.4 + KSP 2.2.10-2.0.2 matches the Kotlin 2.2.10 toolchain. SQLCipher for Android 4.19.1 documents Room 2 integration via SupportOpenHelperFactory and API 23+ support: https://github.com/sqlcipher/sqlcipher-android
+- SQLCipher Java logging is redirected to NoopTarget. Required Apache-2.0 and SQLCipher BSD-style license texts are packaged and third-party notices are exposed in the UI.
+- A random 256-bit SQLCipher key is wrapped by a separate Android Keystore AES key; only the wrapped envelope is stored under noBackupFilesDir.
+
+### Implemented
+- Added Room/KSP/AndroidX SQLite/SQLCipher dependencies.
+- Added SQLCipher metadata database, a wrapped database-key manager, lazy database initialization on the I/O executor, and a metadata index for normalized name + OCR text.
+- Added substring/phrase search UI. Search query text is bound to DAO parameters and not logged. If encrypted DB initialization fails, the app falls back to an in-memory scan of decrypted payloads.
+- Kept encrypted document payload files as the source of truth; library refresh rebuilds the metadata index. Added fail-closed handling when the database exists but its wrapped key is missing.
+- Added mixed-script normalization tests and packaged third-party license notices.
+- Updated ADR-0001 prototype status while keeping the decision Proposed.
+
+### Verification
+- CI run https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38030642290 completed successfully on commit d1f6e4ccbe758d05fad0bff2ab0fb7ce082d18e2.
+- Passed: SDK provisioning, Gradle clean/assembleDebug/testDebugUnitTest/lint, and the offline merged-manifest policy.
+- This proves build/test/lint gates only. SQLCipher runtime encryption, WAL/journal leakage, wrong-key behavior on device, database recovery, and search performance remain unverified.
+- Estimated implemented-scope progress: 29% weighted objectives. See docs/engineering/product-completion.md.
+
+### Next cycle
+1. Verify the Phase 5 CameraX branch and fix any actual dependency/compile/test errors.
+2. Add Android instrumentation tests for wrapped database keys, database open/reopen, and storage leakage.
+3. Continue with PDF OCR, biometric/app lock, reminders, preview/export, accessibility, and release packaging.
+
+---
+
 ## 2026-10-10 — Offline OCR and human review slice
 
 ### Research
