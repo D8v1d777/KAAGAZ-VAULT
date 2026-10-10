@@ -23,7 +23,7 @@ android {
 
     defaultConfig {
         applicationId = "com.kaagazvault"
-        minSdk = 23
+        minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
@@ -115,6 +115,7 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation("net.zetetic:sqlcipher-android:4.19.1@aar")
+    implementation(libs.pdfium.android)
     ksp(libs.androidx.room.compiler)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
