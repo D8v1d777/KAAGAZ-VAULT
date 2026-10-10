@@ -28,7 +28,7 @@ class DocumentPayloadCodecTest {
         assertEquals(payload.mimeType, decoded.mimeType)
         assertArrayEquals(payload.content, decoded.content)
         assertEquals(payload.ocrText, decoded.ocrText)
-        assertEquals(78, decoded.ocrConfidence)
+        assertEquals(78, decoded.ocrConfidence ?: -1)
         assertTrue(decoded.ocrReviewed)
         assertFalse(decoded.ocrTruncated)
     }
@@ -75,7 +75,7 @@ class DocumentPayloadCodecTest {
             ImportedPayload("file.png", "image/png", byteArrayOf(1), ocrText = original)
         )
         val decoded = DocumentPayloadCodec.decode(encoded)
-        assertEquals(150_000, decoded.ocrText?.length)
+        assertEquals(150_000, decoded.ocrText?.length ?: 0)
         assertTrue(decoded.ocrTruncated)
     }
 }
