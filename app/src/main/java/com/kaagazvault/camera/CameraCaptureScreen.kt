@@ -1,6 +1,10 @@
 package com.kaagazvault.camera
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Matrix
+import android.view.Surface
 import android.os.Handler
 import android.os.Looper
 import androidx.camera.core.CameraSelector
@@ -34,12 +38,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import android.util.Size
 
 /**
- * In-memory CameraX capture. The captured bitmap is encoded to bytes and handed to the
- * encrypted repository; this screen never writes a plaintext photo to a file or MediaStore.
+ * In-memory CameraX capture. JPEG bytes are copied from ImageProxy and rotation-normalized
+ * in memory when needed; no plaintext photo is written to a file or MediaStore.
  */
 @Composable
 internal fun CameraCaptureScreen(
@@ -85,6 +90,7 @@ internal fun CameraCaptureScreen(
                     val capture = ImageCapture.Builder()
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                         .setOutputFormat(ImageCapture.OUTPUT_FORMAT_JPEG)
+                        .setTargetRotation(previewView.display?.rotation ?: Surface.ROTATION_0)
                         .setResolutionSelector(selector)
                         .build()
                     provider.unbindAll()
@@ -151,19 +157,45 @@ internal fun CameraCaptureScreen(
                                 }
                                 val buffer = image.planes.firstOrNull()?.buffer
                                     ?: throw IllegalStateException("Camera returned an empty image")
-                                val bytes = ByteArray(buffer.remaining())
-                                buffer.get(bytes)
-                                if (bytes.size < 3 ||
-                                    bytes[0] != 0xff.toByte() ||
-                                    bytes[1] != 0xd8.toByte() ||
-                                    bytes[2] != 0xff.toByte()
+                                val jpegBytes = ByteArray(buffer.remaining())
+                                buffer.get(jpegBytes)
+                                if (jpegBytes.size < 3 ||
+                                    jpegBytes[0] != 0xff.toByte() ||
+                                    jpegBytes[1] != 0xd8.toByte() ||
+                                    jpegBytes[2] != 0xff.toByte()
                                 ) {
                                     throw IllegalStateException("Captured image is not a valid JPEG")
+                                }
+                                val rotation = image.imageInfo.rotationDegrees
+                                val normalizedBytes = if (rotation == 0) jpegBytes else {
+                                    val sourceBitmap = BitmapFactory.decodeByteArray(
+                                        jpegBytes, 0, jpegBytes.size
+                                    ) ?: throw IllegalStateException("Captured JPEG could not be decoded")
+                                    val rotatedBitmap = Bitmap.createBitmap(
+                                        sourceBitmap,
+                                        0,
+                                        0,
+                                        sourceBitmap.width,
+                                        sourceBitmap.height,
+                                        Matrix().apply { postRotate(rotation.toFloat()) },
+                                        true
+                                    )
+                                    try {
+                                        ByteArrayOutputStream().use { output ->
+                                            if (!rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)) {
+                                                throw IllegalStateException("Rotated JPEG encoding failed")
+                                            }
+                                            output.toByteArray()
+                                        }
+                                    } finally {
+                                        rotatedBitmap.recycle()
+                                        sourceBitmap.recycle()
+                                    }
                                 }
                                 mainHandler.post {
                                     captureBusy.value = false
                                     status.value = "Photo captured. Encrypting locally…"
-                                    onCaptured(bytes)
+                                    onCaptured(normalizedBytes)
                                 }
                             } catch (_: Exception) {
                                 mainHandler.post {
