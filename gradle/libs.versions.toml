@@ -1,15 +1,15 @@
 [versions]
 agp = "9.1.1"
-kotlin = "2.2.10"
+kotlin = "2.3.10"
 composeBom = "2026.04.01"
 activityCompose = "1.13.0"
 junit = "4.13.2"
-ksp = "2.2.10-2.0.2"
+ksp = "2.3.4"
 room = "2.8.4"
 sqlite = "2.7.0"
 sqlcipher = "4.19.1"
 camera = "1.6.1"
-pdfium = "2.0.3"
+pdfium = "2.0.0"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
@@ -31,5 +31,6 @@ pdfium-android = { module = "io.legere:pdfiumandroid", version.ref = "pdfium" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
