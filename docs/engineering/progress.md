@@ -17,6 +17,11 @@
 - The preceding Phase 8 head 029c77f693ff0ee4cb95c852d19f349c62f0252b had successful Android CI runs 38044704501 and 38044696303.
 - This Phase 9 change has not yet been built by CI at the time this entry is authored. Do not treat wrapper bootstrap, release build, APK analysis, or the new Python tests as verified until the new PR run completes.
 
+### Post-commit CI evidence (2026-10-10)
+- Draft PR #8 code commit 05ce7d7cc0c46aa4f1c1abf2e68dc4b297138cd7 completed CI run 38070788162 successfully.
+- Python offline-policy tests, Gradle setup, assembleDebug, assembleRelease, testDebugUnitTest, lint, and the merged-manifest plus packaged-APK offline gate all completed successfully.
+- This run did not install the APK on a physical device and does not constitute release-signing evidence or an independent security review.
+
 ### Remaining risks / next steps
 - The wrapper and distribution checksums must be validated by CI; a locally unexecuted build is not evidence.
 - Device-level privacy behavior, SQLCipher WAL/journal leakage, Keystore invalidation, OCR language accuracy, and release signing remain outside this CI hardening slice.
