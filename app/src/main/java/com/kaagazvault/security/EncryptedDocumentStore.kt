@@ -102,8 +102,8 @@ internal class EncryptedDocumentStore(
                 backup.renameTo(destination)
                 throw IOException("Could not publish encrypted document update")
             }
-            // A stale backup is ciphertext, not plaintext. Failure to remove it does not
-            // invalidate the new authenticated document; startup recovery will be added later.
+            // A stale backup is ciphertext, not plaintext. Startup recovery restores it if
+            // publication was interrupted before the new destination became visible.
             backup.delete()
         } finally {
             if (temporary.exists()) temporary.delete()
