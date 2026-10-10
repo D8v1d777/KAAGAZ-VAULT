@@ -6,6 +6,7 @@ import java.security.MessageDigest
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 val generatedOcrAssets = layout.buildDirectory.dir("generated/ocr-assets")
@@ -106,6 +107,11 @@ tasks.named("preBuild").configure {
 
 dependencies {
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.sqlite)
+    implementation("net.zetetic:sqlcipher-android:4.19.1@aar")
+    ksp(libs.androidx.room.compiler)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)

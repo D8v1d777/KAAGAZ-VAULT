@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,6 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
@@ -33,8 +36,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.kaagazvault.database.EncryptedMetadataIndexProvider
+import com.kaagazvault.database.VaultDatabaseProvider
 import com.kaagazvault.documents.DocumentRepository
 import com.kaagazvault.documents.ImportedDocument
 import com.kaagazvault.ocr.OfflineOcrEngine
@@ -46,6 +52,7 @@ import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
     private val ioExecutor = Executors.newSingleThreadExecutor()
+    private var databaseProvider: VaultDatabaseProvider? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +60,10 @@ class MainActivity : ComponentActivity() {
             java.io.File(filesDir, "encrypted_documents"),
             AndroidKeystoreDocumentKeyProvider()
         )
-        val repository = DocumentRepository(contentResolver, store)
+        val provider = VaultDatabaseProvider(applicationContext)
+        databaseProvider = provider
+        val indexProvider = EncryptedMetadataIndexProvider(provider)
+        val repository = DocumentRepository(contentResolver, store, indexProvider)
         val ocrEngine = OfflineOcrEngine(applicationContext)
         setContent {
             MaterialTheme {
@@ -72,6 +82,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        databaseProvider?.let { provider -> ioExecutor.execute { provider.close() } }
         ioExecutor.shutdown()
         super.onDestroy()
     }
@@ -86,6 +97,11 @@ private fun VaultHomeScreen(
     val documents = remember { mutableStateListOf<ImportedDocument>() }
     val status = remember { mutableStateOf("Your documents stay on this device.") }
     val busy = remember { mutableStateOf(false) }
+    val searchQuery = remember { mutableStateOf("") }
+    val searchAvailable = remember { mutableStateOf(false) }
+    val showLicenses = remember { mutableStateOf(false) }
+    val thirdPartyNotices = remember { mutableStateOf("Loading third-party notices…") }
+    val context = LocalContext.current
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
     val picker = rememberLauncherForActivityResult(
@@ -103,6 +119,7 @@ private fun VaultHomeScreen(
                     mainHandler.post {
                         documents.clear()
                         documents.addAll(refreshed)
+                        searchAvailable.value = repository.encryptedSearchAvailable
                         status.value = "Saved encrypted: ${imported.displayName}"
                         busy.value = false
                     }
@@ -123,6 +140,7 @@ private fun VaultHomeScreen(
                 mainHandler.post {
                     documents.clear()
                     documents.addAll(refreshed)
+                    searchAvailable.value = repository.encryptedSearchAvailable
                     status.value = if (refreshed.isEmpty()) {
                         "No documents yet. Import a PDF or image to begin."
                     } else {
@@ -205,6 +223,71 @@ private fun VaultHomeScreen(
                 }
             }
 
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("LOCAL SEARCH", style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    value = searchQuery.value,
+                    onValueChange = { searchQuery.value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Search names and extracted text") },
+                    singleLine = true,
+                    enabled = !busy.value
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            busy.value = true
+                            submitIo {
+                                try {
+                                    val results = repository.search(searchQuery.value)
+                                    mainHandler.post {
+                                        documents.clear()
+                                        documents.addAll(results)
+                                        searchAvailable.value = repository.encryptedSearchAvailable
+                                        status.value = if (searchAvailable.value) {
+                                            "Encrypted local search found ${results.size} result(s)."
+                                        } else {
+                                            "Search used a local in-memory scan; encrypted database is unavailable."
+                                        }
+                                        busy.value = false
+                                    }
+                                } catch (_: Exception) {
+                                    mainHandler.post {
+                                        status.value = "Search failed. Your encrypted documents were left untouched."
+                                        busy.value = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !busy.value
+                    ) { Text("Search") }
+                    OutlinedButton(
+                        onClick = {
+                            searchQuery.value = ""
+                            busy.value = true
+                            submitIo {
+                                val refreshed = repository.list()
+                                mainHandler.post {
+                                    documents.clear()
+                                    documents.addAll(refreshed)
+                                    searchAvailable.value = repository.encryptedSearchAvailable
+                                    status.value = "Showing all local documents."
+                                    busy.value = false
+                                }
+                            }
+                        },
+                        enabled = !busy.value
+                    ) { Text("Clear") }
+                }
+                if (!searchAvailable.value) {
+                    Text(
+                        "Encrypted search database unavailable. Search will scan encrypted documents in memory.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
             Text("YOUR DOCUMENTS", style = MaterialTheme.typography.titleMedium)
             if (documents.isEmpty()) {
                 Text(
@@ -269,6 +352,7 @@ private fun VaultHomeScreen(
                                                 mainHandler.post {
                                                     documents.clear()
                                                     documents.addAll(refreshed)
+                                                    searchAvailable.value = repository.encryptedSearchAvailable
                                                     status.value = "Corrections encrypted and marked reviewed. Verify every field before relying on it."
                                                     busy.value = false
                                                 }
@@ -296,6 +380,7 @@ private fun VaultHomeScreen(
                                                 mainHandler.post {
                                                     documents.clear()
                                                     documents.addAll(refreshed)
+                                                    searchAvailable.value = repository.encryptedSearchAvailable
                                                     status.value = "Text extracted locally. Review it before relying on any field."
                                                     busy.value = false
                                                 }
@@ -329,6 +414,7 @@ private fun VaultHomeScreen(
                                             mainHandler.post {
                                                 documents.clear()
                                                 documents.addAll(refreshed)
+                                                searchAvailable.value = repository.encryptedSearchAvailable
                                                 status.value = "Document removed from the vault."
                                                 busy.value = false
                                             }
@@ -350,11 +436,43 @@ private fun VaultHomeScreen(
             }
 
             Text(
-                "Offline OCR: English, Hindi, and Telugu • review required • no automatic actions",
+                "Offline OCR: English, Hindi, and Telugu • encrypted local search • review required • no automatic actions",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            TextButton(
+                onClick = {
+                    showLicenses.value = true
+                    submitIo {
+                        val notices = runCatching {
+                            context.assets.open("licenses/THIRD_PARTY_NOTICES.txt")
+                                .bufferedReader()
+                                .use { it.readText() }
+                        }.getOrDefault("Third-party license notices are packaged with this application.")
+                        mainHandler.post { thirdPartyNotices.value = notices }
+                    }
+                }
+            ) { Text("Third-party licenses") }
         }
+    }
+
+    if (showLicenses.value) {
+        AlertDialog(
+            onDismissRequest = { showLicenses.value = false },
+            title = { Text("Third-party licenses") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(thirdPartyNotices.value)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLicenses.value = false }) { Text("Close") }
+            }
+        )
     }
 }
 

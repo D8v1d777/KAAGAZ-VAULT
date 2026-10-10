@@ -1,0 +1,27 @@
+KAAGAZ-VAULT — THIRD-PARTY SOFTWARE NOTICES
+
+This application includes the following third-party software. The full license texts are packaged in this directory.
+
+1. Tesseract4Android 4.9.0
+   Project: https://github.com/adaptech-cz/Tesseract4Android
+   License: Apache License 2.0
+   License text: Apache-2.0.txt
+
+2. Tesseract tessdata_fast language models (English, Hindi, Telugu)
+   Project: https://github.com/tesseract-ocr/tessdata_fast
+   Pinned source commit: 87416418657359cb625c412a48b6e1d6d41c29bd
+   License: Apache License 2.0
+   License text: Apache-2.0.txt
+
+3. SQLCipher for Android 4.19.1
+   Project: https://github.com/sqlcipher/sqlcipher-android
+   Copyright: Copyright (c) 2008-2023, ZETETIC LLC
+   License: BSD-style license; see SQLCIPHER-BSD.txt.
+   Redistribution must retain the copyright notice, conditions, and disclaimer.
+
+4. AndroidX Room 2.8.4, AndroidX SQLite 2.7.0, Kotlin Symbol Processing, and AndroidX Compose
+   Project: https://developer.android.com/jetpack/androidx
+   License: Apache License 2.0
+   License text: Apache-2.0.txt
+
+OCR model files are downloaded only during the build from the pinned source commit and verified against their Git blob SHA-1 values before packaging. The installed application does not download OCR models at runtime.
