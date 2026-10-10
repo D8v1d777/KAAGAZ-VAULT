@@ -58,7 +58,11 @@ class MainActivity : ComponentActivity() {
         )
         val provider = VaultDatabaseProvider(applicationContext)
         databaseProvider = provider
-        val metadataIndex = runCatching { EncryptedMetadataIndex(provider.get().documentMetadataDao()) }.getOrNull()
+        val metadataIndex = runCatching {
+            val dao = provider.get().documentMetadataDao()
+            dao.getAll() // Force the first open so a wrong/corrupt key is detected before enabling DB search.
+            EncryptedMetadataIndex(dao)
+        }.getOrNull()
         val repository = DocumentRepository(contentResolver, store, metadataIndex)
         val ocrEngine = OfflineOcrEngine(applicationContext)
         setContent {
