@@ -1,3 +1,33 @@
+## 2026-10-10 — Phase 3: encrypted local payload prototype
+
+### Research before implementation
+- Read AGENTS.md and the Android engineering, privacy/security, testing-quality, secure-storage/cryptography, encrypted-search, and release-security skills.
+- Android recommends app-private internal storage for private app-only files: https://developer.android.com/training/data-storage/app-specific
+- Android cryptography guidance recommends established platform cryptography and Android Keystore for stored keys: https://developer.android.com/privacy-and-security/cryptography
+- AES-GCM uses an IV and authentication tag: https://developer.android.com/reference/javax/crypto/spec/GCMParameterSpec
+- Kept ADR-0001 Proposed; this phase does not select a database/search index or persist OCR text.
+
+### Implemented on phase/03-encrypted-local-files
+- Added Android Keystore AES-256 key provider; existing-key retrieval errors fail instead of silently rotating the key.
+- Added a versioned AES-GCM envelope with fresh 12-byte IV, 128-bit tag, and document UUID authenticated as AAD.
+- Added encrypted file persistence with UUID names, ciphertext-only pending file, sync-before-rename, strict ID validation, fail-closed reads, and a 32 MiB byte-array bound.
+- Added JVM tests for round-trip, fresh IVs, ciphertext tampering, wrong AAD, truncation/version rejection, file lifecycle, and path traversal.
+- Added docs/engineering/secure-local-files.md with implementation boundaries and acceptance gates.
+- Opened draft PR #3: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/3. It has not been merged.
+
+### Verification at log update
+- CI runs 38028960654, 38028971588, and 38029001766 had reached the Gradle build/test/lint step but were still reported in progress when checked.
+- Therefore, no passing result is claimed for this phase yet. Check the latest run and fix any failures from actual logs.
+- Android Keystore runtime behavior is not covered by the current JVM tests; instrumentation coverage remains a gate.
+
+### Limitations and next actions
+- Only document payload bytes are encrypted; metadata, OCR text, thumbnails, search indexes, and database sidecars are not implemented.
+- ByteArray API is capped at 32 MiB; large/multi-page documents need a separately reviewed streaming/chunked authenticated format.
+- No biometric lock, key recovery/rotation, backup recovery, secure deletion, database, OCR, or UI integration yet.
+- Next: verify CI, add Android Keystore instrumentation coverage, then research and implement user-selected SAF import with strict size bounds and encrypted metadata. No broad storage permissions or INTERNET permission should be added.
+
+---
+
 # Engineering Progress Log
 
 This log records repository work and evidence. It distinguishes documentation changes from application implementation.
