@@ -1,3 +1,8 @@
+import File
+import HttpURLConnection
+import URL
+import MessageDigest
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -48,21 +53,21 @@ val prepareOcrModels by tasks.registering {
         }
 
         tessdataModels.forEach { (name, expectedGitBlobSha) ->
-            val destination = java.io.File(outputDirectory, name)
+            val destination = File(outputDirectory, name)
             val validExisting = destination.isFile && run {
                 val bytes = destination.readBytes()
-                val digest = java.security.MessageDigest.getInstance("SHA-1")
+                val digest = MessageDigest.getInstance("SHA-1")
                 digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
                 digest.update(bytes)
                 digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) } == expectedGitBlobSha
             }
             if (validExisting) return@forEach
 
-            val temporary = java.io.File(outputDirectory, "$name.download")
-            val url = java.net.URL(
+            val temporary = File(outputDirectory, "$name.download")
+            val url = URL(
                 "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/$tessdataRevision/$name"
             )
-            val connection = url.openConnection() as java.net.HttpURLConnection
+            val connection = url.openConnection() as HttpURLConnection
             connection.connectTimeout = 30_000
             connection.readTimeout = 60_000
             try {
@@ -75,10 +80,10 @@ val prepareOcrModels by tasks.registering {
             }
 
             val bytes = temporary.readBytes()
-            val digest = java.security.MessageDigest.getInstance("SHA-1")
+            val digest = MessageDigest.getInstance("SHA-1")
             digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
             digest.update(bytes)
-            val actualGitBlobSha = digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+            val actualGitBlobSha = digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
             if (actualGitBlobSha != expectedGitBlobSha) {
                 temporary.delete()
                 throw GradleException("Pinned OCR model integrity check failed for $name")
