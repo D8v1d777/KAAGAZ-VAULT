@@ -520,6 +520,7 @@ private fun VaultHomeScreen(
             ) { Text("Third-party licenses") }
         }
     }
+    }
 
     if (showLicenses.value) {
         AlertDialog(
