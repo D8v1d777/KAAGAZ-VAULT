@@ -29,7 +29,12 @@ internal class OfflineOcrEngine(private val context: Context) {
     fun recognizeImage(bytes: ByteArray): OcrResult {
         val dataRoot = ensureModelsAvailable()
         val bitmap = decodeBoundedBitmap(bytes)
-        val api = createTessApi(dataRoot)
+        val api = try {
+            createTessApi(dataRoot)
+        } catch (error: Throwable) {
+            bitmap.recycle()
+            throw error
+        }
         try {
             api.setImage(bitmap)
             val rawText = api.getUTF8Text().orEmpty().trim()
