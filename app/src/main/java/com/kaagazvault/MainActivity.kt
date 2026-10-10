@@ -240,7 +240,7 @@ private fun VaultHomeScreen(
 
                             if (document.ocrText != null) {
                                 Text(
-                                    "Offline OCR • confidence ${document.ocrConfidence ?: 0}% • ${if (document.ocrReviewed) "reviewed" else "needs review"}",
+                                    "Offline OCR • engine score ${document.ocrConfidence ?: 0}/100 • ${if (document.ocrReviewed) "reviewed" else "needs review"}",
                                     style = MaterialTheme.typography.labelMedium
                                 )
                                 if (document.ocrTruncated) {
