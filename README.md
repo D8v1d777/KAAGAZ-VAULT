@@ -12,7 +12,7 @@ KAAGAZ VAULT is intended to help people capture, organize, search, and act on ev
 - Protect document content and sensitive metadata at rest.
 - Keep core workflows available offline, with no analytics, ads, or hidden network calls in the FOSS build.
 
-These are **product goals, not implemented or verified features**. The repository currently contains an initial Android project shell labelled as an engineering preview. The first CI attempts failed during Android SDK provisioning, before Gradle build, tests, lint, or the offline-manifest gate could run. A stable SDK/Compose configuration has now been committed; verification of the latest workflow is pending. Scanning, OCR, encrypted storage, search, and reminders remain unimplemented. Do not store real identity documents, prescriptions, private records, API keys, or signing credentials in this repository.
+These are **product goals, not implemented or verified features**. The repository currently contains an initial Android project shell labelled as an engineering preview. The first CI attempts failed during Android SDK provisioning and plugin resolution, before compilation, tests, lint, or the offline-manifest gate could complete. A stable SDK/Compose configuration and a published AGP version have now been pinned; verification of the latest workflow is pending. Scanning, OCR, encrypted storage, search, and reminders remain unimplemented. Do not store real identity documents, prescriptions, private records, API keys, or signing credentials in this repository.
 
 ## Engineering principles
 
@@ -34,7 +34,7 @@ These are **product goals, not implemented or verified features**. The repositor
 - [ ] Capture/import → encrypted storage → OCR review vertical slice.
 - [ ] Local retrieval, date/reminder safety, accessibility, and release audits.
 
-CI currently uses pinned Gradle 9.3.1, JDK 17, Android SDK 36, and Compose BOM 2026.04.01. The standard Gradle Wrapper is still pending. See [engineering progress](docs/engineering/progress.md), [quality gates](docs/engineering/quality-gates.md), and [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md).
+CI currently uses AGP 9.1.1, Gradle 9.3.1, JDK 17, Android SDK 36, and Compose BOM 2026.04.01. The standard Gradle Wrapper is still pending. See [engineering progress](docs/engineering/progress.md), [quality gates](docs/engineering/quality-gates.md), and [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md).
 
 ## Contributing
 
