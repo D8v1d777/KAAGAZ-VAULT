@@ -93,7 +93,9 @@ internal class DocumentRepository(
                 ocrText = result.text.take(MAX_OCR_CHARACTERS),
                 ocrConfidence = result.meanConfidence,
                 ocrReviewed = false,
-                ocrTruncated = result.truncated || result.text.length > MAX_OCR_CHARACTERS
+                ocrTruncated = result.truncated || result.text.length > MAX_OCR_CHARACTERS,
+                ocrSource = result.source,
+                ocrLanguages = result.languages
             ))
         )
         val updated = toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
@@ -159,7 +161,9 @@ internal class DocumentRepository(
         ocrText = payload.ocrText,
         ocrConfidence = payload.ocrConfidence,
         ocrReviewed = payload.ocrReviewed,
-        ocrTruncated = payload.ocrTruncated
+        ocrTruncated = payload.ocrTruncated,
+        ocrSource = payload.ocrSource,
+        ocrLanguages = payload.ocrLanguages
     )
 
     private fun queryDisplayName(uri: Uri): String {
