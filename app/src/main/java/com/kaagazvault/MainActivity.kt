@@ -35,7 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.kaagazvault.database.EncryptedMetadataIndex
+import com.kaagazvault.database.EncryptedMetadataIndexProvider
 import com.kaagazvault.database.VaultDatabaseProvider
 import com.kaagazvault.documents.DocumentRepository
 import com.kaagazvault.documents.ImportedDocument
@@ -58,12 +58,8 @@ class MainActivity : ComponentActivity() {
         )
         val provider = VaultDatabaseProvider(applicationContext)
         databaseProvider = provider
-        val metadataIndex = runCatching {
-            val dao = provider.get().documentMetadataDao()
-            dao.getAll() // Force the first open so a wrong/corrupt key is detected before enabling DB search.
-            EncryptedMetadataIndex(dao)
-        }.getOrNull()
-        val repository = DocumentRepository(contentResolver, store, metadataIndex)
+        val indexProvider = EncryptedMetadataIndexProvider(provider)
+        val repository = DocumentRepository(contentResolver, store, indexProvider)
         val ocrEngine = OfflineOcrEngine(applicationContext)
         setContent {
             MaterialTheme {
@@ -74,7 +70,6 @@ class MainActivity : ComponentActivity() {
                     VaultHomeScreen(
                         repository = repository,
                         ocrEngine = ocrEngine,
-                        searchAvailable = metadataIndex != null,
                         submitIo = { work -> ioExecutor.execute(work) }
                     )
                 }
@@ -83,8 +78,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        databaseProvider?.let { provider -> ioExecutor.execute { provider.close() } }
         ioExecutor.shutdown()
-        databaseProvider?.close()
         super.onDestroy()
     }
 }
@@ -100,6 +95,7 @@ private fun VaultHomeScreen(
     val status = remember { mutableStateOf("Your documents stay on this device.") }
     val busy = remember { mutableStateOf(false) }
     val searchQuery = remember { mutableStateOf("") }
+    val searchAvailable = remember { mutableStateOf(false) }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
     val picker = rememberLauncherForActivityResult(
@@ -117,6 +113,7 @@ private fun VaultHomeScreen(
                     mainHandler.post {
                         documents.clear()
                         documents.addAll(refreshed)
+                        searchAvailable.value = repository.encryptedSearchAvailable
                         status.value = "Saved encrypted: ${imported.displayName}"
                         busy.value = false
                     }
@@ -137,6 +134,7 @@ private fun VaultHomeScreen(
                 mainHandler.post {
                     documents.clear()
                     documents.addAll(refreshed)
+                    searchAvailable.value = repository.encryptedSearchAvailable
                     status.value = if (refreshed.isEmpty()) {
                         "No documents yet. Import a PDF or image to begin."
                     } else {
@@ -239,7 +237,8 @@ private fun VaultHomeScreen(
                                     mainHandler.post {
                                         documents.clear()
                                         documents.addAll(results)
-                                        status.value = if (searchAvailable) {
+                                        searchAvailable.value = repository.encryptedSearchAvailable
+                                        status.value = if (searchAvailable.value) {
                                             "Encrypted local search found ${results.size} result(s)."
                                         } else {
                                             "Search used a local in-memory scan; encrypted database is unavailable."
@@ -265,6 +264,7 @@ private fun VaultHomeScreen(
                                 mainHandler.post {
                                     documents.clear()
                                     documents.addAll(refreshed)
+                                    searchAvailable.value = repository.encryptedSearchAvailable
                                     status.value = "Showing all local documents."
                                     busy.value = false
                                 }
@@ -346,6 +346,7 @@ private fun VaultHomeScreen(
                                                 mainHandler.post {
                                                     documents.clear()
                                                     documents.addAll(refreshed)
+                                                    searchAvailable.value = repository.encryptedSearchAvailable
                                                     status.value = "Corrections encrypted and marked reviewed. Verify every field before relying on it."
                                                     busy.value = false
                                                 }
@@ -373,6 +374,7 @@ private fun VaultHomeScreen(
                                                 mainHandler.post {
                                                     documents.clear()
                                                     documents.addAll(refreshed)
+                                                    searchAvailable.value = repository.encryptedSearchAvailable
                                                     status.value = "Text extracted locally. Review it before relying on any field."
                                                     busy.value = false
                                                 }
@@ -406,6 +408,7 @@ private fun VaultHomeScreen(
                                             mainHandler.post {
                                                 documents.clear()
                                                 documents.addAll(refreshed)
+                                                searchAvailable.value = repository.encryptedSearchAvailable
                                                 status.value = "Document removed from the vault."
                                                 busy.value = false
                                             }
