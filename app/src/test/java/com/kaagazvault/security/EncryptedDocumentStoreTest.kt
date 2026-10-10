@@ -78,6 +78,22 @@ class EncryptedDocumentStoreTest {
     }
 
     @Test
+    fun startupRestoresBackupWhenReplacementWasInterrupted() {
+        val directory = temporaryFolder.newFolder()
+        val key = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+        val originalStore = newStore(key, directory)
+        val id = originalStore.save("recover me".toByteArray())
+        val original = File(directory, "$id.kgv")
+        assertTrue(original.renameTo(File(directory, ".$id.backup")))
+        File(directory, ".$id.pending").writeText("ciphertext-only abandoned temporary")
+        
+        val recoveredStore = newStore(key, directory)
+        assertArrayEquals("recover me".toByteArray(), recoveredStore.read(id))
+        assertFalse(File(directory, ".$id.backup").exists())
+        assertFalse(File(directory, ".$id.pending").exists())
+    }
+
+    @Test
     fun listIdsReturnsOnlyValidEncryptedDocumentIds() {
         val directory = temporaryFolder.newFolder()
         val key = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
