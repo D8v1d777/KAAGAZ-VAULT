@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.kaagazvault.database.EncryptedMetadataIndex
+import com.kaagazvault.database.VaultDatabaseProvider
 import com.kaagazvault.documents.DocumentRepository
 import com.kaagazvault.documents.ImportedDocument
 import com.kaagazvault.ocr.OfflineOcrEngine
@@ -46,6 +48,7 @@ import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
     private val ioExecutor = Executors.newSingleThreadExecutor()
+    private var databaseProvider: VaultDatabaseProvider? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +56,10 @@ class MainActivity : ComponentActivity() {
             java.io.File(filesDir, "encrypted_documents"),
             AndroidKeystoreDocumentKeyProvider()
         )
-        val repository = DocumentRepository(contentResolver, store)
+        val provider = VaultDatabaseProvider(applicationContext)
+        databaseProvider = provider
+        val metadataIndex = runCatching { EncryptedMetadataIndex(provider.get().documentMetadataDao()) }.getOrNull()
+        val repository = DocumentRepository(contentResolver, store, metadataIndex)
         val ocrEngine = OfflineOcrEngine(applicationContext)
         setContent {
             MaterialTheme {
@@ -64,6 +70,7 @@ class MainActivity : ComponentActivity() {
                     VaultHomeScreen(
                         repository = repository,
                         ocrEngine = ocrEngine,
+                        searchAvailable = metadataIndex != null,
                         submitIo = { work -> ioExecutor.execute(work) }
                     )
                 }
@@ -73,6 +80,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         ioExecutor.shutdown()
+        databaseProvider?.close()
         super.onDestroy()
     }
 }
@@ -81,11 +89,13 @@ class MainActivity : ComponentActivity() {
 private fun VaultHomeScreen(
     repository: DocumentRepository,
     ocrEngine: OfflineOcrEngine,
+    searchAvailable: Boolean,
     submitIo: (() -> Unit) -> Unit
 ) {
     val documents = remember { mutableStateListOf<ImportedDocument>() }
     val status = remember { mutableStateOf("Your documents stay on this device.") }
     val busy = remember { mutableStateOf(false) }
+    val searchQuery = remember { mutableStateOf("") }
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
     val picker = rememberLauncherForActivityResult(
@@ -201,6 +211,69 @@ private fun VaultHomeScreen(
                         "Maximum file size: 31 MiB. No account or network connection is used.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("LOCAL SEARCH", style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    value = searchQuery.value,
+                    onValueChange = { searchQuery.value = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Search names and extracted text") },
+                    singleLine = true,
+                    enabled = !busy.value
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            busy.value = true
+                            submitIo {
+                                try {
+                                    val results = repository.search(searchQuery.value)
+                                    mainHandler.post {
+                                        documents.clear()
+                                        documents.addAll(results)
+                                        status.value = if (searchAvailable) {
+                                            "Encrypted local search found ${results.size} result(s)."
+                                        } else {
+                                            "Search used a local in-memory scan; encrypted database is unavailable."
+                                        }
+                                        busy.value = false
+                                    }
+                                } catch (_: Exception) {
+                                    mainHandler.post {
+                                        status.value = "Search failed. Your encrypted documents were left untouched."
+                                        busy.value = false
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !busy.value
+                    ) { Text("Search") }
+                    OutlinedButton(
+                        onClick = {
+                            searchQuery.value = ""
+                            busy.value = true
+                            submitIo {
+                                val refreshed = repository.list()
+                                mainHandler.post {
+                                    documents.clear()
+                                    documents.addAll(refreshed)
+                                    status.value = "Showing all local documents."
+                                    busy.value = false
+                                }
+                            }
+                        },
+                        enabled = !busy.value
+                    ) { Text("Clear") }
+                }
+                if (!searchAvailable) {
+                    Text(
+                        "Encrypted search database unavailable. Search will scan encrypted documents in memory.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }
@@ -350,7 +423,7 @@ private fun VaultHomeScreen(
             }
 
             Text(
-                "Offline OCR: English, Hindi, and Telugu • review required • no automatic actions",
+                "Offline OCR: English, Hindi, and Telugu • encrypted local search • review required • no automatic actions",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
