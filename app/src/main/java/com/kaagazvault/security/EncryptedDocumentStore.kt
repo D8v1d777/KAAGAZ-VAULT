@@ -58,6 +58,38 @@ internal class EncryptedDocumentStore(
         return envelope.decrypt(encrypted, keyProvider.getOrCreateKey(), id.toByteArray(Charsets.UTF_8))
     }
 
+    /**
+     * Replaces a stored ciphertext under the same opaque ID. Both pending and backup files
+     * contain ciphertext only; rollback preserves the previous document if publication fails.
+     */
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun replace(id: String, payload: ByteArray) {
+        require(payload.size <= MAX_PAYLOAD_BYTES) { "Document payload exceeds the supported size limit" }
+        val destination = fileFor(id)
+        if (!destination.isFile) throw IOException("Encrypted document not found")
+        val encrypted = envelope.encrypt(payload, keyProvider.getOrCreateKey(), id.toByteArray(Charsets.UTF_8))
+        val temporary = File(directory, ".$id.pending")
+        val backup = File(directory, ".$id.backup")
+
+        try {
+            FileOutputStream(temporary).use { output ->
+                output.write(encrypted)
+                output.fd.sync()
+            }
+            if (backup.exists() && !backup.delete()) throw IOException("Could not prepare encrypted document update")
+            if (!destination.renameTo(backup)) throw IOException("Could not stage encrypted document update")
+            if (!temporary.renameTo(destination)) {
+                backup.renameTo(destination)
+                throw IOException("Could not publish encrypted document update")
+            }
+            // A stale backup is ciphertext, not plaintext. Failure to remove it does not
+            // invalidate the new authenticated document; startup recovery will be added later.
+            backup.delete()
+        } finally {
+            if (temporary.exists()) temporary.delete()
+        }
+    }
+
     /** Returns opaque IDs only; filenames contain no document metadata. */
     fun listIds(): List<String> =
         directory.listFiles()
