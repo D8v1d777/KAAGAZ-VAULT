@@ -65,6 +65,19 @@ class EncryptedDocumentStoreTest {
     }
 
     @Test
+    fun replacePreservesIdAndPublishesNewAuthenticatedPayload() {
+        val directory = temporaryFolder.newFolder()
+        val key = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+        val store = newStore(key, directory)
+        val id = store.save("original".toByteArray())
+        store.replace(id, "updated payload".toByteArray())
+        assertArrayEquals("updated payload".toByteArray(), store.read(id))
+        assertEquals(listOf(id), store.listIds())
+        assertFalse(File(directory, ".$id.backup").exists())
+        assertFalse(File(directory, ".$id.pending").exists())
+    }
+
+    @Test
     fun listIdsReturnsOnlyValidEncryptedDocumentIds() {
         val directory = temporaryFolder.newFolder()
         val key = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
