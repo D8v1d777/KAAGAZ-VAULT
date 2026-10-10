@@ -3,6 +3,7 @@ package com.kaagazvault.documents
 import android.content.ContentResolver
 import android.net.Uri
 import com.kaagazvault.database.EncryptedMetadataIndex
+import com.kaagazvault.database.EncryptedMetadataIndexProvider
 import com.kaagazvault.ocr.OfflineOcrEngine
 import com.kaagazvault.security.EncryptedDocumentStore
 import java.io.ByteArrayOutputStream
@@ -16,8 +17,21 @@ import java.security.GeneralSecurityException
 internal class DocumentRepository(
     private val resolver: ContentResolver,
     private val store: EncryptedDocumentStore,
-    private val metadataIndex: EncryptedMetadataIndex? = null
+    private val metadataIndexProvider: EncryptedMetadataIndexProvider? = null
 ) {
+    @Volatile
+    var encryptedSearchAvailable: Boolean = false
+        private set
+
+    private fun currentIndex(): EncryptedMetadataIndex? =
+        metadataIndexProvider?.get().also { encryptedSearchAvailable = it != null }
+
+    private inline fun <T> updateIndex(block: (EncryptedMetadataIndex) -> T): T? {
+        val index = currentIndex() ?: return null
+        return runCatching { block(index) }
+            .onFailure { encryptedSearchAvailable = false }
+            .getOrNull()
+    }
     @Throws(IOException::class, GeneralSecurityException::class)
     fun import(uri: Uri): ImportedDocument {
         val mimeType = resolver.getType(uri)?.lowercase()
@@ -43,7 +57,7 @@ internal class DocumentRepository(
         if (!DocumentSignatureValidator.isSupported(mimeType, content)) throw UnsupportedDocumentTypeException()
         val id = store.save(DocumentPayloadCodec.encode(ImportedPayload(displayName, mimeType, content)))
         val imported = ImportedDocument(id, displayName, mimeType, content.size)
-        runCatching { metadataIndex?.upsert(imported) }
+        updateIndex { it.upsert(imported) }
         return imported
     }
 
@@ -62,7 +76,7 @@ internal class DocumentRepository(
             ))
         )
         val updated = toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
-        runCatching { metadataIndex?.upsert(updated) }
+        updateIndex { it.upsert(updated) }
         return updated
     }
 
@@ -89,14 +103,14 @@ internal class DocumentRepository(
             runCatching { toDocument(DocumentPayloadCodec.decode(store.read(id)), id) }.getOrNull()
         }.sortedByDescending { it.displayName.lowercase() }
         // The encrypted files remain the source of truth; rebuilding repairs stale index rows.
-        runCatching { metadataIndex?.rebuild(documents) }
+        updateIndex { it.rebuild(documents) }
         return documents
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
     fun search(query: String): List<ImportedDocument> {
         if (query.isBlank()) return list()
-        val ids = runCatching { metadataIndex?.search(query) }.getOrNull()
+        val ids = updateIndex { it.search(query) }
         if (ids != null) {
             val matched = ids.mapNotNull { id ->
                 runCatching { toDocument(DocumentPayloadCodec.decode(store.read(id)), id) }.getOrNull()
@@ -113,7 +127,7 @@ internal class DocumentRepository(
     @Throws(IOException::class, GeneralSecurityException::class)
     fun delete(id: String) {
         store.delete(id)
-        runCatching { metadataIndex?.delete(id) }
+        updateIndex { it.delete(id) }
     }
 
     private fun toDocument(payload: ImportedPayload, id: String) = ImportedDocument(
