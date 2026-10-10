@@ -20,9 +20,14 @@ internal data class OcrResult(
  */
 internal class OfflineOcrEngine(private val context: Context) {
     fun recognizeImage(bytes: ByteArray): OcrResult {
-        val bitmap = decodeBoundedBitmap(bytes)
         val dataRoot = ensureModelsAvailable()
-        val api = TessBaseAPI()
+        val bitmap = decodeBoundedBitmap(bytes)
+        val api = try {
+            TessBaseAPI()
+        } catch (error: Throwable) {
+            bitmap.recycle()
+            throw error
+        }
         try {
             api.setDebug(false)
             if (!api.init(dataRoot.absolutePath, LANGUAGES, TessBaseAPI.OEM_LSTM_ONLY)) {
@@ -30,7 +35,7 @@ internal class OfflineOcrEngine(private val context: Context) {
             }
             api.setPageSegMode(TessBaseAPI.PageSegMode.PSM_AUTO)
             api.setImage(bitmap)
-            val text = api.utf8Text.orEmpty().trim()
+            val text = api.getUTF8Text().orEmpty().trim()
             return OcrResult(
                 text = text,
                 meanConfidence = api.meanConfidence().coerceIn(0, 100),
