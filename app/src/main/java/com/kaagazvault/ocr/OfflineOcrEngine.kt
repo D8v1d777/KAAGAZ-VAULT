@@ -17,6 +17,7 @@ internal data class OcrResult(
     val text: String,
     val meanConfidence: Int?,
     val languages: String,
+    val source: String,
     val truncated: Boolean = false
 )
 
@@ -42,6 +43,7 @@ internal class OfflineOcrEngine(private val context: Context) {
                 text = sanitizeText(rawText).take(MAX_OCR_TEXT_CHARS),
                 meanConfidence = api.meanConfidence().coerceIn(0, 100),
                 languages = LANGUAGES,
+                source = "tesseract-image",
                 truncated = rawText.length > MAX_OCR_TEXT_CHARS
             )
         } finally {
@@ -64,6 +66,8 @@ internal class OfflineOcrEngine(private val context: Context) {
         var totalPixels = 0L
         var confidenceTotal = 0L
         var confidencePages = 0
+        var nativeTextPages = 0
+        var ocrPages = 0
 
         fun appendPageText(pageNumber: Int, rawText: String) {
             val safeText = sanitizeText(rawText).trim()
@@ -123,6 +127,7 @@ internal class OfflineOcrEngine(private val context: Context) {
 
                     // Prefer embedded text; rasterize only scanned/image-only pages.
                     if (nativeText.length >= MIN_NATIVE_TEXT_CHARS) {
+                        nativeTextPages++
                         appendPageText(pageIndex, nativeText)
                         continue
                     }
@@ -158,6 +163,7 @@ internal class OfflineOcrEngine(private val context: Context) {
                         val pageText = api.getUTF8Text().orEmpty().trim()
                         confidenceTotal += api.meanConfidence().coerceIn(0, 100)
                         confidencePages++
+                        ocrPages++
                         appendPageText(pageIndex, pageText)
                     } finally {
                         bitmap.recycle()
@@ -170,7 +176,12 @@ internal class OfflineOcrEngine(private val context: Context) {
             return OcrResult(
                 text = combined.toString().take(MAX_OCR_TEXT_CHARS),
                 meanConfidence = if (confidencePages == 0) null else (confidenceTotal / confidencePages).toInt(),
-                languages = if (confidencePages == 0) "PDF text layer" else LANGUAGES,
+                languages = if (ocrPages == 0) "PDF text layer" else LANGUAGES,
+                source = when {
+                    nativeTextPages > 0 && ocrPages > 0 -> "pdf-mixed-text-and-ocr"
+                    nativeTextPages > 0 -> "pdf-text-layer"
+                    else -> "tesseract-pdf"
+                },
                 truncated = truncated || combined.length > MAX_OCR_TEXT_CHARS
             )
         } finally {
