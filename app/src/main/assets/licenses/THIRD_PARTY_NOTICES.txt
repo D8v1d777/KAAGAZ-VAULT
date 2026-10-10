@@ -25,3 +25,9 @@ This application includes the following third-party software. The full license t
    License text: Apache-2.0.txt
 
 OCR model files are downloaded only during the build from the pinned source commit and verified against their Git blob SHA-1 values before packaging. The installed application does not download OCR models at runtime.
+
+5. PdfiumAndroidKt 2.0.3
+   Project: https://github.com/johngray1965/PdfiumAndroidKt
+   License: Apache License 2.0
+   License text: Apache-2.0.txt
+   Used for bounded in-memory PDF text extraction and page rendering. The minimum supported Android API is 24 for this dependency.
