@@ -12,7 +12,7 @@ KAAGAZ VAULT is intended to help people capture, organize, search, and act on ev
 - Protect document content and sensitive metadata at rest.
 - Keep core workflows available offline, with no analytics, ads, or hidden network calls in the FOSS build.
 
-These are **product goals, not implemented or verified features**. The repository now contains an initial Android project shell labelled as an engineering preview. Build verification is pending, and the scanning, OCR, encrypted storage, search, and reminder features remain unimplemented. Do not store real identity documents, prescriptions, private records, API keys, or signing credentials in this repository.
+These are **product goals, not implemented or verified features**. The repository currently contains an initial Android project shell labelled as an engineering preview. The first CI attempts failed during Android SDK provisioning, before Gradle build, tests, lint, or the offline-manifest gate could run. A stable SDK/Compose configuration has now been committed; verification of the latest workflow is pending. Scanning, OCR, encrypted storage, search, and reminders remain unimplemented. Do not store real identity documents, prescriptions, private records, API keys, or signing credentials in this repository.
 
 ## Engineering principles
 
@@ -28,12 +28,13 @@ These are **product goals, not implemented or verified features**. The repositor
 - [x] Engineering contract and focused engineering skills.
 - [x] Initial quality gates and proposed sensitive-search architecture decision record.
 - [x] Repository baseline audit.
-- [x] Minimal Android project bootstrap and CI build/test/lint workflow configured (first run pending).
-- [ ] Checked-in Gradle Wrapper and verified build evidence.
+- [x] Minimal Android project bootstrap and CI build/test/lint workflow configured.
+- [ ] Verified successful build, unit tests, lint, and offline-manifest gate.
+- [ ] Checked-in Gradle Wrapper and verified reproducible local build.
 - [ ] Capture/import → encrypted storage → OCR review vertical slice.
 - [ ] Local retrieval, date/reminder safety, accessibility, and release audits.
 
-CI uses pinned Gradle and Android SDK versions. A checked-in Gradle Wrapper is still pending; do not treat the first bootstrap as verified until CI completes successfully. See [engineering progress](docs/engineering/progress.md), [quality gates](docs/engineering/quality-gates.md), and [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md).
+CI currently uses pinned Gradle 9.3.1, JDK 17, Android SDK 36, and Compose BOM 2026.04.01. The standard Gradle Wrapper is still pending. See [engineering progress](docs/engineering/progress.md), [quality gates](docs/engineering/quality-gates.md), and [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md).
 
 ## Contributing
 
