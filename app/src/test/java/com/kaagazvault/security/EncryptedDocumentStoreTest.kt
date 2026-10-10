@@ -85,7 +85,7 @@ class EncryptedDocumentStoreTest {
         val id = originalStore.save("recover me".toByteArray())
         val original = File(directory, "$id.kgv")
         assertTrue(original.renameTo(File(directory, ".$id.backup")))
-        File(directory, ".$id.pending").writeText("ciphertext-only abandoned temporary")
+        File(directory, ".$id.pending").writeBytes(byteArrayOf(0x4b, 0x47, 0x56, 0x46))
         
         val recoveredStore = newStore(key, directory)
         assertArrayEquals("recover me".toByteArray(), recoveredStore.read(id))
