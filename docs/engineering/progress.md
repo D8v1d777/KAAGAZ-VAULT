@@ -20,6 +20,13 @@
 - Therefore, no passing result is claimed for this phase yet. Check the latest run and fix any failures from actual logs.
 - Android Keystore runtime behavior is not covered by the current JVM tests; instrumentation coverage remains a gate.
 
+### Product functionality added after the initial storage prototype
+- Added `DocumentRepository` for Android Storage Access Framework imports of user-selected PDFs/images, bounded at 31 MiB, with display name/MIME metadata stored inside the encrypted payload.
+- Added opaque encrypted-ID listing to the storage boundary and a local vault UI for import, list, and delete; file I/O is off the main thread.
+- Added a test that the storage listing ignores invalid filenames and pending files.
+- Added `docs/engineering/document-import.md` describing behavior, limits, and remaining device-level acceptance checks.
+- A source review caught and fixed a main-looper reference in the UI before claiming CI verification.
+
 ### Limitations and next actions
 - Only document payload bytes are encrypted; metadata, OCR text, thumbnails, search indexes, and database sidecars are not implemented.
 - ByteArray API is capped at 32 MiB; large/multi-page documents need a separately reviewed streaming/chunked authenticated format.
