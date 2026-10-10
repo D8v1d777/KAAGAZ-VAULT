@@ -33,7 +33,7 @@ jobs:
           packages: "platform-tools"
 
       - name: Install required Android SDK packages
-        run: sdkmanager --install "platforms;android-37" "build-tools;36.0.0"
+        run: sdkmanager --channel=3 --install "platforms;android-37" "build-tools;37.0.0"
 
       - name: Build, run available unit tests, and lint
         run: gradle --no-daemon clean assembleDebug testDebugUnitTest lint
