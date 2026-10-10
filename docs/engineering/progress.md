@@ -1,3 +1,22 @@
+## 2026-10-10 — Phase 7 reliability hardening (CI pending)
+
+### Research → work
+- Rechecked the official Android WorkManager documentation for unique work, delayed one-time requests, and worker input. Reminder work is deferrable and does not promise exact-to-the-minute delivery; no exact-alarm permission is requested.
+- Reviewed the worker's failure behavior. A notification permission revoked between check and post can throw; a disabled channel can suppress delivery. These are user-controlled delivery states, not transient worker failures.
+
+### Changes on `phase/07-private-reminders`
+- Extracted UUID-only WorkManager input construction into `ReminderScheduler.buildInputData`.
+- Added a JVM test asserting the WorkManager payload contains exactly one key (the opaque reminder UUID), and rejects non-UUID content.
+- Added graceful handling for notification permission revocation races and disabled notification channels. The encrypted reminder remains visible in-app; the one-time worker does not retry forever when Android intentionally suppresses notifications.
+- Draft PR #6 remains open and unmerged: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/6.
+
+### Verification status
+- CI run https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38044125829 was still in progress at the last check. Build, tests, lint, and offline-manifest gate are not yet confirmed green for these newest changes.
+- Still required: device testing for notification denial/channel disabled, reboot/process death, database migration from a real v1 SQLCipher database, and worker execution after document-vault lock/key invalidation.
+- Do not claim phase completion until CI passes and the product-level acceptance criteria are addressed.
+
+---
+
 ## 2026-10-10 — Phase 7 local reminders implementation (CI pending)
 
 ### Research
