@@ -88,7 +88,6 @@ class MainActivity : ComponentActivity() {
 private fun VaultHomeScreen(
     repository: DocumentRepository,
     ocrEngine: OfflineOcrEngine,
-    searchAvailable: Boolean,
     submitIo: (() -> Unit) -> Unit
 ) {
     val documents = remember { mutableStateListOf<ImportedDocument>() }
@@ -273,7 +272,7 @@ private fun VaultHomeScreen(
                         enabled = !busy.value
                     ) { Text("Clear") }
                 }
-                if (!searchAvailable) {
+                if (!searchAvailable.value) {
                     Text(
                         "Encrypted search database unavailable. Search will scan encrypted documents in memory.",
                         style = MaterialTheme.typography.bodySmall,
