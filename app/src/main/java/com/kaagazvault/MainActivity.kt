@@ -95,7 +95,7 @@ private fun VaultHomeScreen(
                 try {
                     val imported = repository.import(uri)
                     val refreshed = repository.list()
-                    android.os.Handler(mainLooper).post {
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
                         documents.clear()
                         documents.addAll(refreshed)
                         status.value = "Saved encrypted: ${imported.displayName}"
