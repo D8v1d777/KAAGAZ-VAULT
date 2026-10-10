@@ -44,6 +44,10 @@ internal class DocumentRepository(
             output.toByteArray()
         } ?: throw IOException("Could not open the selected document")
 
+        if (!DocumentSignatureValidator.isSupported(mimeType, content)) {
+            throw UnsupportedDocumentTypeException()
+        }
+
         val payload = encode(ImportedPayload(displayName, mimeType, content))
         val id = store.save(payload)
         return ImportedDocument(id, displayName, mimeType, content.size)
