@@ -5,6 +5,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -61,6 +62,18 @@ class EncryptedDocumentStoreTest {
         data[data.lastIndex] = (data.last().toInt() xor 1).toByte()
         file.writeBytes(data)
         assertThrows(EncryptedDocumentAuthenticationException::class.java) { store.read(id) }
+    }
+
+    @Test
+    fun listIdsReturnsOnlyValidEncryptedDocumentIds() {
+        val directory = temporaryFolder.newFolder()
+        val key = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+        val store = newStore(key, directory)
+        val first = store.save(byteArrayOf(1))
+        val second = store.save(byteArrayOf(2))
+        File(directory, "not-a-uuid.kgv").writeText("not encrypted")
+        File(directory, ".pending.pending").writeText("partial")
+        assertEquals(setOf(first, second), store.listIds().toSet())
     }
 
     @Test
