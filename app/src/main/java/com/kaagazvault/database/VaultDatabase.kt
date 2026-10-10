@@ -4,23 +4,18 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import net.zetetic.database.Logger
 import net.zetetic.database.NoopTarget
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
-@Database(
-    entities = [DocumentMetadataEntity::class],
-    version = 1,
-    exportSchema = false
-)
+@Database(entities = [DocumentMetadataEntity::class, ReminderEntity::class], version = 2, exportSchema = false)
 internal abstract class VaultDatabase : RoomDatabase() {
     abstract fun documentMetadataDao(): DocumentMetadataDao
+    abstract fun reminderDao(): ReminderDao
 }
 
-/**
- * Owns the database passphrase for exactly as long as the Room database is open.
- * The passphrase is generated randomly, wrapped by Android Keystore, and never hardcoded.
- */
 internal class VaultDatabaseProvider(context: Context) {
     private val appContext = context.applicationContext
     @Volatile private var instance: VaultDatabase? = null
@@ -30,17 +25,15 @@ internal class VaultDatabaseProvider(context: Context) {
     fun get(): VaultDatabase {
         instance?.let { return it }
         System.loadLibrary("sqlcipher")
-        // Disable SQLCipher's default Logcat target to avoid accidental query/data leakage.
         Logger.setTarget(NoopTarget())
-
         val key = DatabaseKeyManager(appContext).getOrCreateKey()
         try {
             val created = Room.databaseBuilder(
-                appContext,
-                VaultDatabase::class.java,
+                appContext, VaultDatabase::class.java,
                 appContext.getDatabasePath(DATABASE_NAME).absolutePath
             )
                 .openHelperFactory(SupportOpenHelperFactory(key))
+                .addMigrations(MIGRATION_1_2)
                 .build()
             databaseKey = key
             instance = created
@@ -64,5 +57,18 @@ internal class VaultDatabaseProvider(context: Context) {
 
     private companion object {
         const val DATABASE_NAME = "vault-metadata.db"
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS vault_reminders (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        dueAtEpochMillis INTEGER NOT NULL,
+                        linkedDocumentId TEXT,
+                        createdAtEpochMillis INTEGER NOT NULL
+                    )""".trimIndent()
+                )
+            }
+        }
     }
 }
