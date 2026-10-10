@@ -32,7 +32,7 @@ internal class EncryptedMetadataIndex(private val dao: DocumentMetadataDao) {
         mimeType = mimeType,
         byteSize = byteSize.toLong(),
         updatedAtEpochMillis = System.currentTimeMillis(),
-        normalizedSearchText = normalize("$"+"{displayName}\n" + (ocrText.orEmpty())),
+        normalizedSearchText = normalize(displayName + "\n" + ocrText.orEmpty()),
         ocrConfidence = ocrConfidence,
         ocrReviewed = ocrReviewed,
         ocrTruncated = ocrTruncated
