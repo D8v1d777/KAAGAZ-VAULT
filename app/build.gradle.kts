@@ -32,7 +32,7 @@ android {
         compose = true
     }
 
-    sourceSets.getByName("main").assets.srcDir(generatedOcrAssets)
+    sourceSets.getByName("main").assets.srcDir(generatedOcrAssets.get().asFile)
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
