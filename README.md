@@ -1,45 +1,53 @@
-# KAAGAZ VAULT
+# KAAGAZ-VAULT
 
-**An offline-first, privacy-focused Android document vault — currently in engineering setup.**
+**Offline-first Android document vault — implementation in progress.**
 
-KAAGAZ VAULT is intended to help people capture, organize, search, and act on everyday documents without sending document contents to a server in the FOSS build.
+KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text from personal documents without sending document contents to a server in the FOSS build.
 
-## Intended product direction
+## Implemented so far
 
-- Scan or import receipts, warranties, bills, education records, government IDs, and medical documents.
-- Review on-device OCR results with visible uncertainty and editable extracted fields.
-- Find documents locally and track dates such as warranty expiry or return windows.
-- Protect document content and sensitive metadata at rest.
-- Keep core workflows available offline, with no analytics, ads, or hidden network calls in the FOSS build.
+- Android Kotlin + Jetpack Compose app shell.
+- Android Keystore-backed AES-256 keys and versioned AES-GCM payload encryption.
+- Encrypted files in app-private storage, opaque IDs, bounded input, atomic pending-file writes, and interrupted-update recovery.
+- User-selected PDF/image import through Android's document picker; no broad storage permission.
+- Offline Tesseract OCR for images in English, Hindi, and Telugu with pinned model files and build/runtime integrity checks.
+- Human-editable OCR text and review state stored in the encrypted payload.
+- SQLCipher-backed metadata database with a wrapped random database key, local normalized search, index rebuild from encrypted payloads, and in-memory fallback when the encrypted DB is unavailable.
+- User-initiated CameraX capture with in-memory JPEG handling and direct encrypted import.
+- Bounded PDF text extraction/OCR prototype using in-memory PDF bytes, one page at a time, with strict page/pixel/text limits.
 
-These are **product goals, not implemented or verified features**. The repository currently contains an initial Android project shell labelled as an engineering preview. The first CI attempts failed during Android SDK provisioning and plugin resolution, before compilation, tests, lint, or the offline-manifest gate could complete. A stable SDK/Compose configuration and a published AGP version have now been pinned; verification of the latest workflow is pending. Scanning, OCR, encrypted storage, search, and reminders remain unimplemented. Do not store real identity documents, prescriptions, private records, API keys, or signing credentials in this repository.
+**These are implemented code paths, not a claim of release readiness.** The current PDFium/Kotlin toolchain update is awaiting CI verification. CameraX and SQLCipher branches have passing CI at their recorded commits, but no physical-device camera/OCR tests or on-device database leakage tests have been run.
 
-## Engineering principles
+## Privacy and security boundaries
 
-- Kotlin and Jetpack Compose, with clear UI and data boundaries.
-- Local-first data ownership and minimum permissions.
-- Vetted cryptography; no home-grown cryptographic primitives.
-- OCR output is untrusted evidence. Low-confidence handwritten medical text must never automatically become a medication instruction or reminder.
-- No plaintext OCR index until the storage/search leakage analysis is resolved.
-- Tests and security claims must be backed by reproducible evidence.
+- FOSS core must remain offline. Do not add INTERNET permission, analytics, ads, cloud OCR, or network AI dependencies.
+- Do not store real Aadhaar/PAN IDs, prescriptions, medical records, personal documents, secrets, or credentials in the repository.
+- OCR/PDF text is untrusted evidence. It must remain editable and reviewable; do not turn uncertain medical text into medication instructions or automatic actions.
+- Document payloads and metadata/search are encrypted at rest in the implemented paths, but recovery/rotation, biometric app lock, reminders, export controls, PDF edge cases, and device-level leakage review remain incomplete.
+- File deletion is not guaranteed secure erasure. The app is not release-approved.
 
-## Current status
+## Current project status
 
-- [x] Engineering contract and focused engineering skills.
-- [x] Initial quality gates and proposed sensitive-search architecture decision record.
-- [x] Repository baseline audit.
-- [x] Minimal Android project bootstrap and CI build/test/lint workflow configured.
-- [ ] Verified successful build, unit tests, lint, and offline-manifest gate.
-- [ ] Checked-in Gradle Wrapper and verified reproducible local build.
-- [ ] Capture/import → encrypted storage → OCR review vertical slice.
-- [ ] Local retrieval, date/reminder safety, accessibility, and release audits.
+- Estimated implemented-scope progress: **35% of weighted objectives**. This is a scope estimate, not a security score or a test-pass percentage.
+- Phase 3 encrypted import + image OCR CI: [passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38030021406).
+- Phase 4 SQLCipher/search CI: [passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38030642290).
+- Phase 5 CameraX CI: [passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38031637413).
+- Phase 6 PDFium/Kotlin toolchain update: CI is pending/failing until the latest compatibility correction is verified.
+- Draft PRs: [Phase 3](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/3), [Phase 4](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/4), [Phase 5](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/5). No PR has been merged.
 
-CI currently uses AGP 9.1.1, Gradle 9.3.1, JDK 17, Android SDK 36, and Compose BOM 2026.04.01. The standard Gradle Wrapper is still pending. See [engineering progress](docs/engineering/progress.md), [quality gates](docs/engineering/quality-gates.md), and [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md).
+See [engineering progress](docs/engineering/progress.md), [weighted completion tracker](docs/engineering/product-completion.md), [quality gates](docs/engineering/quality-gates.md), and [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md). The human/AI reviewer report is maintained in Notion.
 
-## Contributing
+## Toolchain
 
-Read [AGENTS.md](AGENTS.md) before making changes. Architectural decisions must include evidence, and PRs must report the checks actually run. Use synthetic, non-identifying fixtures only.
+- AGP 9.1.1
+- Gradle 9.3.1
+- JDK 21 for CI
+- Kotlin 2.3.10 / KSP 2.3.4; AGP built-in Kotlin disabled to align with the PDFium dependency
+- compileSdk/targetSdk 36; provisional minSdk 24
+- Compose BOM 2026.04.01
 
-## License
+A checked-in Gradle Wrapper is still pending. The project's own license has not yet been selected; do not assume the repository grants permission to reuse or redistribute project code.
 
-No project license has been selected yet. Until a license is added, do not assume this repository grants permission to reuse or redistribute its contents.
+## Engineering workflow
+
+Read [AGENTS.md](AGENTS.md) before changing code. Research primary documentation first, implement a small coherent feature, verify the exact current branch, then record decisions, changes, evidence, risks, and next actions in Notion. Never claim a build/test pass without an actual completed run.
