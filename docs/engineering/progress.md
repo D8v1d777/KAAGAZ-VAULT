@@ -1,3 +1,19 @@
+## 2026-10-10 — Phase 7 notification tap flow
+
+### Research → work
+- Reviewed Android notification guidance and added an immutable explicit activity PendingIntent rather than embedding any reminder title, document name, or linked document identifier in the notification intent.
+- Tapping a reminder now opens the vault entry point; it does not expose the reminder content directly from the notification.
+
+### Change
+- `ReminderNotificationWorker` attaches an immutable, update-current PendingIntent targeting `MainActivity`, with clear-top/single-top navigation flags.
+- Updated the product completion tracker to reflect that reminder code exists in draft PR #6 while keeping its weighted credit at 0 until CI and device acceptance evidence exist.
+
+### Verification
+- The latest CI run must cover this commit; no green result is claimed yet.
+- Tapping behavior and lock-screen privacy still require device testing.
+
+---
+
 ## 2026-10-10 — Phase 7 reliability hardening (CI pending)
 
 ### Research → work
