@@ -28,11 +28,16 @@ internal object ReminderScheduler {
     const val INPUT_REMINDER_ID = "reminder_uuid"
     private const val WORK_PREFIX = "vault-reminder-"
 
+    internal fun buildInputData(reminderId: String): Data {
+        require(runCatching { UUID.fromString(reminderId) }.isSuccess) { "Invalid reminder identifier" }
+        return workDataOf(INPUT_REMINDER_ID to reminderId)
+    }
+
     fun schedule(context: Context, reminderId: String, dueAtEpochMillis: Long) {
         require(runCatching { UUID.fromString(reminderId) }.isSuccess) { "Invalid reminder identifier" }
         val delay = (dueAtEpochMillis - System.currentTimeMillis()).coerceAtLeast(0L)
         val request = OneTimeWorkRequestBuilder<ReminderNotificationWorker>()
-            .setInputData(workDataOf(INPUT_REMINDER_ID to reminderId))
+            .setInputData(buildInputData(reminderId))
             .setInitialDelay(delay, TimeUnit.MILLISECONDS)
             .build()
         WorkManager.getInstance(context.applicationContext)
@@ -69,6 +74,13 @@ internal class ReminderNotificationWorker(
                     NotificationChannel(CHANNEL_ID, "Document reminders", NotificationManager.IMPORTANCE_DEFAULT)
                 )
             }
+            // A user may revoke notification permission or disable the channel after
+            // scheduling. Keep the reminder in the encrypted in-app list, but do not
+            // retry a one-time job forever when Android will suppress its notification.
+            if (Build.VERSION.SDK_INT >= 26 &&
+                manager.getNotificationChannel(CHANNEL_ID)?.importance == NotificationManager.IMPORTANCE_NONE
+            ) return Result.success()
+
             val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
                 .setContentTitle("Saved-document reminder")
@@ -77,6 +89,9 @@ internal class ReminderNotificationWorker(
                 .setAutoCancel(true)
                 .build()
             NotificationManagerCompat.from(applicationContext).notify(reminder.id.hashCode(), notification)
+            Result.success()
+        } catch (_: SecurityException) {
+            // Permission can change between the permission check and notify().
             Result.success()
         } catch (_: Exception) {
             Result.retry()
