@@ -17,7 +17,7 @@ This is a delivery-progress estimate, not a security certification, test pass ra
 | App access control, privacy surfaces, backup/export controls | 5% | 1% | Offline/no-INTERNET policy and backup disabled are present. Biometric gate, recents redaction, key lifecycle, and explicit export policy remain. |
 | Accessibility, performance, release and distribution readiness | 5% | 0% | Not implemented/reviewed. |
 
-**Estimated implemented-scope progress: 35% of weighted objectives.** This is an implementation-scope estimate, not a security score or release-readiness claim. Phase 3 and Phase 4 CI runs pass at their recorded SHAs. The final camera orientation fix and PDFium/JDK21/minSdk24 changes are on a new branch and remain CI-pending. Device-level OCR, PDF rendering, database leakage, and camera behavior remain untested.
+**Estimated implemented-scope progress: 35% of weighted objectives.** This is an implementation-scope estimate, not a security score or release-readiness claim. Phase 3 and Phase 4 CI runs pass at their recorded SHAs. The final camera orientation fix passed CI. PDFium 2.0.0, the Kotlin/KSP toolchain alignment, JDK 21, and minSdk 24 changes are on a new branch and remain CI-pending. Device-level OCR, PDF rendering, database leakage, and camera behavior remain untested.
 
 ## Product-level release gates
 - [ ] All required offline core features work without network permission or hidden network behavior.
