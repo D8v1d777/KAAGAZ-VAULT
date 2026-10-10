@@ -1,3 +1,33 @@
+## 2026-10-10 — Phase 9 reproducible build and artifact-level offline gate
+
+### Research and decisions
+- Re-read AGENTS.md, the Android engineering, implementation-quality, release-security, and testing-quality skills.
+- Followed the official Gradle Wrapper guidance: use the checked-in wrapper, validate its JAR, and pin the distribution checksum. The Gradle 9.3.1 binary distribution checksum is sourced from Gradle's published checksum reference.
+- Followed the Android APK Analyzer documentation to inspect the manifest packaged in each APK, rather than treating a merged-manifest scan as sufficient.
+- Pinned GitHub Actions to full commit SHAs as recommended by GitHub's Actions security guidance. Kept the workflow's read-only token permissions and concurrency control.
+
+### Implemented on phase/09-reproducible-offline-gates
+- Added the official Gradle 9.3.1 wrapper scripts/JAR and a wrapper properties file with a pinned Gradle distribution checksum.
+- CI now uses ./gradlew, builds both debug and release APKs, and runs deterministic Python unit tests for the offline policy gate.
+- Reduced duplicate CI work by limiting push-triggered builds to main; pull requests still run the full gate.
+- Replaced the debug-only manifest script with fail-closed checks for both debug and release merged manifests and every packaged APK. The APK audit uses apkanalyzer to inspect the packaged manifest for INTERNET permission and explicitly enabled cleartext traffic.
+- Added tests for safe manifests, INTERNET permission, cleartext enablement, malformed XML, variant discovery, APK manifest inspection, and analyzer failure.
+
+### Verification status at commit time
+- The preceding Phase 8 head 029c77f693ff0ee4cb95c852d19f349c62f0252b had successful Android CI runs 38044704501 and 38044696303.
+- This Phase 9 change has not yet been built by CI at the time this entry is authored. Do not treat wrapper bootstrap, release build, APK analysis, or the new Python tests as verified until the new PR run completes.
+
+### Post-commit CI evidence (2026-10-10)
+- Draft PR #8 code commit 05ce7d7cc0c46aa4f1c1abf2e68dc4b297138cd7 completed CI run 38070788162 successfully.
+- Python offline-policy tests, Gradle setup, assembleDebug, assembleRelease, testDebugUnitTest, lint, and the merged-manifest plus packaged-APK offline gate all completed successfully.
+- This run did not install the APK on a physical device and does not constitute release-signing evidence or an independent security review.
+
+### Remaining risks / next steps
+- The wrapper and distribution checksums must be validated by CI; a locally unexecuted build is not evidence.
+- Device-level privacy behavior, SQLCipher WAL/journal leakage, Keystore invalidation, OCR language accuracy, and release signing remain outside this CI hardening slice.
+- Next product slice remains a real auth-bound vault lock and crash-safe migration of document/database wrapping keys; do not substitute a cosmetic biometric prompt.
+
+
 ## 2026-10-10 — Phase 8 OCR provenance and backward-compatible payloads
 
 ### Research → work
