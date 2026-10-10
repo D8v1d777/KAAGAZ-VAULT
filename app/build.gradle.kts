@@ -52,7 +52,7 @@ val prepareOcrModels by tasks.registering {
                 val digest = java.security.MessageDigest.getInstance("SHA-1")
                 digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
                 digest.update(bytes)
-                digest.digest().joinToString("") { byte -> "%02x".format(byte) } == expectedGitBlobSha
+                digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) } == expectedGitBlobSha
             }
             if (validExisting) return@forEach
 
