@@ -80,17 +80,20 @@ internal class DocumentRepository(
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun recognizeImage(id: String, engine: OfflineOcrEngine): ImportedDocument {
+    fun recognizeDocument(id: String, engine: OfflineOcrEngine): ImportedDocument {
         val payload = DocumentPayloadCodec.decode(store.read(id))
-        if (!payload.mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
-        val result = engine.recognizeImage(payload.content)
+        val result = when {
+            payload.mimeType.startsWith("image/") -> engine.recognizeImage(payload.content)
+            payload.mimeType == PDF_MIME -> engine.recognizePdf(payload.content)
+            else -> throw UnsupportedDocumentTypeException()
+        }
         store.replace(
             id,
             DocumentPayloadCodec.encode(payload.copy(
                 ocrText = result.text.take(MAX_OCR_CHARACTERS),
                 ocrConfidence = result.meanConfidence,
                 ocrReviewed = false,
-                ocrTruncated = result.text.length > MAX_OCR_CHARACTERS
+                ocrTruncated = result.truncated || result.text.length > MAX_OCR_CHARACTERS
             ))
         )
         val updated = toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
