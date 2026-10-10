@@ -3,7 +3,6 @@ package com.kaagazvault.reminders
 import android.content.Context
 import com.kaagazvault.database.ReminderEntity
 import com.kaagazvault.database.VaultDatabaseProvider
-import java.io.Closeable
 import java.util.UUID
 
 /**
@@ -19,9 +18,8 @@ internal class ReminderRepository(
     fun list(): List<ReminderEntity> = databaseProvider.get().reminderDao().listAll()
 
     fun create(title: String, dueAtEpochMillis: Long, linkedDocumentId: String? = null): ReminderEntity {
-        val safeTitle = title.filterNot(Char::isISOControl).trim().take(MAX_TITLE_LENGTH)
-        require(safeTitle.isNotBlank()) { "Enter a reminder title." }
-        require(dueAtEpochMillis > System.currentTimeMillis()) { "Choose a future date and time." }
+        val safeTitle = ReminderPolicy.normalizeTitle(title)
+        ReminderPolicy.requireFutureDueTime(dueAtEpochMillis, System.currentTimeMillis())
         val reminder = ReminderEntity(
             id = UUID.randomUUID().toString(),
             title = safeTitle,
@@ -29,17 +27,22 @@ internal class ReminderRepository(
             linkedDocumentId = linkedDocumentId,
             createdAtEpochMillis = System.currentTimeMillis()
         )
-        databaseProvider.get().reminderDao().upsert(reminder)
-        ReminderScheduler.schedule(appContext, reminder.id, reminder.dueAtEpochMillis)
+        val dao = databaseProvider.get().reminderDao()
+        dao.upsert(reminder)
+        try {
+            ReminderScheduler.schedule(appContext, reminder.id, reminder.dueAtEpochMillis)
+        } catch (error: Exception) {
+            // Do not leave a reminder that the UI reported as failed to schedule.
+            dao.deleteById(reminder.id)
+            throw error
+        }
         return reminder
     }
 
     fun delete(id: String) {
-        ReminderScheduler.cancel(appContext, id)
+        // Remove the encrypted source-of-truth row first so a racing worker can no-op.
         databaseProvider.get().reminderDao().deleteById(id)
+        ReminderScheduler.cancel(appContext, id)
     }
 
-    private companion object {
-        const val MAX_TITLE_LENGTH = 160
-    }
 }
