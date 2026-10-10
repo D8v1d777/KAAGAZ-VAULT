@@ -93,7 +93,7 @@ internal class DocumentRepository(
             ))
         )
         val updated = toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
-        runCatching { metadataIndex?.upsert(updated) }
+        updateIndex { it.upsert(updated) }
         return updated
     }
 
