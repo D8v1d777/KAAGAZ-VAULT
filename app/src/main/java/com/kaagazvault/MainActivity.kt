@@ -388,7 +388,7 @@ private fun VaultHomeScreen(
 
                             if (document.ocrText != null) {
                                 Text(
-                                    "Offline OCR • engine score ${document.ocrConfidence ?: 0}/100 • ${if (document.ocrReviewed) "reviewed" else "needs review"}",
+                                    "Text extraction • ${document.ocrConfidence?.let { "engine score $it/100" } ?: "PDF text layer"} • ${if (document.ocrReviewed) "reviewed" else "needs review"}",
                                     style = MaterialTheme.typography.labelMedium
                                 )
                                 if (document.ocrTruncated) {
@@ -501,7 +501,7 @@ private fun VaultHomeScreen(
             }
 
             Text(
-                "Offline OCR: English, Hindi, and Telugu • encrypted local search • review required • no automatic actions",
+                "Offline OCR: English, Hindi, and Telugu • PDF text-layer extraction • encrypted local search • review required",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
