@@ -2,14 +2,15 @@
 
 This log records repository work and evidence. It distinguishes documentation changes from application implementation.
 
-## 2026-10-10 — CI remediation and stable SDK correction
+## 2026-10-10 — CI remediation and stable toolchain correction
 
 ### Research and diagnosis
 - Read `AGENTS.md` and the Android engineering, privacy/security, testing-quality, and Android release-security skills before changing CI.
-- Inspected the failed Android CI job logs. The initial failure was in `android-actions/setup-android@v3` while running `sdkmanager tools`; it failed with “Failed to find package 'tools'”.
+- The initial failure was in `android-actions/setup-android@v3` while running `sdkmanager tools`; it failed with “Failed to find package 'tools'”.
 - Updated the setup action to `android-actions/setup-android@v4.0.4` and explicitly requested `platform-tools`. This passed the SDK setup step.
-- The next run failed because the SDK package repository did not offer `platforms;android-37` to the runner, even when requesting channel 3. Official Android docs label API 37 as the Android 17 preview SDK and describe installing the preview platform and Build Tools 37.0.0: https://developer.android.com/about/versions/17/setup-sdk
-- To avoid making a simple bootstrap depend on preview packages, reviewed official Compose release guidance and selected stable Compose BOM `2026.04.01`, which predates the August Compose 1.12 release that requires API 37: https://developer.android.com/blog/posts/whats-new-in-the-jetpack-compose-april-26-release and https://developer.android.com/blog/posts/what-s-new-in-the-jetpack-compose-august-26-release
+- The next run failed because the SDK repository did not offer `platforms;android-37` to the runner, even with channel 3. Official Android docs identify API 37 as the Android 17 preview SDK: https://developer.android.com/about/versions/17/setup-sdk
+- Switched to stable SDK 36 and Compose BOM `2026.04.01`. Official release notes say the April Compose release is stable; the August Compose 1.12 release requires compileSdk 37: https://developer.android.com/blog/posts/whats-new-in-the-jetpack-compose-april-26-release and https://developer.android.com/blog/posts/what-s-new-in-the-jetpack-compose-august-26-release
+- The stable SDK installed successfully, but Gradle then failed to resolve plugin `com.android.application:9.1.2`. The official AGP release notes identify published AGP 9.1.1 and its Gradle/JDK compatibility: https://developer.android.com/build/releases/agp-9-1-0-release-notes
 
 ### Changes committed to `phase/02-android-bootstrap`
 - `237a4293cfb3f7abef5e284b45fd1a362e479a59`: switched Android SDK setup action.
@@ -17,14 +18,16 @@ This log records repository work and evidence. It distinguishes documentation ch
 - `245411a00b2e8a269befce14138b386495d771ed`: changed `compileSdk` to 36.
 - `5847b631434132f4e472f1d0c9d77c97b2dbec6f`: pinned Compose BOM `2026.04.01`.
 - `41045162498c21cd97b38215795bc6807c9cbf3c`: returned CI SDK install to stable `platforms;android-36` and `build-tools;36.0.0`.
+- `b4ab192da99501f10dab16fb7c317d0daef138e5`: changed AGP to published version 9.1.1 based on the official release notes.
 
 ### Verification
-- Confirmed the latest CI failure cause from the job logs; Gradle build, unit-test task, lint, and manifest policy check did not run in the failed attempts.
-- The workflow for the final stable-SDK commit has not yet been observed completing. **Build status remains unverified.**
+- SDK setup and stable SDK package installation passed in [CI run 38023963731](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38023963731).
+- Gradle configuration failed before compilation because AGP 9.1.2 could not be resolved. Unit tests, lint, and the offline-manifest gate did not run in that attempt.
+- A new CI run for the AGP 9.1.1 correction is pending. **Build status remains unverified.**
 - The Compose preview screen is still the only app UI; no vault feature is implemented yet.
 
 ### Next
-1. Inspect CI for the final stable-SDK commit; diagnose and fix any failures using actual logs.
+1. Inspect CI for the AGP 9.1.1 commit; diagnose any failures from actual logs.
 2. Add a standard Gradle Wrapper with validated distribution checksum and test the reproducible wrapper build.
 3. Research Android Keystore, Room, SQLCipher for Android, key lifecycle, migration, and data-sidecar leakage before choosing a storage implementation.
 4. Implement the smallest tested vertical slice for encrypted local document storage only after the security design is documented.
