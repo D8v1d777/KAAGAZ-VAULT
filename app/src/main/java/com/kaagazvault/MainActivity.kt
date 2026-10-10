@@ -1,5 +1,7 @@
 package com.kaagazvault
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -8,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.kaagazvault.camera.CameraCaptureScreen
 import com.kaagazvault.database.EncryptedMetadataIndexProvider
 import com.kaagazvault.database.VaultDatabaseProvider
 import com.kaagazvault.documents.DocumentRepository
@@ -72,6 +76,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     VaultHomeScreen(
+                        lifecycleOwner = this@MainActivity,
                         repository = repository,
                         ocrEngine = ocrEngine,
                         submitIo = { work -> ioExecutor.execute(work) }
@@ -90,6 +95,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun VaultHomeScreen(
+    lifecycleOwner: androidx.lifecycle.LifecycleOwner,
     repository: DocumentRepository,
     ocrEngine: OfflineOcrEngine,
     submitIo: (() -> Unit) -> Unit
@@ -100,9 +106,20 @@ private fun VaultHomeScreen(
     val searchQuery = remember { mutableStateOf("") }
     val searchAvailable = remember { mutableStateOf(false) }
     val showLicenses = remember { mutableStateOf(false) }
+    val showCamera = remember { mutableStateOf(false) }
     val thirdPartyNotices = remember { mutableStateOf("Loading third-party notices…") }
     val context = LocalContext.current
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            showCamera.value = true
+        } else {
+            status.value = "Camera permission denied. You can still import existing files."
+        }
+    }
 
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
@@ -156,6 +173,39 @@ private fun VaultHomeScreen(
     }
 
     Scaffold { contentPadding ->
+        if (showCamera.value) {
+            CameraCaptureScreen(
+                lifecycleOwner = lifecycleOwner,
+                modifier = Modifier.padding(contentPadding),
+                onClose = { showCamera.value = false },
+                onCaptured = { bytes ->
+                    showCamera.value = false
+                    busy.value = true
+                    submitIo {
+                        try {
+                            val imported = repository.importBytes(
+                                "Scan_${System.currentTimeMillis()}.jpg",
+                                "image/jpeg",
+                                bytes
+                            )
+                            val refreshed = repository.list()
+                            mainHandler.post {
+                                documents.clear()
+                                documents.addAll(refreshed)
+                                searchAvailable.value = repository.encryptedSearchAvailable
+                                status.value = "Captured page encrypted: ${imported.displayName}"
+                                busy.value = false
+                            }
+                        } catch (_: Exception) {
+                            mainHandler.post {
+                                status.value = "Capture could not be encrypted. No document was added."
+                                busy.value = false
+                            }
+                        }
+                    }
+                }
+            )
+        } else {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -204,6 +254,21 @@ private fun VaultHomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Import PDF or image")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+                                PackageManager.PERMISSION_GRANTED
+                            ) {
+                                showCamera.value = true
+                            } else {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        },
+                        enabled = !busy.value,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Scan with camera")
                     }
                     if (busy.value) {
                         Row(
@@ -454,6 +519,7 @@ private fun VaultHomeScreen(
                 }
             ) { Text("Third-party licenses") }
         }
+    }
     }
 
     if (showLicenses.value) {

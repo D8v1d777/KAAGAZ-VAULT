@@ -54,9 +54,27 @@ internal class DocumentRepository(
             output.toByteArray()
         } ?: throw IOException("Could not open the selected document")
 
+        return saveContent(displayName, mimeType, content)
+    }
+
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun importBytes(displayName: String, mimeType: String, content: ByteArray): ImportedDocument =
+        saveContent(displayName, mimeType.lowercase(), content)
+
+    @Throws(IOException::class, GeneralSecurityException::class)
+    private fun saveContent(displayName: String, mimeType: String, content: ByteArray): ImportedDocument {
+        if (content.isEmpty()) throw IOException("The selected document is empty")
+        if (content.size > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
+        if (mimeType != PDF_MIME && !mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
         if (!DocumentSignatureValidator.isSupported(mimeType, content)) throw UnsupportedDocumentTypeException()
-        val id = store.save(DocumentPayloadCodec.encode(ImportedPayload(displayName, mimeType, content)))
-        val imported = ImportedDocument(id, displayName, mimeType, content.size)
+
+        val safeName = displayName.filterNot { it.isISOControl() }
+            .substringAfterLast('/')
+            .trim()
+            .take(MAX_NAME_LENGTH)
+            .ifBlank { "Imported document" }
+        val id = store.save(DocumentPayloadCodec.encode(ImportedPayload(safeName, mimeType, content)))
+        val imported = ImportedDocument(id, safeName, mimeType, content.size)
         updateIndex { it.upsert(imported) }
         return imported
     }
