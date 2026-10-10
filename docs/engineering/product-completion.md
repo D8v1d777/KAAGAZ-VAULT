@@ -10,14 +10,14 @@ This is a delivery-progress estimate, not a security certification, test pass ra
 | Encrypted local payload storage and key lifecycle | 15% | 7% | AES-GCM envelope and Keystore key provider exist. Add instrumentation tests, lifecycle/rotation/recovery policy, streaming/chunked format, interrupted-write coverage, and security review. |
 | User import, local library, and deletion | 10% | 6% | SAF import, bounded input, metadata encrypted inside payload, signature sniffing, list/delete UI exist. Needs latest CI, device testing, stronger parsing boundaries, large-vault behavior, and accessibility review. |
 | Camera capture and document image workflow | 10% | 0% | Not implemented. |
-| Fully offline OCR engine and document processing | 15% | 0% | Not implemented. OCR engine selection must account for script coverage, bundled models, offline behavior, APK size, license, and low-end devices. |
+| Fully offline OCR engine and document processing | 15% | 5% | Tesseract4Android and pinned English/Hindi/Telugu models plus image-only OCR UI are implemented in code; latest CI must still verify dependency resolution, native packaging, and compilation. PDF OCR, device benchmarks, and accuracy evaluation remain. |
 | Human review, provenance, and safe field/action extraction | 10% | 0% | Not implemented. OCR output must remain untrusted; low-confidence medical text cannot become an instruction automatically. |
 | Encrypted metadata store and local search | 15% | 0% | Not implemented. ADR-0001 remains Proposed pending compatibility and leakage evaluation. |
 | Local reminders with safe date/action confirmation | 5% | 0% | Not implemented. |
 | App access control, privacy surfaces, backup/export controls | 5% | 1% | Offline/no-INTERNET policy and backup disabled are present. Biometric gate, recents redaction, key lifecycle, and explicit export policy remain. |
 | Accessibility, performance, release and distribution readiness | 5% | 0% | Not implemented/reviewed. |
 
-**Estimated implemented-scope progress: 20% of weighted objectives.** This does not mean 20% secure, tested on-device, or release-ready. Current CI is pending for the newest commit at the time of this document; the import UI has not yet been device-tested.
+**Estimated implemented-scope progress: 25% of weighted objectives.** This does not mean 20% secure, tested on-device, or release-ready. Current CI is pending for the newest commits at the time of this document; the OCR dependency and generated model assets are not yet verified by a completed CI run, and the import/OCR UI has not yet been device-tested.
 
 ## Product-level release gates
 - [ ] All required offline core features work without network permission or hidden network behavior.
