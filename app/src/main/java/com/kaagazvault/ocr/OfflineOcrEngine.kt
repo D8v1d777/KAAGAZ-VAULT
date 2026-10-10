@@ -76,7 +76,7 @@ internal class OfflineOcrEngine(private val context: Context) {
 
     private fun gitBlobSha(bytes: ByteArray): String {
         val digest = MessageDigest.getInstance("SHA-1")
-        digest.update("blob \${bytes.size}\\u0000".toByteArray(Charsets.UTF_8))
+        digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
         digest.update(bytes)
         return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
     }
