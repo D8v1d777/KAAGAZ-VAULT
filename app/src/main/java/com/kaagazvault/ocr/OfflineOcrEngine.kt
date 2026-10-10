@@ -83,7 +83,7 @@ internal class OfflineOcrEngine(private val context: Context) {
         val digest = MessageDigest.getInstance("SHA-1")
         digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
         digest.update(bytes)
-        return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
     }
 
     private fun decodeBoundedBitmap(bytes: ByteArray): Bitmap {
