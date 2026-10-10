@@ -50,5 +50,6 @@ Use the focused repository skills when a task enters their domain; read the appl
 - `.agents/skills/indian-language-documents/SKILL.md` — mixed-script data and dataset governance.
 - `.agents/skills/android-release-security/SKILL.md` — manifest, dependency, and artifact audits.
 - `.agents/skills/accessibility-performance/SKILL.md` — assistive technology and constrained-device performance.
+- `.agents/skills/implementation-quality/SKILL.md` — research-first coding workflow, source review, verification discipline, and safe delegation.
 
 Record cross-cutting architectural choices in `docs/engineering/decisions/` using an ADR with context, options, decision/status, consequences, and evidence. Keep `docs/engineering/progress.md` current for substantial work, including what changed, verification actually performed, unresolved risks, and the next concrete step. A proposed ADR is a gate, not an approved implementation decision.

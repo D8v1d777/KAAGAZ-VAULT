@@ -1,68 +1,165 @@
 package com.kaagazvault
 
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.kaagazvault.documents.DocumentRepository
+import com.kaagazvault.documents.ImportedDocument
+import com.kaagazvault.ocr.OfflineOcrEngine
+import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
+import com.kaagazvault.security.EncryptedDocumentStore
+import java.io.IOException
+import java.security.GeneralSecurityException
+import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
+    private val ioExecutor = Executors.newSingleThreadExecutor()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val store = EncryptedDocumentStore(
+            java.io.File(filesDir, "encrypted_documents"),
+            AndroidKeystoreDocumentKeyProvider()
+        )
+        val repository = DocumentRepository(contentResolver, store)
+        val ocrEngine = OfflineOcrEngine(applicationContext)
         setContent {
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    VaultHomeScreen()
+                    VaultHomeScreen(
+                        repository = repository,
+                        ocrEngine = ocrEngine,
+                        submitIo = { work -> ioExecutor.execute(work) }
+                    )
                 }
             }
         }
     }
+
+    override fun onDestroy() {
+        ioExecutor.shutdown()
+        super.onDestroy()
+    }
 }
 
 @Composable
-private fun VaultHomeScreen() {
+private fun VaultHomeScreen(
+    repository: DocumentRepository,
+    ocrEngine: OfflineOcrEngine,
+    submitIo: (() -> Unit) -> Unit
+) {
+    val documents = remember { mutableStateListOf<ImportedDocument>() }
+    val status = remember { mutableStateOf("Your documents stay on this device.") }
+    val busy = remember { mutableStateOf(false) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
+    val picker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri == null) {
+            status.value = "Import cancelled. Nothing was changed."
+        } else {
+            busy.value = true
+            status.value = "Encrypting document locally…"
+            submitIo {
+                try {
+                    val imported = repository.import(uri)
+                    val refreshed = repository.list()
+                    mainHandler.post {
+                        documents.clear()
+                        documents.addAll(refreshed)
+                        status.value = "Saved encrypted: ${imported.displayName}"
+                        busy.value = false
+                    }
+                } catch (error: Exception) {
+                    mainHandler.post {
+                        status.value = safeMessage(error)
+                        busy.value = false
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(repository) {
+        submitIo {
+            try {
+                val refreshed = repository.list()
+                mainHandler.post {
+                    documents.clear()
+                    documents.addAll(refreshed)
+                    status.value = if (refreshed.isEmpty()) {
+                        "No documents yet. Import a PDF or image to begin."
+                    } else {
+                        "${refreshed.size} encrypted document(s) on this device."
+                    }
+                }
+            } catch (_: Exception) {
+                mainHandler.post {
+                    status.value = "Could not unlock stored documents. Existing data was left untouched."
+                }
+            }
+        }
+    }
+
     Scaffold { contentPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text(
-                text = "KAAGAZ VAULT",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "KAAGAZ VAULT",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
                 Text(
                     text = "Your documents.\nYour control.",
-                    style = MaterialTheme.typography.displaySmall,
+                    style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "A private place for the papers that matter.",
+                    text = "An offline-first place for the papers that matter.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -75,31 +172,208 @@ private fun VaultHomeScreen() {
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    Text("PRIVATE LOCAL VAULT", style = MaterialTheme.typography.labelMedium)
                     Text(
-                        text = "ENGINEERING PREVIEW",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        "Files, document names, and extracted text are encrypted before storage.",
+                        style = MaterialTheme.typography.bodyMedium
                     )
+                    Button(
+                        onClick = { picker.launch(arrayOf("application/pdf", "image/*")) },
+                        enabled = !busy.value,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Import PDF or image")
+                    }
+                    if (busy.value) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator()
+                            Text("Working locally…", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                    Text(status.value, style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        text = "The vault foundation is underway.",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        text = "Scanning, OCR, encrypted storage, local search, and reminders are not implemented yet. This preview stores no documents.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        "Maximum file size: 31 MiB. No account or network connection is used.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
+            Text("YOUR DOCUMENTS", style = MaterialTheme.typography.titleMedium)
+            if (documents.isEmpty()) {
+                Text(
+                    "Your vault is empty. Imported documents will appear here.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                documents.forEach { document ->
+                    val editedOcr = remember(document.id, document.ocrText) {
+                        mutableStateOf(document.ocrText.orEmpty())
+                    }
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                document.displayName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "${document.mimeType} • ${formatBytes(document.byteSize)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "Encrypted on this device",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+
+                            if (document.ocrText != null) {
+                                Text(
+                                    "Offline OCR • engine score ${document.ocrConfidence ?: 0}/100 • ${if (document.ocrReviewed) "reviewed" else "needs review"}",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                                if (document.ocrTruncated) {
+                                    Text(
+                                        "Extracted text was shortened to fit local storage. Re-run OCR on smaller sections if needed.",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                OutlinedTextField(
+                                    value = editedOcr.value,
+                                    onValueChange = { editedOcr.value = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Review or correct extracted text") },
+                                    minLines = 3,
+                                    maxLines = 8,
+                                    enabled = !busy.value
+                                )
+                                OutlinedButton(
+                                    onClick = {
+                                        busy.value = true
+                                        submitIo {
+                                            try {
+                                                repository.saveReviewedOcr(document.id, editedOcr.value)
+                                                val refreshed = repository.list()
+                                                mainHandler.post {
+                                                    documents.clear()
+                                                    documents.addAll(refreshed)
+                                                    status.value = "Corrections encrypted and marked reviewed. Verify every field before relying on it."
+                                                    busy.value = false
+                                                }
+                                            } catch (_: Exception) {
+                                                mainHandler.post {
+                                                    status.value = "Could not save OCR corrections. Existing encrypted data was left untouched."
+                                                    busy.value = false
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !busy.value
+                                ) {
+                                    Text(if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
+                                }
+                            } else if (document.mimeType.startsWith("image/")) {
+                                OutlinedButton(
+                                    onClick = {
+                                        busy.value = true
+                                        status.value = "Recognizing text locally…"
+                                        submitIo {
+                                            try {
+                                                repository.recognizeImage(document.id, ocrEngine)
+                                                val refreshed = repository.list()
+                                                mainHandler.post {
+                                                    documents.clear()
+                                                    documents.addAll(refreshed)
+                                                    status.value = "Text extracted locally. Review it before relying on any field."
+                                                    busy.value = false
+                                                }
+                                            } catch (_: Exception) {
+                                                mainHandler.post {
+                                                    status.value = "Offline OCR failed. The original encrypted document remains stored."
+                                                    busy.value = false
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !busy.value
+                                ) {
+                                    Text("Recognize text offline")
+                                }
+                            } else {
+                                Text(
+                                    "PDF OCR is not available in this version.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    busy.value = true
+                                    submitIo {
+                                        try {
+                                            repository.delete(document.id)
+                                            val refreshed = repository.list()
+                                            mainHandler.post {
+                                                documents.clear()
+                                                documents.addAll(refreshed)
+                                                status.value = "Document removed from the vault."
+                                                busy.value = false
+                                            }
+                                        } catch (_: Exception) {
+                                            mainHandler.post {
+                                                status.value = "Could not remove the document."
+                                                busy.value = false
+                                            }
+                                        }
+                                    }
+                                },
+                                enabled = !busy.value
+                            ) {
+                                Text("Delete")
+                            }
+                        }
+                    }
+                }
+            }
+
             Text(
-                text = "BUILT FOR LOCAL-FIRST PRIVACY",
+                "Offline OCR: English, Hindi, and Telugu • review required • no automatic actions",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
+
+private fun safeMessage(error: Exception): String = when (error) {
+    is com.kaagazvault.documents.DocumentTooLargeException ->
+        "This file exceeds the 31 MiB limit. Nothing was saved."
+    is com.kaagazvault.documents.UnsupportedDocumentTypeException ->
+        "Choose a supported PDF or image file. Nothing was saved."
+    is IOException ->
+        error.message?.takeIf { it in setOf(
+            "The selected document is empty",
+            "Could not open the selected document",
+            "Could not determine the selected file type"
+        ) } ?: "Import failed. No document was added."
+    is GeneralSecurityException ->
+        "Encryption failed. No document was added."
+    else -> "Import failed. No document was added."
+}
+
+private fun formatBytes(size: Int): String =
+    if (size < 1024 * 1024) "${size / 1024} KiB"
+    else String.format(java.util.Locale.ROOT, "%.1f MiB", size / (1024f * 1024f))

@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
 
+# Keep only the newest CI run per branch/PR; rapid small commits should not queue stale builds.
+concurrency:
+  group: android-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build, test tasks, lint, and offline manifest gate

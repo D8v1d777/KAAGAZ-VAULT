@@ -1,3 +1,71 @@
+## 2026-10-10 — Offline OCR and human review slice
+
+### Research
+- Context7 documentation review confirmed ML Kit bundled Android OCR covers Latin and Devanagari, not Telugu, so it was not selected as the only OCR engine.
+- Tesseract4Android 4.9.0 wraps Tesseract 5.5.1 and requires language models under a private `tessdata` directory: https://github.com/adaptech-cz/Tesseract4Android
+- Official `tessdata_fast` model files for English, Hindi, and Telugu are pinned to commit `87416418657359cb625c412a48b6e1d6d41c29bd`: https://github.com/tesseract-ocr/tessdata_fast/tree/87416418657359cb625c412a48b6e1d6d41c29bd
+- Each model's Git blob SHA-1 is checked both during build-time asset generation and before copying to private storage.
+
+### Implemented in code
+- Added Tesseract4Android dependency and a Gradle task to fetch/pin/hash-check English, Hindi, and Telugu traineddata models, then package them as app assets. Model downloads occur during build; runtime OCR is offline.
+- Added image-only OCR with a bounds-first decode and downsampling to a maximum 2400 px dimension, worker-thread execution, explicit native-resource cleanup, and mean engine score.
+- Extended encrypted document payload format to v2 for OCR text, engine score, truncation, and review state; legacy v1 payloads remain readable.
+- Added encrypted same-ID payload replacement and startup recovery for interrupted replacement backup/pending files.
+- Added UI to run OCR on imported images, edit extracted text, and explicitly save it as reviewed. New OCR resets the review flag. No OCR result is automatically turned into an action.
+- Added `docs/engineering/offline-ocr.md` and a weighted product completion tracker.
+
+### Verification status
+- The latest CI run after the OCR dependency/model task was still queued/in progress at the last check: https://github.com/D8v1d777/KAAGAZ-VAULT/actions
+- **No passing result is claimed for the OCR changes yet.** The critical next step is to inspect the newest run after model downloads, Gradle dependency resolution, JNI packaging, compile, unit tests, lint, and offline-manifest checks.
+- OCR model assets add about 7.9 MB before packaging; installed app storage also holds a verified private copy.
+- Notion AI sub-agent discovery was attempted but blocked by the workspace entitlement (Business plan or higher); no sub-agent session was created. Independent review is therefore not claimed.
+
+### Next actions
+1. Wait for/check the latest CI result and fix actual build/test failures.
+2. Add payload format v1/v2 round-trip and encrypted OCR update/recovery tests.
+3. Add Android Keystore instrumentation coverage and device/emulator smoke tests when available.
+4. Continue with PDF page OCR only after designing a path that does not leave decrypted plaintext in temporary files.
+5. Build the encrypted metadata/search layer, then reminders, camera scanning, access-control, and release gates.
+
+---
+
+## 2026-10-10 — Phase 3: encrypted local payload prototype
+
+### Research before implementation
+- Read AGENTS.md and the Android engineering, privacy/security, testing-quality, secure-storage/cryptography, encrypted-search, and release-security skills.
+- Android recommends app-private internal storage for private app-only files: https://developer.android.com/training/data-storage/app-specific
+- Android cryptography guidance recommends established platform cryptography and Android Keystore for stored keys: https://developer.android.com/privacy-and-security/cryptography
+- AES-GCM uses an IV and authentication tag: https://developer.android.com/reference/javax/crypto/spec/GCMParameterSpec
+- Kept ADR-0001 Proposed; this phase does not select a database/search index or persist OCR text.
+
+### Implemented on phase/03-encrypted-local-files
+- Added Android Keystore AES-256 key provider; existing-key retrieval errors fail instead of silently rotating the key.
+- Added a versioned AES-GCM envelope with fresh 12-byte IV, 128-bit tag, and document UUID authenticated as AAD.
+- Added encrypted file persistence with UUID names, ciphertext-only pending file, sync-before-rename, strict ID validation, fail-closed reads, and a 32 MiB byte-array bound.
+- Added JVM tests for round-trip, fresh IVs, ciphertext tampering, wrong AAD, truncation/version rejection, file lifecycle, and path traversal.
+- Added docs/engineering/secure-local-files.md with implementation boundaries and acceptance gates.
+- Opened draft PR #3: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/3. It has not been merged.
+
+### Verification at log update
+- CI runs 38028960654, 38028971588, and 38029001766 had reached the Gradle build/test/lint step but were still reported in progress when checked.
+- Therefore, no passing result is claimed for this phase yet. Check the latest run and fix any failures from actual logs.
+- Android Keystore runtime behavior is not covered by the current JVM tests; instrumentation coverage remains a gate.
+
+### Product functionality added after the initial storage prototype
+- Added `DocumentRepository` for Android Storage Access Framework imports of user-selected PDFs/images, bounded at 31 MiB, with display name/MIME metadata stored inside the encrypted payload.
+- Added opaque encrypted-ID listing to the storage boundary and a local vault UI for import, list, and delete; file I/O is off the main thread.
+- Added a test that the storage listing ignores invalid filenames and pending files.
+- Added `docs/engineering/document-import.md` describing behavior, limits, and remaining device-level acceptance checks.
+- A source review caught and fixed a main-looper reference in the UI before claiming CI verification.
+
+### Limitations and next actions
+- Only document payload bytes are encrypted; metadata, OCR text, thumbnails, search indexes, and database sidecars are not implemented.
+- ByteArray API is capped at 32 MiB; large/multi-page documents need a separately reviewed streaming/chunked authenticated format.
+- No biometric lock, key recovery/rotation, backup recovery, secure deletion, database, OCR, or UI integration yet.
+- Next: verify CI, add Android Keystore instrumentation coverage, then research and implement user-selected SAF import with strict size bounds and encrypted metadata. No broad storage permissions or INTERNET permission should be added.
+
+---
+
 # Engineering Progress Log
 
 This log records repository work and evidence. It distinguishes documentation changes from application implementation.

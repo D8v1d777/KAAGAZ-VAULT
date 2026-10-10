@@ -1,0 +1,121 @@
+package com.kaagazvault.documents
+
+import android.content.ContentResolver
+import android.net.Uri
+import com.kaagazvault.ocr.OfflineOcrEngine
+import com.kaagazvault.security.EncryptedDocumentStore
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.security.GeneralSecurityException
+
+/**
+ * Imports user-selected PDFs and images without broad storage permissions.
+ * Names, MIME metadata, and OCR output are stored inside the encrypted payload.
+ */
+internal class DocumentRepository(
+    private val resolver: ContentResolver,
+    private val store: EncryptedDocumentStore
+) {
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun import(uri: Uri): ImportedDocument {
+        val mimeType = resolver.getType(uri)?.lowercase()
+            ?: throw IOException("Could not determine the selected file type")
+        if (mimeType != PDF_MIME && !mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
+
+        val displayName = queryDisplayName(uri)
+        val content = resolver.openInputStream(uri)?.use { input ->
+            val output = ByteArrayOutputStream()
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var total = 0
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                total += count
+                if (total > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
+                output.write(buffer, 0, count)
+            }
+            if (total == 0) throw IOException("The selected document is empty")
+            output.toByteArray()
+        } ?: throw IOException("Could not open the selected document")
+
+        if (!DocumentSignatureValidator.isSupported(mimeType, content)) throw UnsupportedDocumentTypeException()
+        val id = store.save(DocumentPayloadCodec.encode(ImportedPayload(displayName, mimeType, content)))
+        return ImportedDocument(id, displayName, mimeType, content.size)
+    }
+
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun recognizeImage(id: String, engine: OfflineOcrEngine): ImportedDocument {
+        val payload = DocumentPayloadCodec.decode(store.read(id))
+        if (!payload.mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
+        val result = engine.recognizeImage(payload.content)
+        store.replace(
+            id,
+            DocumentPayloadCodec.encode(payload.copy(
+                ocrText = result.text.take(MAX_OCR_CHARACTERS),
+                ocrConfidence = result.meanConfidence,
+                ocrReviewed = false,
+                ocrTruncated = result.text.length > MAX_OCR_CHARACTERS
+            ))
+        )
+        return toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
+    }
+
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun saveReviewedOcr(id: String, correctedText: String): ImportedDocument {
+        val payload = DocumentPayloadCodec.decode(store.read(id))
+        if (payload.ocrText == null) throw IOException("No OCR result exists for this document")
+        store.replace(
+            id,
+            DocumentPayloadCodec.encode(payload.copy(
+                ocrText = correctedText.take(MAX_OCR_CHARACTERS),
+                ocrReviewed = true,
+                ocrTruncated = correctedText.length > MAX_OCR_CHARACTERS
+            ))
+        )
+        return toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
+    }
+
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun list(): List<ImportedDocument> =
+        store.listIds().mapNotNull { id ->
+            runCatching { toDocument(DocumentPayloadCodec.decode(store.read(id)), id) }.getOrNull()
+        }.sortedByDescending { it.displayName.lowercase() }
+
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun delete(id: String) = store.delete(id)
+
+    private fun toDocument(payload: ImportedPayload, id: String) = ImportedDocument(
+        id = id,
+        displayName = payload.displayName,
+        mimeType = payload.mimeType,
+        byteSize = payload.content.size,
+        ocrText = payload.ocrText,
+        ocrConfidence = payload.ocrConfidence,
+        ocrReviewed = payload.ocrReviewed,
+        ocrTruncated = payload.ocrTruncated
+    )
+
+    private fun queryDisplayName(uri: Uri): String {
+        val candidate = runCatching {
+            resolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { cursor ->
+                    val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (cursor.moveToFirst() && index >= 0) cursor.getString(index) else null
+                }
+        }.getOrNull().orEmpty()
+        return candidate.substringAfterLast('/')
+            .filterNot { it.isISOControl() }
+            .trim()
+            .take(MAX_NAME_LENGTH)
+            .ifBlank { "Imported document" }
+    }
+
+    companion object {
+        private const val MAX_NAME_LENGTH = 180
+        private const val MAX_OCR_CHARACTERS = 150_000
+        private const val PDF_MIME = "application/pdf"
+    }
+}
+
+internal class DocumentTooLargeException : IOException("File exceeds the 31 MiB import limit")
+internal class UnsupportedDocumentTypeException : IOException("Choose a supported PDF or image document")
