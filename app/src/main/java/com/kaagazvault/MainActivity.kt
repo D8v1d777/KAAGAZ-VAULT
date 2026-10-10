@@ -395,8 +395,13 @@ private fun VaultHomeScreen(
 
                             if (document.ocrText != null) {
                                 Text(
-                                    "Text extraction • ${document.ocrConfidence?.let { "engine score $it/100" } ?: "PDF text layer"} • ${if (document.ocrReviewed) "reviewed" else "needs review"}",
+                                    "Text extraction • ${document.ocrConfidence?.let { "raw engine confidence $it/100 (not a probability)" } ?: "no calibrated confidence"} • ${if (document.ocrReviewed) "reviewed" else "needs review"}",
                                     style = MaterialTheme.typography.labelMedium
+                                )
+                                Text(
+                                    "Source: ${document.ocrSource ?: "legacy result"} • Languages: ${document.ocrLanguages ?: "not recorded"}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 if (document.ocrTruncated) {
                                     Text(

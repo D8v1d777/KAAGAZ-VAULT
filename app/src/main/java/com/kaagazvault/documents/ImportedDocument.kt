@@ -8,7 +8,9 @@ data class ImportedDocument(
     val ocrText: String? = null,
     val ocrConfidence: Int? = null,
     val ocrReviewed: Boolean = false,
-    val ocrTruncated: Boolean = false
+    val ocrTruncated: Boolean = false,
+    val ocrSource: String? = null,
+    val ocrLanguages: String? = null
 )
 
 internal data class ImportedPayload(
@@ -18,5 +20,7 @@ internal data class ImportedPayload(
     val ocrText: String? = null,
     val ocrConfidence: Int? = null,
     val ocrReviewed: Boolean = false,
-    val ocrTruncated: Boolean = false
+    val ocrTruncated: Boolean = false,
+    val ocrSource: String? = null,
+    val ocrLanguages: String? = null
 )

@@ -1,3 +1,23 @@
+## 2026-10-10 — Phase 8 OCR provenance and backward-compatible payloads
+
+### Research → work
+- Followed the repository OCR skill: extraction method and language must remain explicit, confidence is not automatically a calibrated probability, and OCR output remains untrusted until human review.
+- Reviewed the current offline OCR engine and encrypted payload codec. Before this change, image OCR and PDF native text extraction could be confused in the UI; only a numeric score and a generic “PDF text layer” fallback were displayed.
+
+### Implemented on `phase/08-ocr-provenance`
+- OCR results now record a source identifier: `tesseract-image`, `pdf-text-layer`, `tesseract-pdf`, or `pdf-mixed-text-and-ocr`.
+- Persists the OCR language/model set alongside the encrypted OCR text and raw engine confidence.
+- Advances the encrypted payload format to v3 while continuing to read v1 legacy payloads and v2 OCR payloads. Older records show provenance as unknown rather than fabricating it.
+- UI labels raw OCR confidence as not a probability, and displays extraction source/languages separately from human-review state.
+- Added codec tests for v3 provenance round-trip and v2 backward compatibility.
+
+### Verification / safety boundaries
+- This branch has not yet run CI; compile, tests, lint, and offline-manifest policy are pending.
+- This does not add field extraction, medical action extraction, or automated reminders. OCR text remains untrusted; users must review/correct it before relying on it.
+- Need tests for malformed/oversized provenance strings and explicit payload-v1/v2/v3 compatibility before calling this phase complete.
+
+---
+
 ## 2026-10-10 — Phase 7 notification tap flow
 
 ### Research → work
