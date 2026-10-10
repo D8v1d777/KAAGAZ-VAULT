@@ -1,6 +1,6 @@
 package com.kaagazvault.camera
 
-import android.graphics.Bitmap
+import android.graphics.ImageFormat
 import android.os.Handler
 import android.os.Looper
 import androidx.camera.core.CameraSelector
@@ -11,7 +11,6 @@ import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.core.toBitmap
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -35,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import android.util.Size
 
@@ -86,6 +84,7 @@ internal fun CameraCaptureScreen(
                         .build()
                     val capture = ImageCapture.Builder()
                         .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .setOutputFormat(ImageCapture.OUTPUT_FORMAT_JPEG)
                         .setResolutionSelector(selector)
                         .build()
                     provider.unbindAll()
@@ -131,7 +130,7 @@ internal fun CameraCaptureScreen(
 
         AndroidView(
             factory = { previewView },
-            modifier = Modifier.fillMaxWidth().weight(1f)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 240.dp, max = 520.dp)
         )
 
         Text(status.value, style = MaterialTheme.typography.bodyMedium)
@@ -146,14 +145,21 @@ internal fun CameraCaptureScreen(
                     captureExecutor,
                     object : ImageCapture.OnImageCapturedCallback() {
                         override fun onCaptureSuccess(image: ImageProxy) {
-                            var bitmap: Bitmap? = null
                             try {
-                                bitmap = image.toBitmap()
-                                val output = ByteArrayOutputStream()
-                                if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)) {
-                                    throw IllegalStateException("JPEG encoding failed")
+                                if (image.format != ImageFormat.JPEG) {
+                                    throw IllegalStateException("Camera returned an unexpected image format")
                                 }
-                                val bytes = output.toByteArray()
+                                val buffer = image.planes.firstOrNull()?.buffer
+                                    ?: throw IllegalStateException("Camera returned an empty image")
+                                val bytes = ByteArray(buffer.remaining())
+                                buffer.get(bytes)
+                                if (bytes.size < 3 ||
+                                    bytes[0] != 0xff.toByte() ||
+                                    bytes[1] != 0xd8.toByte() ||
+                                    bytes[2] != 0xff.toByte()
+                                ) {
+                                    throw IllegalStateException("Captured image is not a valid JPEG")
+                                }
                                 mainHandler.post {
                                     captureBusy.value = false
                                     status.value = "Photo captured. Encrypting locally…"
@@ -165,7 +171,6 @@ internal fun CameraCaptureScreen(
                                     status.value = "Capture failed. No document was saved."
                                 }
                             } finally {
-                                bitmap?.recycle()
                                 image.close()
                             }
                         }
