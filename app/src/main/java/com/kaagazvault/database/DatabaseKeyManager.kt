@@ -15,6 +15,7 @@ import java.security.SecureRandom
  */
 internal class DatabaseKeyManager(context: Context) {
     private val keyFile = File(context.noBackupFilesDir, WRAPPED_KEY_FILE)
+    private val databaseFile = context.getDatabasePath(DATABASE_NAME)
     private val wrapperKeyProvider = AndroidKeystoreDocumentKeyProvider(WRAPPING_KEY_ALIAS)
     private val envelope = AesGcmEnvelope()
 
@@ -32,6 +33,10 @@ internal class DatabaseKeyManager(context: Context) {
                 throw IOException("Wrapped database key has an invalid size")
             }
             return unwrapped
+        }
+
+        if (databaseFile.exists()) {
+            throw IOException("Database exists but its wrapped key is missing; refusing to replace the key")
         }
 
         val key = ByteArray(KEY_SIZE_BYTES).also(SecureRandom()::nextBytes)
@@ -56,6 +61,7 @@ internal class DatabaseKeyManager(context: Context) {
     companion object {
         private const val KEY_SIZE_BYTES = 32
         private const val WRAPPED_KEY_FILE = "vault-database-key.wrap"
+        private const val DATABASE_NAME = "vault-metadata.db"
         private const val WRAPPING_KEY_ALIAS = "kaagaz.vault.database-key-wrap.v1"
         private val KEY_CONTEXT = "kaagaz.vault.sqlcipher-key.v1".toByteArray(Charsets.UTF_8)
     }
