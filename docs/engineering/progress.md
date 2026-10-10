@@ -1,12 +1,12 @@
 ## 2026-10-10 — Phase 6 bounded in-memory PDF OCR
 
 ### Research
-- Reviewed PdfiumAndroidKt 2.0.3 APIs for opening ByteArray input, native text-layer extraction, page rendering, and explicit document/page/text-page lifecycle: https://github.com/johngray1965/PdfiumAndroidKt
-- Selected the maintained PDFium engine over older API-19 forks because PDF is untrusted parser input. The trade-off is minSdk 24 and JDK 21 for the build environment; app bytecode target remains Java 17.
+- Reviewed PdfiumAndroidKt 2.0.0 APIs for opening ByteArray input, native text-layer extraction, page rendering, and explicit document/page/text-page lifecycle: https://github.com/johngray1965/PdfiumAndroidKt
+- Selected PdfiumAndroidKt 2.0.0, the current stable-SDK-compatible release with ByteArray input, native text extraction, and page rendering. Version 2.0.3 was rejected because it requires compileSdk 37 while Android 17 remains preview. The trade-off is minSdk 24 and JDK 21; app bytecode target remains Java 17.
 - No plaintext PDF/page temp files are used. PDF input is bounded to 20 MiB, 30 pages, 60 million total rendered pixels, 2000 px max edge, 10,000 native-text chars/page, and 150,000 combined output characters.
 
 ### Implemented
-- Added PdfiumAndroidKt 2.0.3 dependency, moved minSdk to 24, and switched CI JDK to 21.
+- Added PdfiumAndroidKt 2.0.0 dependency, moved minSdk to 24, and switched CI JDK to 21.
 - Extended offline OCR to prefer embedded PDF text and render/OCR scanned pages one at a time. Tesseract is initialized only when a page requires OCR and reused across pages.
 - Added bounded page and text limits, truncation reporting, Unicode/control-character sanitization, and null confidence for native PDF text (no fabricated 100% confidence).
 - Wired the document action to process both images and PDFs and store results in the existing encrypted payload/index.
@@ -16,7 +16,7 @@
 - Phase 3 CI passed at run https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38030021406.
 - Phase 4 CI passed at run https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38030642290.
 - CameraX initial code passed at run https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38031188831; the latest stacked orientation-normalization head is still awaiting CI.
-- The current PDF OCR branch changes minSdk/JDK and adds native PDFium; its CI must pass before the feature is considered build-verified. No device PDF rendering, native text accuracy, memory performance, or storage-leakage tests have been run.
+- The current PDF OCR branch changes minSdk/JDK/Kotlin/KSP and adds native PDFium; the first run failed because PDFium 2.0.3 required preview compileSdk 37. The branch now pins 2.0.0 and aligns Kotlin/KSP; the new CI run must pass before this feature is considered build-verified. No device PDF rendering, native text accuracy, memory performance, or storage-leakage tests have been run.
 
 ### Next cycle
 1. Resolve any compile/dependency errors from the latest PDFium/JDK21/minSdk24 CI run.
