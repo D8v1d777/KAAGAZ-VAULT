@@ -58,6 +58,16 @@ internal class EncryptedDocumentStore(
         return envelope.decrypt(encrypted, keyProvider.getOrCreateKey(), id.toByteArray(Charsets.UTF_8))
     }
 
+    /** Returns opaque IDs only; filenames contain no document metadata. */
+    fun listIds(): List<String> =
+        directory.listFiles()
+            ?.asSequence()
+            ?.filter { it.isFile && it.name.endsWith(FILE_EXTENSION) }
+            ?.map { it.name.removeSuffix(FILE_EXTENSION) }
+            ?.filter { id -> runCatching { fileFor(id) }.isSuccess }
+            ?.toList()
+            .orEmpty()
+
     @Throws(IOException::class)
     fun delete(id: String) {
         val file = fileFor(id)
@@ -71,11 +81,12 @@ internal class EncryptedDocumentStore(
             throw IllegalArgumentException("Invalid document identifier", error)
         }
         require(parsed.toString() == id.lowercase()) { "Invalid document identifier" }
-        return File(directory, "$id.kgv")
+        return File(directory, "$id$FILE_EXTENSION")
     }
 
     private companion object {
         const val MAX_PAYLOAD_BYTES = 32 * 1024 * 1024
+        const val FILE_EXTENSION = ".kgv"
         const val HEADER_LENGTH = 4 + 1 + 12
         const val TAG_LENGTH_BYTES = 16
         const val MIN_ENVELOPE_BYTES = HEADER_LENGTH + TAG_LENGTH_BYTES
