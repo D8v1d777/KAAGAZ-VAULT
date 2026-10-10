@@ -21,7 +21,9 @@ class DocumentPayloadCodecTest {
             ocrText = "Synthetic text: నమస్కారం / नमस्ते",
             ocrConfidence = 78,
             ocrReviewed = true,
-            ocrTruncated = false
+            ocrTruncated = false,
+            ocrSource = "pdf-mixed-text-and-ocr",
+            ocrLanguages = "eng+hin+tel"
         )
         val decoded = DocumentPayloadCodec.decode(DocumentPayloadCodec.encode(payload))
         assertEquals(payload.displayName, decoded.displayName)
@@ -31,6 +33,8 @@ class DocumentPayloadCodecTest {
         assertEquals(78, decoded.ocrConfidence ?: -1)
         assertTrue(decoded.ocrReviewed)
         assertFalse(decoded.ocrTruncated)
+        assertEquals("pdf-mixed-text-and-ocr", decoded.ocrSource)
+        assertEquals("eng+hin+tel", decoded.ocrLanguages)
     }
 
     @Test
@@ -51,6 +55,34 @@ class DocumentPayloadCodecTest {
         assertNull(decoded.ocrText)
         assertNull(decoded.ocrConfidence)
         assertFalse(decoded.ocrReviewed)
+    }
+
+
+    @Test
+    fun readsVersionTwoPayloadWithoutProvenanceFields() {
+        val content = byteArrayOf(5, 6, 7)
+        val text = "Old OCR"
+        val textBytes = text.toByteArray(Charsets.UTF_8)
+        val output = ByteArrayOutputStream()
+        DataOutputStream(output).use { data ->
+            data.writeInt(0x4b475044)
+            data.writeInt(2)
+            data.writeUTF("old-v2.png")
+            data.writeUTF("image/png")
+            data.writeInt(content.size)
+            data.write(content)
+            data.writeInt(82)
+            data.writeBoolean(false)
+            data.writeBoolean(false)
+            data.writeInt(textBytes.size)
+            data.write(textBytes)
+        }
+
+        val decoded = DocumentPayloadCodec.decode(output.toByteArray())
+        assertEquals(text, decoded.ocrText)
+        assertEquals(82, decoded.ocrConfidence ?: -1)
+        assertNull(decoded.ocrSource)
+        assertNull(decoded.ocrLanguages)
     }
 
     @Test
