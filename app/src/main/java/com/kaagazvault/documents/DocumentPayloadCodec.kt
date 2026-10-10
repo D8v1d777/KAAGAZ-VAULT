@@ -17,7 +17,8 @@ internal object DocumentPayloadCodec {
     private const val MAX_OCR_TEXT_BYTES = 600_000
     private const val PAYLOAD_MAGIC = 0x4b475044 // KGPD
     private const val LEGACY_PAYLOAD_VERSION = 1
-    private const val PAYLOAD_VERSION = 2
+    private const val VERSION_WITH_OCR_SOURCE = 3
+    private const val PAYLOAD_VERSION = VERSION_WITH_OCR_SOURCE
 
     fun encode(payload: ImportedPayload): ByteArray {
         require(payload.content.size in 1..MAX_CONTENT_BYTES) {
@@ -40,6 +41,8 @@ internal object DocumentPayloadCodec {
             data.writeInt(payload.ocrConfidence?.coerceIn(0, 100) ?: -1)
             data.writeBoolean(payload.ocrReviewed)
             data.writeBoolean(payload.ocrTruncated || (payload.ocrText?.length ?: 0) > MAX_OCR_CHARACTERS)
+            data.writeUTF(payload.ocrSource.orEmpty().take(64))
+            data.writeUTF(payload.ocrLanguages.orEmpty().take(64))
             data.writeInt(text?.size ?: -1)
             if (text != null) data.write(text)
         }
@@ -50,7 +53,7 @@ internal object DocumentPayloadCodec {
         DataInputStream(ByteArrayInputStream(encoded)).use { data ->
             if (data.readInt() != PAYLOAD_MAGIC) throw IOException("Unsupported imported document payload")
             val version = data.readInt()
-            if (version != LEGACY_PAYLOAD_VERSION && version != PAYLOAD_VERSION) {
+            if (version !in LEGACY_PAYLOAD_VERSION..VERSION_WITH_OCR_SOURCE) {
                 throw IOException("Unsupported imported document payload version")
             }
             val name = data.readUTF()
@@ -70,6 +73,8 @@ internal object DocumentPayloadCodec {
             val confidence = data.readInt().takeIf { it in 0..100 }
             val reviewed = data.readBoolean()
             val truncated = data.readBoolean()
+            val source = if (version >= VERSION_WITH_OCR_SOURCE) data.readUTF().takeIf { it.isNotBlank() } else null
+            val languages = if (version >= VERSION_WITH_OCR_SOURCE) data.readUTF().takeIf { it.isNotBlank() } else null
             val textLength = data.readInt()
             if (textLength < -1 || textLength > MAX_OCR_TEXT_BYTES ||
                 (textLength == -1 && data.available() != 0) ||
@@ -78,7 +83,17 @@ internal object DocumentPayloadCodec {
             val text = if (textLength >= 0) {
                 ByteArray(textLength).also(data::readFully).toString(Charsets.UTF_8)
             } else null
-            return ImportedPayload(name, mime, bytes, text, confidence, reviewed, truncated)
+            return ImportedPayload(
+                displayName = name,
+                mimeType = mime,
+                content = bytes,
+                ocrText = text,
+                ocrConfidence = confidence,
+                ocrReviewed = reviewed,
+                ocrTruncated = truncated,
+                ocrSource = source,
+                ocrLanguages = languages
+            )
         }
     }
 }
