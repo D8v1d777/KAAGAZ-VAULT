@@ -2,6 +2,8 @@ package com.kaagazvault
 
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -20,6 +22,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kaagazvault.documents.DocumentRepository
 import com.kaagazvault.documents.ImportedDocument
+import com.kaagazvault.ocr.OfflineOcrEngine
 import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
 import com.kaagazvault.security.EncryptedDocumentStore
 import java.io.IOException
@@ -46,10 +50,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val store = EncryptedDocumentStore(
-            FileDirectory.documents(filesDir),
+            java.io.File(filesDir, "encrypted_documents"),
             AndroidKeystoreDocumentKeyProvider()
         )
         val repository = DocumentRepository(contentResolver, store)
+        val ocrEngine = OfflineOcrEngine(applicationContext)
         setContent {
             MaterialTheme {
                 Surface(
@@ -58,6 +63,7 @@ class MainActivity : ComponentActivity() {
                 ) {
                     VaultHomeScreen(
                         repository = repository,
+                        ocrEngine = ocrEngine,
                         submitIo = { work -> ioExecutor.execute(work) }
                     )
                 }
@@ -71,18 +77,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private object FileDirectory {
-    fun documents(filesDir: java.io.File): java.io.File = java.io.File(filesDir, "encrypted_documents")
-}
-
 @Composable
 private fun VaultHomeScreen(
     repository: DocumentRepository,
+    ocrEngine: OfflineOcrEngine,
     submitIo: (() -> Unit) -> Unit
 ) {
     val documents = remember { mutableStateListOf<ImportedDocument>() }
     val status = remember { mutableStateOf("Your documents stay on this device.") }
     val busy = remember { mutableStateOf(false) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -95,14 +100,14 @@ private fun VaultHomeScreen(
                 try {
                     val imported = repository.import(uri)
                     val refreshed = repository.list()
-                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    mainHandler.post {
                         documents.clear()
                         documents.addAll(refreshed)
                         status.value = "Saved encrypted: ${imported.displayName}"
                         busy.value = false
                     }
                 } catch (error: Exception) {
-                    android.os.Handler(mainLooper).post {
+                    mainHandler.post {
                         status.value = safeMessage(error)
                         busy.value = false
                     }
@@ -115,7 +120,7 @@ private fun VaultHomeScreen(
         submitIo {
             try {
                 val refreshed = repository.list()
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                mainHandler.post {
                     documents.clear()
                     documents.addAll(refreshed)
                     status.value = if (refreshed.isEmpty()) {
@@ -125,7 +130,7 @@ private fun VaultHomeScreen(
                     }
                 }
             } catch (_: Exception) {
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                mainHandler.post {
                     status.value = "Could not unlock stored documents. Existing data was left untouched."
                 }
             }
@@ -172,7 +177,7 @@ private fun VaultHomeScreen(
                 ) {
                     Text("PRIVATE LOCAL VAULT", style = MaterialTheme.typography.labelMedium)
                     Text(
-                        "Imported files are encrypted before being written to app-private storage.",
+                        "Files, document names, and extracted text are encrypted before storage.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Button(
@@ -209,6 +214,9 @@ private fun VaultHomeScreen(
                 )
             } else {
                 documents.forEach { document ->
+                    val editedOcr = remember(document.id, document.ocrText) {
+                        mutableStateOf(document.ocrText.orEmpty())
+                    }
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(
                             modifier = Modifier.padding(16.dp),
@@ -229,6 +237,88 @@ private fun VaultHomeScreen(
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
+
+                            if (document.ocrText != null) {
+                                Text(
+                                    "Offline OCR • confidence ${document.ocrConfidence ?: 0}% • ${if (document.ocrReviewed) "reviewed" else "needs review"}",
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                                if (document.ocrTruncated) {
+                                    Text(
+                                        "Extracted text was shortened to fit local storage. Re-run OCR on smaller sections if needed.",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                OutlinedTextField(
+                                    value = editedOcr.value,
+                                    onValueChange = { editedOcr.value = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Review or correct extracted text") },
+                                    minLines = 3,
+                                    maxLines = 8,
+                                    enabled = !busy.value
+                                )
+                                OutlinedButton(
+                                    onClick = {
+                                        busy.value = true
+                                        submitIo {
+                                            try {
+                                                repository.saveReviewedOcr(document.id, editedOcr.value)
+                                                val refreshed = repository.list()
+                                                mainHandler.post {
+                                                    documents.clear()
+                                                    documents.addAll(refreshed)
+                                                    status.value = "Corrections encrypted and marked reviewed. Verify every field before relying on it."
+                                                    busy.value = false
+                                                }
+                                            } catch (_: Exception) {
+                                                mainHandler.post {
+                                                    status.value = "Could not save OCR corrections. Existing encrypted data was left untouched."
+                                                    busy.value = false
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !busy.value
+                                ) {
+                                    Text(if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
+                                }
+                            } else if (document.mimeType.startsWith("image/")) {
+                                OutlinedButton(
+                                    onClick = {
+                                        busy.value = true
+                                        status.value = "Recognizing text locally…"
+                                        submitIo {
+                                            try {
+                                                repository.recognizeImage(document.id, ocrEngine)
+                                                val refreshed = repository.list()
+                                                mainHandler.post {
+                                                    documents.clear()
+                                                    documents.addAll(refreshed)
+                                                    status.value = "Text extracted locally. Review it before relying on any field."
+                                                    busy.value = false
+                                                }
+                                            } catch (_: Exception) {
+                                                mainHandler.post {
+                                                    status.value = "Offline OCR failed. The original encrypted document remains stored."
+                                                    busy.value = false
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !busy.value
+                                ) {
+                                    Text("Recognize text offline")
+                                }
+                            } else {
+                                Text(
+                                    "PDF OCR is not available in this version.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
                             OutlinedButton(
                                 onClick = {
                                     busy.value = true
@@ -236,14 +326,14 @@ private fun VaultHomeScreen(
                                         try {
                                             repository.delete(document.id)
                                             val refreshed = repository.list()
-                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                            mainHandler.post {
                                                 documents.clear()
                                                 documents.addAll(refreshed)
                                                 status.value = "Document removed from the vault."
                                                 busy.value = false
                                             }
                                         } catch (_: Exception) {
-                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                            mainHandler.post {
                                                 status.value = "Could not remove the document."
                                                 busy.value = false
                                             }
@@ -260,7 +350,7 @@ private fun VaultHomeScreen(
             }
 
             Text(
-                "Offline by design • No cloud sync • No OCR yet",
+                "Offline OCR: English, Hindi, and Telugu • review required • no automatic actions",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -272,7 +362,7 @@ private fun safeMessage(error: Exception): String = when (error) {
     is com.kaagazvault.documents.DocumentTooLargeException ->
         "This file exceeds the 31 MiB limit. Nothing was saved."
     is com.kaagazvault.documents.UnsupportedDocumentTypeException ->
-        "Choose a PDF or image file. Nothing was saved."
+        "Choose a supported PDF or image file. Nothing was saved."
     is IOException ->
         error.message?.takeIf { it in setOf(
             "The selected document is empty",
