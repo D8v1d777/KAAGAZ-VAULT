@@ -50,6 +50,8 @@ import com.kaagazvault.documents.ImportedDocument
 import com.kaagazvault.ocr.OfflineOcrEngine
 import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
 import com.kaagazvault.security.EncryptedDocumentStore
+import com.kaagazvault.reminders.ReminderRepository
+import com.kaagazvault.reminders.ReminderSection
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.util.concurrent.Executors
@@ -69,6 +71,7 @@ class MainActivity : ComponentActivity() {
         val indexProvider = EncryptedMetadataIndexProvider(provider)
         val repository = DocumentRepository(contentResolver, store, indexProvider)
         val ocrEngine = OfflineOcrEngine(applicationContext)
+        val reminderRepository = ReminderRepository(applicationContext, provider)
         setContent {
             MaterialTheme {
                 Surface(
@@ -79,6 +82,7 @@ class MainActivity : ComponentActivity() {
                         lifecycleOwner = this@MainActivity,
                         repository = repository,
                         ocrEngine = ocrEngine,
+                        reminderRepository = reminderRepository,
                         submitIo = { work -> ioExecutor.execute(work) }
                     )
                 }
@@ -98,6 +102,7 @@ private fun VaultHomeScreen(
     lifecycleOwner: androidx.lifecycle.LifecycleOwner,
     repository: DocumentRepository,
     ocrEngine: OfflineOcrEngine,
+    reminderRepository: ReminderRepository,
     submitIo: (() -> Unit) -> Unit
 ) {
     val documents = remember { mutableStateListOf<ImportedDocument>() }
@@ -352,6 +357,8 @@ private fun VaultHomeScreen(
                     )
                 }
             }
+
+            ReminderSection(context = context, repository = reminderRepository, submitIo = submitIo, mainHandler = mainHandler)
 
             Text("YOUR DOCUMENTS", style = MaterialTheme.typography.titleMedium)
             if (documents.isEmpty()) {

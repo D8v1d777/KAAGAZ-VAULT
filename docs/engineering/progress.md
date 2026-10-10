@@ -1,3 +1,67 @@
+## 2026-10-10 — Phase 7 notification tap flow
+
+### Research → work
+- Reviewed Android notification guidance and added an immutable explicit activity PendingIntent rather than embedding any reminder title, document name, or linked document identifier in the notification intent.
+- Tapping a reminder now opens the vault entry point; it does not expose the reminder content directly from the notification.
+
+### Change
+- `ReminderNotificationWorker` attaches an immutable, update-current PendingIntent targeting `MainActivity`, with clear-top/single-top navigation flags.
+- Updated the product completion tracker to reflect that reminder code exists in draft PR #6 while keeping its weighted credit at 0 until CI and device acceptance evidence exist.
+
+### Verification
+- The latest CI run must cover this commit; no green result is claimed yet.
+- Tapping behavior and lock-screen privacy still require device testing.
+
+---
+
+## 2026-10-10 — Phase 7 reliability hardening (CI pending)
+
+### Research → work
+- Rechecked the official Android WorkManager documentation for unique work, delayed one-time requests, and worker input. Reminder work is deferrable and does not promise exact-to-the-minute delivery; no exact-alarm permission is requested.
+- Reviewed the worker's failure behavior. A notification permission revoked between check and post can throw; a disabled channel can suppress delivery. These are user-controlled delivery states, not transient worker failures.
+
+### Changes on `phase/07-private-reminders`
+- Extracted UUID-only WorkManager input construction into `ReminderScheduler.buildInputData`.
+- Added a JVM test asserting the WorkManager payload contains exactly one key (the opaque reminder UUID), and rejects non-UUID content.
+- Added graceful handling for notification permission revocation races and disabled notification channels. The encrypted reminder remains visible in-app; the one-time worker does not retry forever when Android intentionally suppresses notifications.
+- Draft PR #6 remains open and unmerged: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/6.
+
+### Verification status
+- CI run https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38044125829 was still in progress at the last check. Build, tests, lint, and offline-manifest gate are not yet confirmed green for these newest changes.
+- Still required: device testing for notification denial/channel disabled, reboot/process death, database migration from a real v1 SQLCipher database, and worker execution after document-vault lock/key invalidation.
+- Do not claim phase completion until CI passes and the product-level acceptance criteria are addressed.
+
+---
+
+## 2026-10-10 — Phase 7 local reminders implementation (CI pending)
+
+### Research
+- Checked the official AndroidX WorkManager release notes; selected stable WorkManager 2.12.0 (released 2026-09-23): https://developer.android.com/jetpack/androidx/releases/work
+- Applied the existing privacy rule: WorkManager stores only an opaque reminder UUID; reminder title and linked document ID live in the SQLCipher metadata database.
+- Notification text is generic by default. No document title, reminder title, medical term, or OCR-derived action is sent to the notification surface.
+- Reminder creation is explicitly user-triggered; OCR does not create reminders automatically.
+
+### Implemented on `phase/07-private-reminders`
+- Added `ReminderEntity` / `ReminderDao` and a Room migration from database v1 to v2.
+- Added a `ReminderRepository` for validated future reminders, persistence, unique WorkManager scheduling, and cancellation on deletion.
+- Added a WorkManager worker that reads the reminder from SQLCipher at execution time, no-ops for deleted reminders, and posts generic notification text.
+- Added Compose UI to create, list, and delete reminders with explicit date/time selection.
+- Added the Android 13+ notification permission declaration and request only after the user saves a reminder.
+- Draft PR #6: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/6 (base `phase/06-pdf-ocr-stacked`; not merged).
+
+### Verification / limitations
+- PR creation succeeded and CI was triggered, but its result has not yet been retrieved. Do not mark this phase build-verified until build, unit tests, lint, and offline-manifest checks finish.
+- Device-level notification permission denial, channel disablement, reboot/rescheduling, process death, duplicate work replacement, and migration from a real v1 SQLCipher database remain untested.
+- No biometric gate, export/recovery, or release readiness is claimed.
+
+### Next actions
+1. Retrieve PR #6 CI jobs and fix compile/test/lint failures from actual logs.
+2. Add tests for UUID-only WorkManager input, reminder validation, deletion/no-op behavior, and Room migration.
+3. Continue with biometric/app lock and key lifecycle only after the PDF OCR branch is verified and the reminder branch is green.
+4. Update the weighted completion tracker only after verification evidence exists.
+
+---
+
 ## 2026-10-10 — Phase 6 bounded in-memory PDF OCR
 
 ### Research
