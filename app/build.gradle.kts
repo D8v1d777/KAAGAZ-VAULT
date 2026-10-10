@@ -38,6 +38,8 @@ android {
 val prepareOcrModels by tasks.registering {
     val modelOutputs = tessdataModels.keys.map { name -> generatedOcrAssets.map { it.file("tessdata/$name") } }
     outputs.files(modelOutputs)
+    // Re-hash cached files on every build; Gradle's existence-only up-to-date check is insufficient here.
+    outputs.upToDateWhen { false }
 
     doLast {
         val outputDirectory = generatedOcrAssets.get().file("tessdata").asFile
