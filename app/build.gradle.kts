@@ -22,7 +22,6 @@ val tessdataModels = mapOf(
 android {
     namespace = "com.kaagazvault"
     compileSdk = 36
-
     defaultConfig {
         applicationId = "com.kaagazvault"
         minSdk = 24
@@ -30,37 +29,22 @@ android {
         versionCode = 1
         versionName = "0.1.0"
     }
-
-    buildFeatures {
-        compose = true
-    }
-
+    buildFeatures { compose = true }
     sourceSets.getByName("main").assets.srcDir(generatedOcrAssets.get().asFile)
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
-    }
-}
+kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
 val prepareOcrModels by tasks.registering {
     val modelOutputs = tessdataModels.keys.map { name -> generatedOcrAssets.map { it.file("tessdata/$name") } }
     outputs.files(modelOutputs)
-    // Re-hash cached files on every build; Gradle's existence-only up-to-date check is insufficient here.
     outputs.upToDateWhen { false }
-
     doLast {
         val outputDirectory = generatedOcrAssets.get().file("tessdata").asFile
-        if (!outputDirectory.exists() && !outputDirectory.mkdirs()) {
-            throw GradleException("Could not create generated OCR model directory")
-        }
-
+        if (!outputDirectory.exists() && !outputDirectory.mkdirs()) throw GradleException("Could not create generated OCR model directory")
         tessdataModels.forEach { (name, expectedGitBlobSha) ->
             val destination = File(outputDirectory, name)
             val validExisting = destination.isFile && run {
@@ -71,23 +55,15 @@ val prepareOcrModels by tasks.registering {
                 digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) } == expectedGitBlobSha
             }
             if (validExisting) return@forEach
-
             val temporary = File(outputDirectory, "$name.download")
-            val url = URL(
-                "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/$tessdataRevision/$name"
-            )
+            val url = URL("https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/$tessdataRevision/$name")
             val connection = url.openConnection() as HttpURLConnection
             connection.connectTimeout = 30_000
             connection.readTimeout = 60_000
             try {
                 connection.instanceFollowRedirects = true
-                connection.inputStream.use { input ->
-                    temporary.outputStream().use { output -> input.copyTo(output) }
-                }
-            } finally {
-                connection.disconnect()
-            }
-
+                connection.inputStream.use { input -> temporary.outputStream().use { output -> input.copyTo(output) } }
+            } finally { connection.disconnect() }
             val bytes = temporary.readBytes()
             val digest = MessageDigest.getInstance("SHA-1")
             digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
@@ -108,10 +84,7 @@ val prepareOcrModels by tasks.registering {
         }
     }
 }
-
-tasks.named("preBuild").configure {
-    dependsOn(prepareOcrModels)
-}
+tasks.named("preBuild").configure { dependsOn(prepareOcrModels) }
 
 dependencies {
     implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
@@ -124,13 +97,12 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation("net.zetetic:sqlcipher-android:4.19.1@aar")
     implementation(libs.pdfium.android)
+    implementation(libs.androidx.work.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
-
     debugImplementation(libs.androidx.compose.ui.tooling)
-
     testImplementation(libs.junit)
 }
