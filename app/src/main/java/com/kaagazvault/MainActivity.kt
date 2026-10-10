@@ -12,10 +12,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,6 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
@@ -33,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kaagazvault.database.EncryptedMetadataIndexProvider
@@ -95,6 +99,9 @@ private fun VaultHomeScreen(
     val busy = remember { mutableStateOf(false) }
     val searchQuery = remember { mutableStateOf("") }
     val searchAvailable = remember { mutableStateOf(false) }
+    val showLicenses = remember { mutableStateOf(false) }
+    val thirdPartyNotices = remember { mutableStateOf("Loading third-party notices…") }
+    val context = LocalContext.current
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
     val picker = rememberLauncherForActivityResult(
@@ -433,7 +440,39 @@ private fun VaultHomeScreen(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            TextButton(
+                onClick = {
+                    showLicenses.value = true
+                    submitIo {
+                        val notices = runCatching {
+                            context.assets.open("licenses/THIRD_PARTY_NOTICES.txt")
+                                .bufferedReader()
+                                .use { it.readText() }
+                        }.getOrDefault("Third-party license notices are packaged with this application.")
+                        mainHandler.post { thirdPartyNotices.value = notices }
+                    }
+                }
+            ) { Text("Third-party licenses") }
         }
+    }
+
+    if (showLicenses.value) {
+        AlertDialog(
+            onDismissRequest = { showLicenses.value = false },
+            title = { Text("Third-party licenses") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(thirdPartyNotices.value)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLicenses.value = false }) { Text("Close") }
+            }
+        )
     }
 }
 
