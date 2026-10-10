@@ -433,14 +433,14 @@ private fun VaultHomeScreen(
                                 ) {
                                     Text(if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
                                 }
-                            } else if (document.mimeType.startsWith("image/")) {
+                            } else if (document.mimeType.startsWith("image/") || document.mimeType == "application/pdf") {
                                 OutlinedButton(
                                     onClick = {
                                         busy.value = true
                                         status.value = "Recognizing text locally…"
                                         submitIo {
                                             try {
-                                                repository.recognizeImage(document.id, ocrEngine)
+                                                repository.recognizeDocument(document.id, ocrEngine)
                                                 val refreshed = repository.list()
                                                 mainHandler.post {
                                                     documents.clear()
@@ -451,7 +451,7 @@ private fun VaultHomeScreen(
                                                 }
                                             } catch (_: Exception) {
                                                 mainHandler.post {
-                                                    status.value = "Offline OCR failed. The original encrypted document remains stored."
+                                                    status.value = "Offline text extraction failed. The original encrypted document remains stored."
                                                     busy.value = false
                                                 }
                                             }
@@ -459,11 +459,11 @@ private fun VaultHomeScreen(
                                     },
                                     enabled = !busy.value
                                 ) {
-                                    Text("Recognize text offline")
+                                    Text(if (document.mimeType == "application/pdf") "Extract text from PDF offline" else "Recognize text offline")
                                 }
                             } else {
                                 Text(
-                                    "PDF OCR is not available in this version.",
+                                    "Text extraction is unavailable for this file type.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
