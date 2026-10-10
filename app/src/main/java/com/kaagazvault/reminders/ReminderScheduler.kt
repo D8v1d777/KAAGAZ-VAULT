@@ -3,7 +3,9 @@ package com.kaagazvault.reminders
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -15,7 +17,7 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.kaagazvault.R
+import com.kaagazvault.MainActivity
 import com.kaagazvault.database.VaultDatabaseProvider
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -81,10 +83,19 @@ internal class ReminderNotificationWorker(
                 manager.getNotificationChannel(CHANNEL_ID)?.importance == NotificationManager.IMPORTANCE_NONE
             ) return Result.success()
 
+            val openVaultIntent = PendingIntent.getActivity(
+                applicationContext,
+                0,
+                Intent(applicationContext, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
             val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
                 .setContentTitle("Saved-document reminder")
                 .setContentText("You have a reminder in Kaagaz Vault.")
+                .setContentIntent(openVaultIntent)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .build()
