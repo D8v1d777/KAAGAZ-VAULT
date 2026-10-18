@@ -90,4 +90,4 @@ Research → Threat model → Small implementation
 - **Palette:** deep ink `#172B2A`, evergreen teal `#246B67`, warm paper `#F7F5EF`, and muted amber `#D6A65D`.
 - **Hierarchy:** short display title, clear section headings, paired content cards, generous whitespace, and restrained badges.
 - **Accessibility:** text labels accompany color, no flashing animations, no external visitor counters, and no third-party analytics widgets.
-- **Publishing status:** draft only. The GitHub profile README repository `D8v1d777/D8v1d777` was not found, and the available GitHub actions here do not provide repository creation or direct profile editing. Copy this draft into a repository with the exact username as its name to publish it.
+- **Publishing status:** draft only. The GitHub profile README repository `D8v1d777/D8v1d777` was not found, and the available GitHub actions here do not provide repository creation or direct profile editing. Copy this draft to the root of a repository named exactly `D8v1d777`, and copy `assets/profile-hero.svg` into an `assets/` directory at that repository root to publish the banner.
