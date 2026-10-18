@@ -23,7 +23,7 @@ KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text 
 - FOSS core must remain offline. Do not add INTERNET permission, analytics, ads, cloud OCR, or network AI dependencies.
 - Do not store real Aadhaar/PAN IDs, prescriptions, medical records, personal documents, secrets, or credentials in the repository.
 - OCR/PDF text is untrusted evidence. It must remain editable and reviewable; do not turn uncertain medical text into medication instructions or automatic actions.
-- Document payloads and metadata/search are encrypted at rest in the implemented paths, but recovery/rotation, biometric app lock, reminders, export controls, PDF edge cases, and device-level leakage review remain incomplete.
+- Document payloads and metadata/search have encrypted-at-rest implementation paths. A missing-key fail-closed guard has been added but awaits CI; recovery/rotation, authentication-bound keys, biometric app lock, reminders, export controls, PDF edge cases, and device-level leakage review remain incomplete.
 - File deletion is not guaranteed secure erasure. The app is not release-approved.
 
 ## Current project status
