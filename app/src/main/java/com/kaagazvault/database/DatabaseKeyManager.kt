@@ -17,7 +17,11 @@ internal class DatabaseKeyManager(context: Context) {
     private val keyFile = File(context.noBackupFilesDir, WRAPPED_KEY_FILE)
     private val databaseFile = context.getDatabasePath(DATABASE_NAME)
     private val wrapperKeyProvider = AndroidKeystoreDocumentKeyProvider(WRAPPING_KEY_ALIAS) {
-        keyFile.exists() || databaseFile.exists()
+        keyFile.exists() ||
+            databaseFile.exists() ||
+            File(databaseFile.path + "-wal").exists() ||
+            File(databaseFile.path + "-journal").exists() ||
+            File(databaseFile.path + "-shm").exists()
     }
     private val envelope = AesGcmEnvelope()
 
