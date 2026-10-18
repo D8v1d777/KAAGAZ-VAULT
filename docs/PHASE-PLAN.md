@@ -1,37 +1,45 @@
 # Kaagaz Vault — Delivery plan
 
-Progress is reported against verifiable repository changes, not estimates of code volume. The overall percentage is the simple average of the six phase percentages; Phase 1 is complete for prototype scope, while release-level manual review remains in the later quality and user-validation phases.
+Progress is reported against defined acceptance criteria, not code volume. Phase 1 is complete for prototype scope; Phase 2 design artifacts are complete. Phase 3 implementation is gated on owner approval of product assumptions.
 
-**Overall progress: 23%** (Phase 1: 100%, Phase 2: 35%, Phases 3–6: 0%).
+**Overall progress: 33%** (Phase 1: 100%, Phase 2: 100%, Phases 3–6: 0%; exact average 33.3%, rounded).
 
 | Phase | Deliverable | Status |
 |---|---|---|
-| 1. Research and UI foundation | Accessibility-informed design notes, responsive dashboard, search, category filters, favourites, grid/list views, preview-only file selection, contrast and syntax regression tests, Playwright interaction coverage, axe WCAG scan | **100% — complete for prototype scope; automated CI passes** |
-| 2. Architecture and data flow | Framework/runtime audit, persistence decision, document lifecycle, auth and threat model | **35% — proposal documented; product decisions pending** |
-| 3. Functional storage | Upload pipeline, metadata persistence, previews/downloads, rename/delete flows | **0% — not started** |
-| 4. Security | Authz, encryption, validation, safe file handling, backup/recovery | **0% — not started** |
-| 5. Quality gates | Automated tests, accessibility checks, performance and device testing | **0% — next quality phase** |
-| 6. User validation | Usability sessions spanning ages 20–90 and varied access needs | **0% — not started** |
+| 1. Research and UI foundation | Accessible responsive prototype, core interactions, static tests, Playwright and axe scans | **100% — prototype scope complete; automated CI passed** |
+| 2. Architecture and data flow | Stack recommendation, data model, auth/upload/read/delete flows, threat model, privacy/crypto gate, backup/recovery design, visual report | **100% — design package complete; owner approvals remain as Phase 3 gates** |
+| 3. Functional storage | Implement auth, metadata persistence, private uploads/downloads, rename/delete/export | **0% — not started** |
+| 4. Security | Enforce and test authz, upload validation, secret hygiene, privacy and recovery controls | **0% — not started** |
+| 5. Quality gates | Automated security/accessibility tests, performance, cross-browser/device testing | **0% — not started** |
+| 6. User validation | Moderated usability sessions across ages 20–90 and varied access needs | **0% — not started** |
 
 ## Phase 1 acceptance checklist
-- [x] Repository found and README inspected.
 - [x] Evidence-led UX/accessibility principles documented.
-- [x] Responsive UI prototype implemented in index.html.
-- [x] Search, category filters, favourites, sorting, grid/list controls and larger text implemented.
-- [x] File selection clearly labelled as local preview only; no upload is claimed.
-- [x] Add dependency-free Node regression checks for inline JavaScript syntax, core accessibility affordances, selected contrast pairs, upload-preview limits, and escaping.
-- [x] Add GitHub Actions workflow to run static checks, Playwright browser interactions, and axe WCAG A/AA scans on the feature branch and pull requests to main.
-- [x] Confirm GitHub Actions run passes: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39120914235
-- [x] Run Playwright browser-based functional checks and axe WCAG A/AA scans at desktop and mobile viewports.
-- [x] Confirm original repository had no app framework or package manifest; document a backend proposal and security gates.
-- [ ] Confirm user model, end-to-end encryption expectations, supported file formats, and budget before locking in the backend.
+- [x] Responsive prototype, search, category filters, favourites, sorting, grid/list, larger text and preview-only file selection implemented.
+- [x] Static regression checks, Playwright interactions and axe WCAG A/AA scans added.
+- [x] GitHub Actions passed on baseline commit: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39120914235
+- [ ] Manual keyboard, screen-reader, zoom and cross-browser checks remain in Phase 5/6.
 
-## Remaining release-quality work
-- Manual screen-reader, keyboard-only, 200% zoom, and cross-browser review is still required before making a full WCAG conformance claim.
-- Moderated usability testing with people across the 20–90 target range belongs to Phase 6; do not infer success from age assumptions or automated tests.
+## Phase 2 acceptance checklist
+- [x] Research current official Supabase and OWASP guidance.
+- [x] Recommend frontend, identity, database and private object-storage boundaries.
+- [x] Define metadata schema, owner isolation and indexes.
+- [x] Document sign-in, upload, read/download, rename/favourite/delete, export and account-deletion flows.
+- [x] Document threat model, privacy/cryptography boundary, secrets, backups and object recovery.
+- [x] Add architecture decision records and Phase 3 acceptance gates.
+- [x] Add a visual HTML report dashboard.
+- [x] Update README and pull request with status and links.
+- [ ] Owner approval of product model, E2EE requirement, supported formats, region/budget and retention before Phase 3 implementation.
+
+## Explicit planning defaults (not owner-approved)
+- Multi-user service, each account owns a private vault; no sharing in MVP.
+- Supabase Auth + PostgreSQL RLS + private Storage, subject to region/cost fit.
+- TLS and managed at-rest encryption as initial baseline; no end-to-end/zero-knowledge claim.
+- Proposed allowlist: PDF, JPEG, PNG and plain text; limits to be confirmed.
+- Database and binary-object backups/recovery are separate acceptance concerns.
 
 ## Guardrails
-- Never report the vault as secure until implementation has been reviewed and tested.
-- Never imply local demo state is persistent.
-- Avoid dependencies until the current stack is confirmed.
 - Keep main unchanged until changes are reviewed.
+- Do not claim the vault is secure until implemented controls are tested.
+- Never imply local demo state is persistent.
+- Product-owner decisions are gates, not reasons to silently assume a more permissive security model.
