@@ -8,5 +8,4 @@ internal interface VaultMigrationBackend {
     fun publishDocument(documentId: String)
     fun rewrapDatabaseKey()
     fun verifyDatabaseIntegrity()
-    fun retireLegacyMaterial()
 }
