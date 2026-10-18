@@ -126,8 +126,11 @@ internal class AuthBoundVaultKey(
     @Throws(GeneralSecurityException::class, IOException::class)
     fun discardAbandonedSetup() {
         val keyStore = keyStoreProvider()
-        if (keyStore.containsAlias(alias) && !keyStore.deleteEntry(alias)) {
-            throw IOException("Could not discard abandoned vault setup key")
+        if (keyStore.containsAlias(alias)) {
+            keyStore.deleteEntry(alias)
+            if (keyStore.containsAlias(alias)) {
+                throw IOException("Could not discard abandoned vault setup key")
+            }
         }
     }
 
