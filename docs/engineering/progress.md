@@ -1,3 +1,32 @@
+## 2026-10-18 — Authentication-bound lock design and migration-state foundation
+
+### Research and source inspection
+- Reviewed Android's official BiometricPrompt/CryptoObject guidance and the Android Keystore auth-per-use key model, plus OWASP key-management and cryptographic-storage guidance.
+- Confirmed the current app constructs repository/database dependencies before any auth gate and immediately lists documents; a biometric UI prompt alone would not gate the data path.
+- Confirmed document payloads are encrypted directly with a non-exportable Keystore key, so legacy ciphertext cannot be migrated by simply wrapping/exporting that key. Documents require decrypt/re-encrypt migration.
+- Confirmed SQLCipher uses a separately wrapped random database key; DB handles and SQLite sidecars need explicit lifecycle treatment.
+
+### Implemented
+- Added ADR-0003 proposing an auth-bound VEK/session design and documenting migration, fallback, lifecycle, accessibility, and verification gates.
+- Added docs/PHASE-12-AUTH-BOUND-VAULT-LOCK-PLAN.md with staged implementation and stop conditions.
+- Added VaultMigrationState as a pure immutable policy model with ordered document states, database-key migration and integrity gates, recovery pause/resume, and a legacy-retirement guard.
+- Added VaultMigrationStateTest for skipped steps, premature database migration, premature legacy retirement, verification requirements, recovery resume, duplicate IDs, and canonical UUID validation.
+
+### Verification boundary
+- This model is not yet a durable on-disk journal and is not wired to production migration. It cannot itself guarantee crash safety.
+- No biometric lock, authentication-bound key, document re-encryption, or SQLCipher rewrap has been implemented in this slice.
+- No weighted product-completion credit is added for this foundation. Keep the overall tracker at its existing estimate until end-to-end acceptance gates pass.
+- CI must pass on the latest source head before the model/test is considered verified. Device Keystore, BiometricPrompt, migration interruption, and physical-device tests remain required.
+
+### Next actions
+1. Run CI against this head and fix actual build/test failures.
+2. Implement and test a durable atomic migration journal using the model, including corruption and crash recovery.
+3. Finalize API-level/authenticator fallback matrix and review ADR-0003.
+4. Implement auth-per-use key/CryptoObject primitives and instrumented tests before wiring the UI.
+5. Implement per-document migration and SQLCipher wrapper migration; only then gate all repository actions behind the session.
+
+---
+
 ## 2026-10-18 — Phase 11 missing-key fail-closed hardening
 
 ### Research
