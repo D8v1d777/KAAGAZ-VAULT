@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">David — software builder</title>
+  <desc id="desc">A minimal deep-ink and evergreen-teal banner with geometric rings and a focus on privacy-minded software and human-centred engineering.</desc>
+  <defs>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#F7F5EF" stroke-opacity=".055" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#172B2A"/>
+      <stop offset="1" stop-color="#203F3C"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="320" rx="28" fill="url(#field)"/>
+  <rect width="1200" height="320" rx="28" fill="url(#grid)"/>
+  <circle cx="1000" cy="160" r="124" fill="none" stroke="#246B67" stroke-width="2"/>
+  <circle cx="1000" cy="160" r="91" fill="none" stroke="#D6A65D" stroke-opacity=".8" stroke-width="1.5"/>
+  <circle cx="1000" cy="160" r="58" fill="#246B67" fill-opacity=".28" stroke="#78AAA2" stroke-width="1.5"/>
+  <path d="M876 160H1124M1000 36V284" stroke="#F7F5EF" stroke-opacity=".15" stroke-width="1"/>
+  <circle cx="1000" cy="36" r="5" fill="#D6A65D"/>
+  <circle cx="1124" cy="160" r="5" fill="#78AAA2"/>
+  <path d="M66 66H112" stroke="#D6A65D" stroke-width="4" stroke-linecap="round"/>
+  <text x="66" y="126" fill="#F7F5EF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="4">SOFTWARE BUILDER</text>
+  <text x="62" y="190" fill="#F7F5EF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="54" font-weight="750" letter-spacing="-1.5">DAVID</text>
+  <text x="66" y="226" fill="#A9C9C2" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="500">D8v1d777</text>
+  <text x="66" y="272" fill="#F7F5EF" fill-opacity=".78" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" font-weight="400">Privacy-minded systems · Human-centred engineering</text>
+  <path d="M66 294H294" stroke="#246B67" stroke-width="3" stroke-linecap="round"/>
+</svg>
