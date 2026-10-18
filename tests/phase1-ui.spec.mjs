@@ -87,9 +87,11 @@ test("slash shortcut focuses search and mobile layout avoids horizontal overflow
   await expect(page.getByRole("button", { name: "Filter by Health" })).toBeAttached();
 });
 
-test("axe accessibility scan reports no WCAG A/AA violations on the initial dashboard", async ({ page }) => {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
+test("axe accessibility scan reports no WCAG A/AA violations on desktop or mobile", async ({ page }) => {
+  const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
+  const desktop = await new AxeBuilder({ page }).withTags(tags).analyze();
+  expect(desktop.violations, "Desktop violations: " + JSON.stringify(desktop.violations, null, 2)).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobile = await new AxeBuilder({ page }).withTags(tags).analyze();
+  expect(mobile.violations, "Mobile violations: " + JSON.stringify(mobile.violations, null, 2)).toEqual([]);
 });
