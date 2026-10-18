@@ -2,6 +2,7 @@ package com.kaagazvault.security
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import java.security.GeneralSecurityException
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -17,8 +18,18 @@ internal fun interface DocumentKeyProvider {
     fun getOrCreateKey(): SecretKey
 }
 
+/** Raised when encrypted data exists but its Keystore key is missing. */
+internal class MissingEncryptionKeyException : GeneralSecurityException(
+    "Encryption key is missing; existing encrypted data was preserved"
+)
+
+internal fun ensureNewKeyAllowed(hasExistingProtectedData: Boolean) {
+    if (hasExistingProtectedData) throw MissingEncryptionKeyException()
+}
+
 internal class AndroidKeystoreDocumentKeyProvider(
-    private val alias: String = DEFAULT_ALIAS
+    private val alias: String = DEFAULT_ALIAS,
+    private val hasExistingProtectedData: () -> Boolean = { false }
 ) : DocumentKeyProvider {
 
     override fun getOrCreateKey(): SecretKey {
@@ -28,6 +39,10 @@ internal class AndroidKeystoreDocumentKeyProvider(
             return existing as? SecretKey
                 ?: throw IllegalStateException("Stored document key has an unexpected type")
         }
+
+        // Never create a replacement key over ciphertext encrypted with a missing key.
+        // The caller supplies a conservative check for data protected by this alias.
+        ensureNewKeyAllowed(hasExistingProtectedData())
 
         val generator = KeyGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_AES,

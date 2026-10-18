@@ -64,7 +64,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val store = EncryptedDocumentStore(
             java.io.File(filesDir, "encrypted_documents"),
-            AndroidKeystoreDocumentKeyProvider()
+            AndroidKeystoreDocumentKeyProvider(
+                hasExistingProtectedData = {
+                    java.io.File(filesDir, "encrypted_documents")
+                        .listFiles()
+                        ?.any { it.name.endsWith(".kgv") || it.name.endsWith(".backup") } == true
+                }
+            )
         )
         val provider = VaultDatabaseProvider(applicationContext)
         databaseProvider = provider

@@ -23,7 +23,7 @@ KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text 
 - FOSS core must remain offline. Do not add INTERNET permission, analytics, ads, cloud OCR, or network AI dependencies.
 - Do not store real Aadhaar/PAN IDs, prescriptions, medical records, personal documents, secrets, or credentials in the repository.
 - OCR/PDF text is untrusted evidence. It must remain editable and reviewable; do not turn uncertain medical text into medication instructions or automatic actions.
-- Document payloads and metadata/search are encrypted at rest in the implemented paths, but recovery/rotation, biometric app lock, reminders, export controls, PDF edge cases, and device-level leakage review remain incomplete.
+- Document payloads and metadata/search have encrypted-at-rest implementation paths. The missing-key fail-closed guard passed configured CI at commit 54a0ce2. The newer migration-state model is awaiting CI; the auth-bound key migration, biometric app lock, recovery/rotation, reminders, export controls, and device-level leakage review remain incomplete.
 - File deletion is not guaranteed secure erasure. The app is not release-approved.
 
 ## Current project status
@@ -35,7 +35,7 @@ KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text 
 - Phase 6 PDFium/Kotlin toolchain update: CI is pending/failing until the latest compatibility correction is verified.
 - Draft PRs: [Phase 3](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/3), [Phase 4](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/4), [Phase 5](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/5). No PR has been merged.
 
-See [engineering progress](docs/engineering/progress.md), [weighted completion tracker](docs/engineering/product-completion.md), [quality gates](docs/engineering/quality-gates.md), and [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md). The human/AI reviewer report is maintained in Notion.
+See [engineering progress](docs/engineering/progress.md), [weighted completion tracker](docs/engineering/product-completion.md), [quality gates](docs/engineering/quality-gates.md), [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md), [ADR-0002 missing-key fail-closed policy](docs/engineering/decisions/ADR-0002-missing-key-fail-closed.md), and [ADR-0003 auth-bound vault session proposal](docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md). The [Phase 12 auth-bound lock plan](docs/PHASE-12-AUTH-BOUND-VAULT-LOCK-PLAN.md) defines migration and verification gates. The human/AI reviewer report is maintained in Notion.
 
 ## Toolchain
 

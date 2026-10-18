@@ -1,3 +1,62 @@
+## 2026-10-18 — Authentication-bound lock design and migration-state foundation
+
+### Research and source inspection
+- Reviewed Android's official BiometricPrompt/CryptoObject guidance and the Android Keystore auth-per-use key model, plus OWASP key-management and cryptographic-storage guidance.
+- Confirmed the current app constructs repository/database dependencies before any auth gate and immediately lists documents; a biometric UI prompt alone would not gate the data path.
+- Confirmed document payloads are encrypted directly with a non-exportable Keystore key, so legacy ciphertext cannot be migrated by simply wrapping/exporting that key. Documents require decrypt/re-encrypt migration.
+- Confirmed SQLCipher uses a separately wrapped random database key; DB handles and SQLite sidecars need explicit lifecycle treatment.
+
+### Implemented
+- Added ADR-0003 proposing an auth-bound VEK/session design and documenting migration, fallback, lifecycle, accessibility, and verification gates.
+- Added docs/PHASE-12-AUTH-BOUND-VAULT-LOCK-PLAN.md with staged implementation and stop conditions.
+- Added VaultMigrationState as a pure immutable policy model with ordered document states, database-key migration and integrity gates, recovery pause/resume, and a legacy-retirement guard.
+- Added VaultMigrationStateTest for skipped steps, premature database migration, premature legacy retirement, verification requirements, recovery resume, duplicate IDs, and canonical UUID validation.
+
+### Verification boundary
+- This model is not yet a durable on-disk journal and is not wired to production migration. It cannot itself guarantee crash safety.
+- No biometric lock, authentication-bound key, document re-encryption, or SQLCipher rewrap has been implemented in this slice.
+- No weighted product-completion credit is added for this foundation. Keep the overall tracker at its existing estimate until end-to-end acceptance gates pass.
+- CI must pass on the latest source head before the model/test is considered verified. Device Keystore, BiometricPrompt, migration interruption, and physical-device tests remain required.
+
+### Next actions
+1. Run CI against this head and fix actual build/test failures.
+2. Implement and test a durable atomic migration journal using the model, including corruption and crash recovery.
+3. Finalize API-level/authenticator fallback matrix and review ADR-0003.
+4. Implement auth-per-use key/CryptoObject primitives and instrumented tests before wiring the UI.
+5. Implement per-document migration and SQLCipher wrapper migration; only then gate all repository actions behind the session.
+
+---
+
+## 2026-10-18 — Phase 11 missing-key fail-closed hardening
+
+### Research
+- Re-read the repository engineering contract and the Android, privacy/security, secure-storage/cryptography, testing-quality, implementation-quality, and accessibility/performance skills.
+- Reviewed the Android Developers biometric-authentication guidance, including its distinction between an app-level BiometricPrompt and a Keystore key configured for authentication-per-use. This change does not claim to implement the latter.
+- Reviewed OWASP Key Management guidance: key lifecycle and recovery must fail closed and must not silently replace lost key material.
+
+### Implemented on phase/11-auth-bound-vault-lock
+- Updated AndroidKeystoreDocumentKeyProvider to refuse first-time key creation when its caller reports protected data already exists, raising MissingEncryptionKeyException.
+- Wired the document payload store to check existing encrypted payloads and replacement backups before creating a missing document key.
+- Wired DatabaseKeyManager to check for an existing wrapped database key, database file, and SQLite WAL/journal/shared-memory sidecars before creating a missing wrapping key.
+- Added MissingEncryptionKeyPolicyTest for the pure allow/deny policy boundary.
+- Added ADR-0002-missing-key-fail-closed.md with the decision, limitations, and verification gates.
+
+### Verification status
+- Source edits and documentation are committed. Android CI run [39129650660](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39129650660) completed successfully on commit `54a0ce2897fa4aeeeab896066c34adfffd290211`.
+- CI completed the offline manifest helper tests, `./gradlew --no-daemon clean assembleDebug assembleRelease testDebugUnitTest lint`, and the merged-manifest policy gate. This verifies the CI build/test/lint tasks at that commit; it is not physical-device or security-review evidence.
+- No Android Keystore alias-deletion test, SQLCipher recovery test, physical-device test, or independent security review was performed.
+- The guard depends on an accurate caller-supplied protected-data predicate. It prevents a specific silent-replacement path but does not recover a missing key.
+- This change does not add an authentication-bound Keystore key, biometric app lock, automatic relock, FLAG_SECURE validation, key rotation, or recovery mechanism.
+
+### Next actions
+1. Open/update a draft PR so the Android CI workflow runs against this branch.
+2. Resolve any compilation/test/lint failures based on actual logs.
+3. Add instrumented tests for missing Keystore aliases with existing document ciphertext and wrapped SQLCipher keys.
+4. Design the auth-bound lock and data/key migration as a separate reviewed change; do not just add a cosmetic biometric prompt.
+5. Update weighted progress only after verification evidence exists.
+
+---
+
 ## 2026-10-10 — Phase 9 reproducible build and artifact-level offline gate
 
 ### Research and decisions
