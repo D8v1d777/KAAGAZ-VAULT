@@ -129,7 +129,11 @@ If end-to-end encryption is required, separately design client-side encryption, 
 | ADR-006 | No public object URLs; access only after authorization | Required invariant | No planned exception for sensitive docs |
 | ADR-007 | Recovery includes binary objects, not only database | Required invariant | Do not waive without explicit risk acceptance |
 
-## 9. Phase 3 acceptance gates
+## 9. E2EE architecture decision
+
+The product owner selected end-to-end encryption. The managed-encryption baseline described above is superseded for document contents. Use the dedicated [E2EE architecture specification](E2EE-ARCHITECTURE.md). The service must not possess decryption keys; encrypted metadata, key recovery, multi-device access, browser-delivery risks and specialist review are required. This is a design decision, not an implementation claim.
+
+## 10. Phase 3 acceptance gates
 - Reproducible migrations and tested schema constraints.
 - RLS grants/policies have allow-and-deny tests for two users and signed-out clients.
 - Private bucket and object ownership/CRUD policies are tested.
@@ -139,7 +143,7 @@ If end-to-end encryption is required, separately design client-side encryption, 
 - Database and binary objects can be restored and reconciled.
 - Owner approves user model, encryption mode, formats, region, budget and retention.
 
-## 10. Official references
+## 11. Official references
 - Supabase RLS: https://supabase.com/docs/guides/database/postgres/row-level-security
 - Supabase secure data: https://supabase.com/docs/guides/database/secure-data
 - Supabase Storage access control: https://supabase.com/docs/guides/storage/security/access-control
