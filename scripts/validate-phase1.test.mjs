@@ -37,8 +37,8 @@ test("mobile navigation keeps accessible names when visual labels are hidden", (
   for (const label of ["All documents", "Recently added", "Favourites", "Identity", "Finance", "Health", "Home and property", "Work and education"]) {
     assert.ok(html.includes(label), "Expected accessible label: " + label);
   }
-  assert.match(html, /aria-label="Increase text size"/);
-  assert.match(html, /aria-label="Help and guidance"/);
+  assert.match(html, /aria-label="Aa \+, increase text size"/);
+  assert.match(html, /aria-label="\?, help and guidance"/);
 });
 
 test("primary muted text colors meet 4.5:1 against their intended light surfaces", () => {
