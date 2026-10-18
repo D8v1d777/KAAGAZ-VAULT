@@ -42,3 +42,10 @@ A custom SVG hero banner and a GitHub profile README concept are included for re
 The current phase ledger distinguishes historical CI-backed implementation slices from phases that have actually passed end-to-end release acceptance. The overall weighted product estimate remains **35%**; Phase 12 is still active and Phase 10–11 gates remain open.
 
 **[Open the whole-project phase audit →](WHOLE-PROJECT-PHASE-AUDIT.md)**
+
+
+## Migration coordinator foundation
+
+The new coordinator is an orchestration/test foundation only. Its backend has not been wired to actual document encryption or SQLCipher operations; the session gate and device-level recovery evidence remain open.
+
+**[Open the migration coordinator status →](PHASE-12-MIGRATION-COORDINATOR-STATUS.md)**
