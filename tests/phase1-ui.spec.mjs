@@ -95,3 +95,17 @@ test("axe accessibility scan reports no WCAG A/AA violations on desktop or mobil
   const mobile = await new AxeBuilder({ page }).withTags(tags).analyze();
   expect(mobile.violations, "Mobile violations: " + JSON.stringify(mobile.violations, null, 2)).toEqual([]);
 });
+
+test("Phase 2 visual report renders its architecture, progress, and approval gate with no axe A/AA violations", async ({ page }) => {
+  const reportUrl = "file://" + path.resolve(here, "../docs/phase-2-report.html");
+  await page.goto(reportUrl);
+  await expect(page).toHaveTitle("Kaagaz Vault — Phase 2 Report");
+  await expect(page.getByRole("heading", { name: "Architecture report" })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Overall project progress" })).toHaveAttribute("aria-valuenow", "33");
+  await expect(page.getByRole("heading", { name: "Proposed architecture" })).toBeVisible();
+  await expect(page.getByText("Owner approval required before Phase 3")).toBeVisible();
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(results.violations, "Report violations: " + JSON.stringify(results.violations, null, 2)).toEqual([]);
+});
