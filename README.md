@@ -34,6 +34,8 @@ Passing automated scans does not prove complete WCAG conformance. Manual keyboar
 - [UX research and accessibility decisions](docs/UX-RESEARCH.md)
 - [Architecture and security proposal](docs/ARCHITECTURE.md)
 - [Phased delivery plan and acceptance checklist](docs/PHASE-PLAN.md)
+- [End-to-end encryption architecture](docs/E2EE-ARCHITECTURE.md)
+- [Human-centered security and UX evidence review](docs/RESEARCH-EVIDENCE.md)
 - [Phase 2 architecture and data-flow report](docs/PHASE-2-REPORT.md)
 - [Visual Phase 2 report dashboard](docs/phase-2-report.html)
 
