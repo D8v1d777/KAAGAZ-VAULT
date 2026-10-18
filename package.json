@@ -6,7 +6,8 @@
   "scripts": {
     "test:static": "node --test scripts/validate-phase1.test.mjs",
     "test:ui": "playwright test",
-    "test": "npm run test:static && npm run test:ui"
+    "test": "npm run test:static && npm run test:docs && npm run test:ui",
+    "test:docs": "node --test scripts/validate-e2ee-docs.test.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
