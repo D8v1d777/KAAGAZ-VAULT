@@ -29,7 +29,7 @@ The current app encrypts document payloads with an Android Keystore key and sepa
 | Threat model and migration ADR | Draft decision record and implementation plan | 100% drafted |
 | Migration state policy | Immutable state model + JVM test source | 100% authored |
 | Durable journal | Versioned bounded snapshot + recovery logic + expanded test source on code PR | 100% authored; CI pending |
-| Auth-per-use wrapping primitive | Kotlin source authored on code PR; not integrated or device-tested | 100% authored; verification pending |
+| Auth-per-use wrapping + wrapped-key persistence | Kotlin source and JVM persistence tests authored; not integrated or device-tested | 100% authored; verification pending |
 | Production migration runner | Not implemented | 0% |
 | Repository/session gate | Not implemented | 0% |
 | Physical-device and crash/power-loss verification | Not performed | 0% |
@@ -79,9 +79,10 @@ If a key, journal, ciphertext, document identifier, or integrity check is missin
 
 ## 04 — Journal design and limits
 
-The journal snapshot is bounded and versioned. It stores migration phase, opaque canonical document UUIDs, per-document progress, database-key migration flags, and recovery phase. It does **not** store keys, document names, OCR text, plaintext, or document ciphertext. The code PR also adds an auth-per-use Android Keystore AES-GCM primitive that wraps a random 256-bit VEK; the same cipher instance must be passed through `BiometricPrompt.CryptoObject`.
+The journal snapshot is bounded and versioned. It stores migration phase, opaque canonical document UUIDs, per-document progress, database-key migration flags, and recovery phase. It does **not** store keys, document names, OCR text, plaintext, or document ciphertext. The code PR also adds an auth-per-use Android Keystore AES-GCM primitive that wraps a random 256-bit VEK, plus create-once wrapped-key persistence; the same cipher instance must be passed through `BiometricPrompt.CryptoObject`. These are source-level foundations, not a complete or integrated lock.
 
 - File contents are synced before publication.
+- The separate wrapped-VEK store is create-once and refuses replacement; it stores only the IV + authenticated ciphertext/tag envelope.
 - A backup is retained while replacing the primary snapshot.
 - Recovery prefers a valid primary, then a valid backup; ambiguous corruption fails closed.
 - A pending file is accepted only when it represents an interrupted first write.
