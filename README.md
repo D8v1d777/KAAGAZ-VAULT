@@ -16,14 +16,14 @@ KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text 
 - User-initiated CameraX capture with in-memory JPEG handling and direct encrypted import.
 - Bounded PDF text extraction/OCR prototype using in-memory PDF bytes, one page at a time, with strict page/pixel/text limits.
 
-**These are implemented code paths, not a claim of release readiness.** The current PDFium/Kotlin toolchain update is awaiting CI verification. CameraX and SQLCipher branches have passing CI at their recorded commits, but no physical-device camera/OCR tests or on-device database leakage tests have been run.
+**These are implemented code paths, not a claim of release readiness.** The current migration-coordinator head passed configured CI run [#299](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144069929) at commit `6291594886eb6f6fb03c644797afc1217adb90e6`. This verifies the configured build, unit-test, lint, and offline-manifest gates on that commit; no physical-device camera/OCR tests or on-device database leakage tests have been run.
 
 ## Privacy and security boundaries
 
 - FOSS core must remain offline. Do not add INTERNET permission, analytics, ads, cloud OCR, or network AI dependencies.
 - Do not store real Aadhaar/PAN IDs, prescriptions, medical records, personal documents, secrets, or credentials in the repository.
 - OCR/PDF text is untrusted evidence. It must remain editable and reviewable; do not turn uncertain medical text into medication instructions or automatic actions.
-- Document payloads and metadata/search have encrypted-at-rest implementation paths. The missing-key fail-closed guard passed configured CI at commit 54a0ce2. The newer migration-state model is awaiting CI; the auth-bound key migration, biometric app lock, recovery/rotation, reminders, export controls, and device-level leakage review remain incomplete.
+- Document payloads and metadata/search have encrypted-at-rest implementation paths. The missing-key fail-closed guard passed configured CI at commit 54a0ce2. The migration-state model and coordinator pass configured CI on the recorded head; however, the auth-bound key migration, biometric app lock, recovery/rotation, reminders, export controls, and device-level leakage review remain incomplete.
 - File deletion is not guaranteed secure erasure. The app is not release-approved.
 
 ## Current project status
@@ -32,7 +32,7 @@ KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text 
 - Phase 3 encrypted import + image OCR CI: [passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38030021406).
 - Phase 4 SQLCipher/search CI: [passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38030642290).
 - Phase 5 CameraX CI: [passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38031637413).
-- Phase 6 PDFium/Kotlin toolchain update: CI is pending/failing until the latest compatibility correction is verified.
+- Phase 12 migration coordinator: [CI #299 passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144069929) on commit `6291594886eb6f6fb03c644797afc1217adb90e6`.
 - Draft PRs: [Phase 3](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/3), [Phase 4](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/4), [Phase 5](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/5). No PR has been merged.
 
 See [engineering progress](docs/engineering/progress.md), [weighted completion tracker](docs/engineering/product-completion.md), [quality gates](docs/engineering/quality-gates.md), [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md), [ADR-0002 missing-key fail-closed policy](docs/engineering/decisions/ADR-0002-missing-key-fail-closed.md), and [ADR-0003 auth-bound vault session proposal](docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md). The [Phase 12 auth-bound lock plan](docs/PHASE-12-AUTH-BOUND-VAULT-LOCK-PLAN.md) defines migration and verification gates. The human/AI reviewer report is maintained in Notion.
@@ -46,7 +46,7 @@ See [engineering progress](docs/engineering/progress.md), [weighted completion t
 - compileSdk/targetSdk 36; provisional minSdk 24
 - Compose BOM 2026.04.01
 
-A checked-in Gradle Wrapper is still pending. The project's own license has not yet been selected; do not assume the repository grants permission to reuse or redistribute project code.
+The Gradle Wrapper is checked in. CI uses `./gradlew --no-daemon clean assembleDebug assembleRelease testDebugUnitTest lint`, preceded by `python3 -m unittest discover -s scripts -p 'test_*.py'` and followed by `python3 scripts/check_offline_manifest.py`. The project's own license has not yet been selected; do not assume the repository grants permission to reuse or redistribute project code.
 
 ## Engineering workflow
 
