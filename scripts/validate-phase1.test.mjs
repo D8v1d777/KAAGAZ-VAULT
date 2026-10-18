@@ -50,7 +50,7 @@ test("primary muted text colors meet 4.5:1 against their intended light surfaces
 });
 
 test("interactive targets and document actions have minimum dimensions", () => {
-  assert.match(css, /height:44px;cursor:pointer;font-size:14px/);
+  assert.match(css, /min-height:44px;cursor:pointer;font-size:14px/);
   assert.match(css, /min-width:44px;min-height:44px/);
   assert.match(css, /\.details\{[^}]*min-height:32px/);
   assert.match(html, /id="gridView" aria-pressed="true"/);
