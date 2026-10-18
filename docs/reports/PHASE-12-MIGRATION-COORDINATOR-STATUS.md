@@ -2,7 +2,7 @@
 
 **Updated:** 18 October 2026  
 **Code PR:** [#12](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/12)  
-**Latest CI for coordinator tests:** [Run #298](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144064741) — pending at the time of this report.
+**Latest CI for coordinator tests:** [Run #299](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144069929) — pending at the time of this report.
 
 ## Delivered in this slice
 
@@ -30,7 +30,7 @@ The journal's CRC32 detects accidental corruption, not malicious tampering. The 
 
 ## Verification and next gates
 
-1. Require CI run #298 to pass on the exact latest code head before counting the coordinator tests as verified.
+1. Require CI run #299 to pass on the exact latest code head before counting the coordinator tests as verified.
 2. Review and test retry/idempotency for every real backend operation.
 3. Implement the VEK-backed document adapter with ciphertext-only staging, authenticated verification, atomic publication, and source retention.
 4. Implement SQLCipher key rewrap and test database reopen plus WAL/journal/shared-memory handling.
