@@ -16,7 +16,7 @@ The SQLCipher database key is separately stored as a wrapped random key under no
 - The key provider accepts a conservative callback indicating whether protected data already exists for that alias.
 - If the alias is missing and protected data exists, key creation is refused with a typed MissingEncryptionKeyException.
 - The document store checks for existing encrypted .kgv payloads and replacement backups before permitting initial key creation.
-- The database wrapper provider checks for an existing wrapped database key or database file before permitting initial key creation.
+- The database wrapper provider checks for an existing wrapped database key, database file, or SQLite WAL/journal/shared-memory sidecar before permitting initial key creation.
 - Existing aliases continue to be used as before. Keystore errors and authentication/invalidation errors are not caught and converted into new key creation.
 - A missing key is a recovery/support condition. Do not delete encrypted files, regenerate keys, or imply recovery succeeded.
 
