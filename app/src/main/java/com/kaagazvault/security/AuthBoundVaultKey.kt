@@ -158,10 +158,10 @@ internal class AuthBoundVaultKey(
         return generator.generateKey()
     }
 
-    private fun loadAndroidKeyStore(): KeyStore =
-        KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
-
     private companion object {
+        fun loadAndroidKeyStore(): KeyStore =
+            KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+
         const val DEFAULT_ALIAS = "kaagaz_vault_auth_bound_vek_wrap_v1"
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
