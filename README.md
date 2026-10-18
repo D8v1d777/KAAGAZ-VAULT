@@ -38,6 +38,7 @@ Passing automated scans does not prove complete WCAG conformance. Manual keyboar
 - [Human-centered security and UX evidence review](docs/RESEARCH-EVIDENCE.md)
 - [Phase 2 architecture and data-flow report](docs/PHASE-2-REPORT.md)
 - [Visual Phase 2 report dashboard](docs/phase-2-report.html)
+- [Phase 3 E2EE execution plan and release gates](docs/PHASE-3-E2EE-EXECUTION-PLAN.md)
 
 ## Design principles
 
