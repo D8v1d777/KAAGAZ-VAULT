@@ -50,13 +50,19 @@ internal class AuthBoundVaultKey(
         authenticatedCipher: Cipher,
         persistWrappedKey: (ByteArray) -> Unit
     ): ByteArray {
-        require(authenticatedCipher.opmode == Cipher.ENCRYPT_MODE) { "Setup cipher is not in encrypt mode" }
+        require(authenticatedCipher.algorithm == TRANSFORMATION) { "Unexpected setup cipher" }
+        val iv = authenticatedCipher.iv
+        if (iv == null || iv.size != IV_BYTES) throw GeneralSecurityException("Setup cipher has an invalid IV")
         val vek = ByteArray(VEK_BYTES).also(random::nextBytes)
         try {
-            val wrapped = authenticatedCipher.doFinal(vek)
+            val ciphertext = authenticatedCipher.doFinal(vek)
+            val wrapped = ByteArray(iv.size + ciphertext.size)
+            System.arraycopy(iv, 0, wrapped, 0, iv.size)
+            System.arraycopy(ciphertext, 0, wrapped, iv.size, ciphertext.size)
             try {
                 persistWrappedKey(wrapped)
             } finally {
+                ciphertext.fill(0)
                 wrapped.fill(0)
             }
             return vek
@@ -93,7 +99,7 @@ internal class AuthBoundVaultKey(
      */
     @Throws(GeneralSecurityException::class, IOException::class)
     fun finishUnlock(authenticatedCipher: Cipher, wrappedKey: ByteArray): ByteArray {
-        require(authenticatedCipher.opmode == Cipher.DECRYPT_MODE) { "Unlock cipher is not in decrypt mode" }
+        require(authenticatedCipher.algorithm == TRANSFORMATION) { "Unexpected unlock cipher" }
         val ciphertext = wrappedKey.copyOfRange(IV_BYTES, wrappedKey.size)
         val vek = try {
             authenticatedCipher.doFinal(ciphertext)
