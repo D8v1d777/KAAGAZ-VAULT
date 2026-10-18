@@ -13,8 +13,8 @@
 - Added ADR-0002-missing-key-fail-closed.md with the decision, limitations, and verification gates.
 
 ### Verification status
-- Source edits and documentation are committed. The test source was added but has **not yet been run** in this environment.
-- This branch has no PR-triggered CI result for the new commits at the time of this entry. Build, JVM tests, lint, and offline-manifest checks remain pending until CI runs.
+- Source edits and documentation are committed. Android CI run [39129650660](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39129650660) completed successfully on commit `54a0ce2897fa4aeeeab896066c34adfffd290211`.
+- CI completed the offline manifest helper tests, `./gradlew --no-daemon clean assembleDebug assembleRelease testDebugUnitTest lint`, and the merged-manifest policy gate. This verifies the CI build/test/lint tasks at that commit; it is not physical-device or security-review evidence.
 - No Android Keystore alias-deletion test, SQLCipher recovery test, physical-device test, or independent security review was performed.
 - The guard depends on an accurate caller-supplied protected-data predicate. It prevents a specific silent-replacement path but does not recover a missing key.
 - This change does not add an authentication-bound Keystore key, biometric app lock, automatic relock, FLAG_SECURE validation, key rotation, or recovery mechanism.
