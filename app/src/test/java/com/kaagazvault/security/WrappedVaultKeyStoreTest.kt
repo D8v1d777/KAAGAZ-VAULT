@@ -71,6 +71,22 @@ class WrappedVaultKeyStoreTest {
         }
     }
 
+
+    @Test
+    fun setupRetryRecoversPendingKeyInsteadOfReplacingIt() {
+        withDirectory { directory ->
+            val file = File(directory, "wrapped-vek.bin")
+            val store = WrappedVaultKeyStore(file)
+            store.saveIfAbsent(wrapped)
+            assertTrue(file.renameTo(File(directory, ".wrapped-vek.bin.new")))
+
+            assertThrows(IOException::class.java) {
+                store.saveIfAbsent(ByteArray(60) { 9 })
+            }
+            assertArrayEquals(wrapped, file.readBytes())
+        }
+    }
+
     private fun withDirectory(block: (File) -> Unit) {
         val directory = Files.createTempDirectory("kgv-wrapped-key-test").toFile()
         try {
