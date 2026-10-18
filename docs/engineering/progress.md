@@ -1,3 +1,12 @@
+## Latest CI follow-up — 2026-10-18
+
+- Android CI run **39142203706** (run #285) was created for the latest code-branch head `2358efabbe6dddcaaf6f650d1775afca83e4af23`.
+- Status was **pending** at last check; no passing result is claimed.
+- Earlier runs #271 and #279 are not evidence for the latest head. Run #283 covers the preceding head and was still in progress.
+- The latest code changes must pass debug/release builds, JVM tests, lint, and the offline-manifest gate before being considered verified.
+
+---
+
 ## CI status follow-up — 2026-10-18
 
 - A new Android CI run **39142020544** (run #279) has been created for code-branch head `14d79481784cd58c7de4dee4215f8761ae440dea`.
