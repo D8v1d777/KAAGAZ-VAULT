@@ -76,6 +76,15 @@ test("inline JavaScript parses without syntax errors", () => {
   assert.doesNotThrow(() => new vm.Script(js, { filename: "index.html:inline-script" }));
 });
 
+test("recent sorting follows insertion order and detail favourite updates do not reopen the modal", () => {
+  assert.match(js, /docsData\.indexOf\(a\)-docsData\.indexOf\(b\)/);
+  assert.match(js, /\$\("#detailStar"\)\.onclick=\(\)=>\{toggle\(d\.id\);\$\("#detailStar"\)\.textContent=/);
+  assert.match(html, /<dialog id="detail" aria-labelledby="detailTitle">/);
+  assert.match(html, /<dialog id="helpDialog" aria-labelledby="helpTitle">/);
+  assert.match(html, /<p>Documents shown<\/p>/);
+  assert.match(html, /<p>Storage status<\/p><strong>Not connected<\/strong>/);
+});
+
 test("the prototype does not import third-party runtime scripts or styles", () => {
   assert.doesNotMatch(html, /<script[^>]+src=/i);
   assert.doesNotMatch(html, /<link[^>]+rel=["']stylesheet["'][^>]+href=["']https?:/i);
