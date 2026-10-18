@@ -14,7 +14,7 @@ test("shows illustrative sample documents and prototype status", async ({ page }
   await expect(page.getByRole("heading", { name: "Everything important, in one place." })).toBeVisible();
   await expect(page.locator(".card")).toHaveCount(6);
   await expect(page.getByText("Prototype preview: sample records are illustrative.")).toBeVisible();
-  await expect(page.getByText("Not connected")).toBeVisible();
+  await expect(page.getByText("Not connected", { exact: true })).toBeVisible();
 });
 
 test("search filters documents by name", async ({ page }) => {
