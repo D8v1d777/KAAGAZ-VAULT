@@ -35,3 +35,10 @@ A custom SVG hero banner and a GitHub profile README concept are included for re
 5. **Acceptance gates** — evidence required before increasing completion ratios or making security claims.
 
 > Documentation lives on `docs/auth-bound-migration-design`. Application implementation and tests live on `feat/durable-vault-migration-journal`. Keep the branches separate until their reviews are complete.
+
+
+## Whole-project phase audit
+
+The current phase ledger distinguishes historical CI-backed implementation slices from phases that have actually passed end-to-end release acceptance. The overall weighted product estimate remains **35%**; Phase 12 is still active and Phase 10–11 gates remain open.
+
+**[Open the whole-project phase audit →](WHOLE-PROJECT-PHASE-AUDIT.md)**
