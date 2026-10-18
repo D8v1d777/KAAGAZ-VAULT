@@ -8,7 +8,7 @@
 ### Implemented on phase/11-auth-bound-vault-lock
 - Updated AndroidKeystoreDocumentKeyProvider to refuse first-time key creation when its caller reports protected data already exists, raising MissingEncryptionKeyException.
 - Wired the document payload store to check existing encrypted payloads and replacement backups before creating a missing document key.
-- Wired DatabaseKeyManager to check for an existing wrapped database key or database file before creating a missing wrapping key.
+- Wired DatabaseKeyManager to check for an existing wrapped database key, database file, and SQLite WAL/journal/shared-memory sidecars before creating a missing wrapping key.
 - Added MissingEncryptionKeyPolicyTest for the pure allow/deny policy boundary.
 - Added ADR-0002-missing-key-fail-closed.md with the decision, limitations, and verification gates.
 
