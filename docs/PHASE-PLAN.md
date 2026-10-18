@@ -4,7 +4,7 @@ Progress is reported against verifiable repository changes, not estimates of cod
 
 | Phase | Deliverable | Status |
 |---|---|---|
-| 1. Research and UI foundation | Accessibility-informed design notes, responsive dashboard, search, category filters, favourites, grid/list views, local file-selection preview | In progress |
+| 1. Research and UI foundation | Accessibility-informed design notes, responsive dashboard, search, category filters, favourites, grid/list views, local file-selection preview | Implemented; validation pending |
 | 2. Architecture and data flow | Framework/runtime audit, persistence decision, document lifecycle, auth and threat model | Not started |
 | 3. Functional storage | Upload pipeline, metadata persistence, previews/downloads, rename/delete flows | Not started |
 | 4. Security | Authz, encryption, validation, safe file handling, backup/recovery | Not started |
@@ -14,10 +14,10 @@ Progress is reported against verifiable repository changes, not estimates of cod
 ## Phase 1 acceptance checklist
 - [x] Repository found and README inspected.
 - [x] Evidence-led UX/accessibility principles documented.
-- [ ] Responsive UI prototype implemented.
-- [ ] Search, filters, favourites, layout controls and larger text implemented.
-- [ ] File selection clearly labelled as local preview only.
-- [ ] Run browser functional checks and accessibility scan.
+- [x] Responsive UI prototype implemented in index.html.
+- [x] Search, category filters, favourites, sorting, grid/list controls and larger text implemented.
+- [x] File selection clearly labelled as local preview only; no upload is claimed.
+- [ ] Run browser-based functional checks and automated accessibility scan.
 - [ ] Confirm actual framework/backend direction before production storage.
 
 ## Guardrails
