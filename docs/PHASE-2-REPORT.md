@@ -62,3 +62,7 @@ Implement migrations, managed auth, owner-scoped RLS policies, private bucket po
 - [OWASP File Upload Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html)
 - [OWASP ASVS](https://owasp.org/projects/asvs)
 - [W3C Older Users and Web Accessibility](https://www.w3.org/WAI/older-users/)
+
+
+## E2EE decision update
+The product owner selected end-to-end encryption. The initial managed-encryption recommendation is superseded for document contents. See [E2EE architecture](E2EE-ARCHITECTURE.md) and [separate evidence review](RESEARCH-EVIDENCE.md). This remains design work; cryptography is not implemented and no E2EE security claim is warranted yet.
