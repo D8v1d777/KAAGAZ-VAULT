@@ -19,9 +19,9 @@ internal fun interface DocumentKeyProvider {
 }
 
 /** Raised when encrypted data exists but its Keystore key is missing. */
-internal class MissingEncryptionKeyException : GeneralSecurityException(
-    "Encryption key is missing; existing encrypted data was preserved"
-)
+internal class MissingEncryptionKeyException(
+    message: String = "Encryption key is missing; existing encrypted data was preserved"
+) : GeneralSecurityException(message)
 
 internal fun ensureNewKeyAllowed(hasExistingProtectedData: Boolean) {
     if (hasExistingProtectedData) throw MissingEncryptionKeyException()
