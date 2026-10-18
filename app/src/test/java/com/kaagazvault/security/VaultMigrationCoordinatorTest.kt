@@ -67,7 +67,6 @@ class VaultMigrationCoordinatorTest {
         override fun publishDocument(documentId: String) = record("publish:$documentId")
         override fun rewrapDatabaseKey() = record("rewrap")
         override fun verifyDatabaseIntegrity() = record("integrity")
-        override fun retireLegacyMaterial() = record("retire")
     }
 
     private fun withDirectory(block: (File) -> Unit) {
