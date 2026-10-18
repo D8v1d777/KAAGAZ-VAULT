@@ -17,7 +17,7 @@
 - **8 implementation slices (Phases 2–9) have historical CI-pass evidence on a tested commit or descendant stack.** That proves configured build/test/lint/offline-manifest gates on those specific tested heads, not device validation or release acceptance.
 - **Fully release-accepted phases: 0 of 11 in this native delivery track.** The acceptance policy includes current-head verification, integration, device/storage lifecycle checks, accessibility review, and security review. Those gates remain open.
 - **Current active work: Phase 12 foundations, built on unresolved Phase 10–11 lock/key-loss work.** Do not start a new numbered phase yet.
-- Current Phase 12 CI run [#290](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39143321668) was **in progress at audit time** after fixing a Kotlin compile failure in `AuthBoundVaultKey.kt`. Do not count it as passing until its final result is successful.
+- Earlier Phase 12 CI run [#290](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39143321668) passed on commit `adc79268b139baa22cde099e786f9960854d9150`. New coordinator/backend/test commits are under CI run [#298](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144064741), which was pending at this update; do not treat the new coordinator tests as verified until that run finishes green.
 
 ## Phase ledger
 
@@ -33,7 +33,7 @@
 | 9 | Reproducible build/offline artifact gates | 100% authored | [CI #247](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38071432529) passed on its tested commit; reproducibility and release artifact review remain open | Implementation slice done; release gate open |
 | 10 | Sensitive surfaces / lock boundary | Incomplete | Full repository, database, background-work, lifecycle, and post-lock plaintext enforcement are not proven end to end | **Pending — do not advance** |
 | 11 | Key-loss hardening and auth-bound migration state | Partial | [CI #260](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39141049786) passed on an earlier tested head; migration and auth-bound VEK are not integrated | **Pending — do not advance** |
-| 12 | Durable journal and auth-bound VEK foundations | Partial | PR [#12](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/12); latest CI #290 is in progress at audit time. No production migration coordinator, VEK-backed payload store, SQLCipher rewrap, session gate, or device tests | **Active, incomplete** |
+| 12 | Durable journal, auth-bound VEK, coordinator foundation | Partial | PR [#12](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/12) now includes a resumable coordinator/backend contract and recovery tests. CI [#298](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144064741) is pending. Coordinator is not wired to real document/SQLCipher adapters; no VEK-backed payload integration, session gate, or device tests | **Active, incomplete** |
 
 **Interpretation:** “100% authored” means the planned implementation slice has been authored and has historical CI evidence where cited. It does not mean the whole app phase is release-ready. The strict release-accepted count remains **0/11** until the required end-to-end and device/security gates are met.
 
@@ -41,7 +41,7 @@
 
 1. Fix any remaining build/test/lint errors on the latest Phase 12 head; require a green current-head CI run.
 2. Add device/instrumentation evidence for auth-per-use Keystore keys, biometric cancellation, key invalidation, and authenticated cryptographic use.
-3. Implement an idempotent migration coordinator that journals before side effects, verifies each re-encrypted document, handles process death and SQLite sidecars, and preserves legacy recovery material.
+3. Validate the new coordinator on CI and review its idempotency contract; then implement real document/SQLCipher adapters that preserve legacy recovery material and handle process death/SQLite sidecars.
 4. Integrate VEK-backed payload encryption and SQLCipher key rewrap only after migration recovery behavior is proven.
 5. Enforce one session gate across repository reads/writes, OCR, search, camera, reminders, and background work; prove no plaintext can be returned after lock completion.
 6. Test physical devices, large text/screen readers, recovery UX, storage leakage, and obtain independent security review.
