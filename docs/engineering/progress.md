@@ -1,3 +1,27 @@
+## 2026-10-18 — Phase 12 durable journal foundation and separated design report
+
+### Research and implementation boundaries
+- Reused the prior review of Android BiometricPrompt/CryptoObject, Android Keystore auth-per-use keys, and OWASP key-management / cryptographic-storage guidance.
+- Added a durable migration journal implementation and JVM test source on the separate code branch `feat/durable-vault-migration-journal`; draft PR #12 targets `phase/11-auth-bound-vault-lock`.
+- The journal format is versioned and bounded, stores only opaque UUIDs and migration flags, syncs file contents before publication, retains a backup during replacement, and fails closed on ambiguous corruption.
+- The journal is not wired into a production migration runner. CRC32 detects accidental corruption only; it does not authenticate the journal against a local attacker. Portable directory metadata durability and physical-device crash behavior remain unverified.
+- Created the polished Phase 12 report and reports index on `docs/auth-bound-migration-design`; no documentation files were added to the code branch or main branch.
+
+### Verification status
+- JVM tests have been authored for round-trip, interrupted initial publication, backup recovery, invalid journal, empty directory, and impossible completion state.
+- CI status for PR #12 was not yet available at the time of this entry. Do not count source-authored tests as passing tests.
+- No auth-per-use key, CryptoObject unlock flow, production migration runner, session enforcement, or device test is claimed.
+- Keep the weighted product estimate at 35% until the end-to-end gates in `docs/reports/PHASE-12-AUTH-BOUND-VAULT-LOCK-REPORT.md` pass.
+
+### Next cycle
+1. Inspect PR #12 CI jobs and fix actual failures before adding more scope.
+2. Add tests for version mismatch, truncation, checksum mismatch, oversized state, and all recovery crash points.
+3. Implement auth-per-use Keystore wrapping with CryptoObject-backed operations and API-level fallback tests.
+4. Build an idempotent migration coordinator, then wire session checks into repository/background work.
+5. Complete physical-device, accessibility, storage-sidecar, and independent security-review gates before making security claims.
+
+---
+
 ## 2026-10-18 — Authentication-bound lock design and migration-state foundation
 
 ### Research and source inspection
