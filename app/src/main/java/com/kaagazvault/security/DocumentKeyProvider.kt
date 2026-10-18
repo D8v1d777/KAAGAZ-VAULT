@@ -23,6 +23,10 @@ internal class MissingEncryptionKeyException : GeneralSecurityException(
     "Encryption key is missing; existing encrypted data was preserved"
 )
 
+internal fun ensureNewKeyAllowed(hasExistingProtectedData: Boolean) {
+    if (hasExistingProtectedData) throw MissingEncryptionKeyException()
+}
+
 internal class AndroidKeystoreDocumentKeyProvider(
     private val alias: String = DEFAULT_ALIAS,
     private val hasExistingProtectedData: () -> Boolean = { false }
@@ -38,7 +42,7 @@ internal class AndroidKeystoreDocumentKeyProvider(
 
         // Never create a replacement key over ciphertext encrypted with a missing key.
         // The caller supplies a conservative check for data protected by this alias.
-        if (hasExistingProtectedData()) throw MissingEncryptionKeyException()
+        ensureNewKeyAllowed(hasExistingProtectedData())
 
         val generator = KeyGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_AES,
