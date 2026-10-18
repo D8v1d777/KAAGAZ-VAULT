@@ -57,3 +57,7 @@ The UI is a front-end concept using illustrative sample metadata. Selecting a fi
 4. Security: access control, encryption at rest/in transit, secure sessions, safe file handling, backups and recovery.
 5. Quality: automated tests, accessibility audit, performance profiling, cross-browser and mobile testing.
 6. Validation: moderated usability tests across the target age range; prioritize observed friction over aesthetic assumptions.
+
+
+## New evidence-to-design research
+See [RESEARCH-EVIDENCE.md](RESEARCH-EVIDENCE.md) for a separate source review and traceable design recommendations covering W3C older-user accessibility, WCAG 2.2, NIST security fatigue, human-centered cybersecurity, key recovery UX and ethical product psychology. It distinguishes published evidence from hypotheses requiring user testing.
