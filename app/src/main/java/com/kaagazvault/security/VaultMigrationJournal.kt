@@ -1,5 +1,6 @@
 package com.kaagazvault.security
 
+import android.os.Build
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -7,6 +8,8 @@ import java.io.DataOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
 import java.nio.charset.StandardCharsets
 import java.util.UUID
 import java.util.zip.CRC32
@@ -264,8 +267,16 @@ internal class VaultMigrationJournal(private val directory: File) {
     }
 
     private fun syncDirectoryBestEffort() {
-        // FileDescriptor.sync() is used for file contents. Portable JVM APIs cannot reliably
-        // fsync a directory on every supported Android/filesystem combination.
+        // Directory channels are not available on every supported Android API/filesystem.
+        // Try on API 26+ and retain the documented fallback when the filesystem refuses it.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        try {
+            FileChannel.open(directory.toPath(), StandardOpenOption.READ).use { channel ->
+                channel.force(true)
+            }
+        } catch (_: Exception) {
+            // File contents were already synced. Directory metadata durability remains best-effort.
+        }
     }
 
     private companion object {
