@@ -1,3 +1,11 @@
+## CI status follow-up — 2026-10-18
+
+- A new Android CI run **39142020544** (run #279) has been created for code-branch head `14d79481784cd58c7de4dee4215f8761ae440dea`.
+- Its status was **pending** at the time of this update. The earlier run 39141614449 was cancelled during Gradle build/test work after branch updates.
+- Do not count the new journal/key-store tests as passing until run #279 completes its build, unit tests, lint, and offline-manifest gate.
+
+---
+
 ## 2026-10-18 — Phase 12 durable journal and auth-bound key primitive
 
 ### Research and implementation boundaries
