@@ -89,6 +89,49 @@ class VaultMigrationJournalTest {
         }
     }
 
+
+    @Test
+    fun rejectsChecksumMismatch() {
+        withDirectory { directory ->
+            val journal = VaultMigrationJournal(directory)
+            journal.save(VaultMigrationState().begin())
+            val primary = File(directory, "vault-migration.journal")
+            val bytes = primary.readBytes()
+            bytes[bytes.lastIndex - 1] = (bytes[bytes.lastIndex - 1].toInt() xor 0x01).toByte()
+            primary.writeBytes(bytes)
+
+            assertThrows(IOException::class.java) { journal.load() }
+        }
+    }
+
+    @Test
+    fun rejectsUnsupportedVersionAndTruncatedSnapshots() {
+        withDirectory { directory ->
+            val journal = VaultMigrationJournal(directory)
+            journal.save(VaultMigrationState().begin())
+            val primary = File(directory, "vault-migration.journal")
+            val valid = primary.readBytes()
+
+            val unsupported = valid.copyOf()
+            unsupported[7] = (unsupported[7].toInt() + 1).toByte()
+            primary.writeBytes(unsupported)
+            assertThrows(IOException::class.java) { journal.load() }
+
+            primary.writeBytes(valid.copyOf(valid.size - 2))
+            assertThrows(IOException::class.java) { journal.load() }
+        }
+    }
+
+    @Test
+    fun rejectsOversizedJournalBeforeParsing() {
+        withDirectory { directory ->
+            val primary = File(directory, "vault-migration.journal")
+            primary.writeBytes(ByteArray(1_000_001))
+
+            assertThrows(IOException::class.java) { VaultMigrationJournal(directory).load() }
+        }
+    }
+
     private fun withDirectory(block: (File) -> Unit) {
         val directory = Files.createTempDirectory("kgv-migration-journal-test").toFile()
         try {
