@@ -205,24 +205,27 @@ internal class VaultMigrationJournal(private val directory: File) {
         } else if (state.recoveryPhase != null) {
             throw IOException("Recovery phase set while migration is not paused")
         }
+        val effectivePhase = if (state.phase == VaultMigrationPhase.RECOVERY_REQUIRED) {
+            state.recoveryPhase ?: throw IOException("Missing recovery phase")
+        } else state.phase
+
         if (state.databaseIntegrityVerified && (!state.databaseKeyRewrapped ||
-                state.phase !in setOf(VaultMigrationPhase.VERIFYING, VaultMigrationPhase.COMPLETE))) {
+                effectivePhase !in setOf(VaultMigrationPhase.VERIFYING, VaultMigrationPhase.COMPLETE))) {
             throw IOException("Database verification flags are inconsistent")
         }
-        if (state.databaseKeyRewrapped && state.phase !in setOf(
+        if (state.databaseKeyRewrapped && effectivePhase !in setOf(
                 VaultMigrationPhase.MIGRATING_DATABASE_KEY,
                 VaultMigrationPhase.VERIFYING,
-                VaultMigrationPhase.COMPLETE,
-                VaultMigrationPhase.RECOVERY_REQUIRED
+                VaultMigrationPhase.COMPLETE
             )) {
             throw IOException("Database-key migration flag is inconsistent")
         }
-        if (state.phase == VaultMigrationPhase.COMPLETE &&
+        if (effectivePhase == VaultMigrationPhase.COMPLETE &&
             (state.documentSteps.values.any { it != DocumentMigrationStep.PUBLISHED } ||
                 !state.databaseKeyRewrapped || !state.databaseIntegrityVerified)) {
             throw IOException("Completed migration is missing verification evidence")
         }
-        if (state.phase in setOf(VaultMigrationPhase.MIGRATING_DATABASE_KEY, VaultMigrationPhase.VERIFYING,
+        if (effectivePhase in setOf(VaultMigrationPhase.MIGRATING_DATABASE_KEY, VaultMigrationPhase.VERIFYING,
                 VaultMigrationPhase.COMPLETE) &&
             state.documentSteps.values.any { it != DocumentMigrationStep.PUBLISHED }) {
             throw IOException("Database migration started before documents were published")
