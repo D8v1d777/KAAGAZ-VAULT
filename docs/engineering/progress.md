@@ -479,3 +479,21 @@ This log records repository work and evidence. It distinguishes documentation ch
 - CI run #285 failed because `AuthBoundVaultKey.kt` used an instance helper in a constructor default argument (`loadAndroidKeyStore` unresolved). Moved that helper into the companion object in commit `adc79268b139baa22cde099e786f9960854d9150`.
 - Fresh Android CI run [#290](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39143321668) was in progress at the time of this update. The fix is not considered verified until this run finishes green.
 - Next: resolve any CI errors, then implement the migration coordinator and enforce the unlocked-session boundary; keep the docs branch separate from application code and main.
+
+
+---
+
+## 2026-10-18 — Migration coordinator foundation added
+
+- Added a resumable coordinator and a backend adapter contract on the Phase 12 code branch. The coordinator records durable state snapshots, requires idempotent backend operations, verifies staged document ciphertext before publication, and records recovery state after failures.
+- Added JVM tests for a complete fake-backend run, interruption during publication followed by resume, and empty-vault database verification.
+- Safety boundary: this is not a production adapter. The current app's EncryptedDocumentStore / DocumentKeyProvider are not connected to the VEK, SQLCipher key rewrap is not wired, and repository/session enforcement is not implemented. Legacy cleanup is intentionally not automated pending device-level recovery review.
+- CI run [#290](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39143321668) passed on an earlier head. Latest coordinator/test head `6291594886eb6f6fb03c644797afc1217adb90e6` is being checked by [run #299](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144069929); it is still in progress at this update. No passing result is claimed for the new tests yet.
+- Added [Phase 12 migration coordinator status](../reports/PHASE-12-MIGRATION-COORDINATOR-STATUS.md) and updated the whole-project phase audit. Keep the overall weighted estimate at 35%; strict release-accepted phases remain 0/11.
+
+### Next actions
+1. Confirm run #299 on the exact latest head and fix failures from logs.
+2. Implement a real, idempotent VEK-backed document migration adapter with crash-safe staging/publication and legacy-source preservation.
+3. Integrate and verify SQLCipher key rewrap, including WAL/journal/shared-memory behavior.
+4. Implement a shared authenticated-session gate across repositories, OCR, search, camera, reminders, and background work.
+5. Add instrumentation/physical-device tests and accessibility/security review before changing phase acceptance ratios.
