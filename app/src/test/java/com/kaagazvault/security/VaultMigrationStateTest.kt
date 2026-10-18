@@ -9,10 +9,10 @@ import org.junit.Test
 class VaultMigrationStateTest {
     private val id = "123e4567-e89b-12d3-a456-426614174000"
 
-    private fun readyState(vararg ids: String = arrayOf(id)): VaultMigrationState =
+    private fun readyState(ids: List<String> = listOf(id)): VaultMigrationState =
         VaultMigrationState()
             .begin()
-            .beginDocumentMigration(ids.toList())
+            .beginDocumentMigration(ids)
 
     @Test
     fun migrationCannotSkipDocumentVerificationSteps() {
@@ -60,7 +60,7 @@ class VaultMigrationStateTest {
             VaultMigrationState().begin().beginDocumentMigration(listOf(id, id))
         }
         assertThrows(IllegalArgumentException::class.java) {
-            readyState("123E4567-E89B-12D3-A456-426614174000")
+            readyState(listOf("123E4567-E89B-12D3-A456-426614174000"))
         }
     }
 }
