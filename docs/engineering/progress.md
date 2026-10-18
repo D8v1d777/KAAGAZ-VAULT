@@ -1,24 +1,25 @@
-## 2026-10-18 — Phase 12 durable journal foundation and separated design report
+## 2026-10-18 — Phase 12 durable journal and auth-bound key primitive
 
 ### Research and implementation boundaries
-- Reused the prior review of Android BiometricPrompt/CryptoObject, Android Keystore auth-per-use keys, and OWASP key-management / cryptographic-storage guidance.
-- Added a durable migration journal implementation and JVM test source on the separate code branch `feat/durable-vault-migration-journal`; draft PR #12 targets `phase/11-auth-bound-vault-lock`.
-- The journal format is versioned and bounded, stores only opaque UUIDs and migration flags, syncs file contents before publication, retains a backup during replacement, and fails closed on ambiguous corruption.
-- The journal is not wired into a production migration runner. CRC32 detects accidental corruption only; it does not authenticate the journal against a local attacker. Portable directory metadata durability and physical-device crash behavior remain unverified.
-- Created the polished Phase 12 report and reports index on `docs/auth-bound-migration-design`; no documentation files were added to the code branch or main branch.
+- Rechecked official Android BiometricPrompt.CryptoObject and KeyGenParameterSpec guidance. Android documents CryptoObject as the route for authorizing auth-per-use keys, and the current API allows a zero-second auth timeout for per-use authorization: https://developer.android.com/reference/android/hardware/biometrics/BiometricPrompt.CryptoObject and https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder
+- Added `VaultMigrationJournal` and JVM test source on `feat/durable-vault-migration-journal` (PR #12). It uses a bounded/versioned snapshot, CRC32 accidental-corruption check, synced file contents, a backup during replacement, and conservative recovery behavior.
+- Expanded test source for round-trip, interrupted first publication, backup recovery, invalid primary, impossible completion, version mismatch, truncation, checksum mismatch, and size limit.
+- Added `AuthBoundVaultKey` source on the code branch. It generates an AES-GCM Android Keystore key requiring strong-biometric authentication per operation and wraps a random 256-bit VEK. The exact Cipher is intended to be passed via `BiometricPrompt.CryptoObject`; the wrapped blob contains IV + ciphertext/tag.
+- The key primitive is **not** connected to the current payload store, SQLCipher key, app UI, or repository access gate. It has no device instrumentation tests yet. Device-credential fallback needs a separately reviewed design; do not claim a complete lock or accessible fallback.
 
 ### Verification status
-- JVM tests have been authored for round-trip, interrupted initial publication, backup recovery, invalid journal, empty directory, and impossible completion state.
-- CI status for PR #12 was not yet available at the time of this entry. Do not count source-authored tests as passing tests.
-- No auth-per-use key, CryptoObject unlock flow, production migration runner, session enforcement, or device test is claimed.
-- Keep the weighted product estimate at 35% until the end-to-end gates in `docs/reports/PHASE-12-AUTH-BOUND-VAULT-LOCK-REPORT.md` pass.
+- The first PR CI run (39141614449) was cancelled while Gradle build/tests were in progress after additional branch commits. The connector did not expose a fresh run for the latest head at the time of this update.
+- Source-authored tests are not counted as passing. No build/test/lint pass is claimed for the latest branch head.
+- The journal's CRC32 is not an authenticity mechanism; portable directory metadata fsync and physical power-loss behavior remain unverified.
+- Keep the weighted product estimate at 35%. The report `docs/reports/PHASE-12-AUTH-BOUND-VAULT-LOCK-REPORT.md` has the design scorecard and acceptance gates.
 
 ### Next cycle
-1. Inspect PR #12 CI jobs and fix actual failures before adding more scope.
-2. Add tests for version mismatch, truncation, checksum mismatch, oversized state, and all recovery crash points.
-3. Implement auth-per-use Keystore wrapping with CryptoObject-backed operations and API-level fallback tests.
-4. Build an idempotent migration coordinator, then wire session checks into repository/background work.
-5. Complete physical-device, accessibility, storage-sidecar, and independent security-review gates before making security claims.
+1. Get a fresh CI run on PR #12 and fix actual compile/test/lint errors.
+2. Add instrumentation tests for auth-per-use Keystore operations, enrollment invalidation, prompt cancellation, and unauthenticated `doFinal`.
+3. Implement atomic wrapped-key persistence and an idempotent migration coordinator.
+4. Re-encrypt existing document payloads and rewrap SQLCipher only after recovery and sidecar behavior are verified.
+5. Add repository/session enforcement; only then build the unlock UI and relock lifecycle.
+6. Run device, accessibility, storage-leakage, and independent security-review gates.
 
 ---
 
