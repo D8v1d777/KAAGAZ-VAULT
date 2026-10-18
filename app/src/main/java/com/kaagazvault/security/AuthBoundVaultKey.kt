@@ -100,6 +100,9 @@ internal class AuthBoundVaultKey(
     @Throws(GeneralSecurityException::class, IOException::class)
     fun finishUnlock(authenticatedCipher: Cipher, wrappedKey: ByteArray): ByteArray {
         require(authenticatedCipher.algorithm == TRANSFORMATION) { "Unexpected unlock cipher" }
+        if (wrappedKey.size !in MIN_WRAPPED_KEY_BYTES..MAX_WRAPPED_KEY_BYTES) {
+            throw IOException("Wrapped vault key has an invalid size")
+        }
         val ciphertext = wrappedKey.copyOfRange(IV_BYTES, wrappedKey.size)
         val vek = try {
             authenticatedCipher.doFinal(ciphertext)
