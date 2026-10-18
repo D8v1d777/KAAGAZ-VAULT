@@ -466,3 +466,16 @@ This log records repository work and evidence. It distinguishes documentation ch
 - Refined `docs/reports/assets/profile-hero.svg` to include a 35% ring for the existing weighted Kaagaz Vault product estimate. The indicator is labelled as an estimate, not a security score.
 - Preserved the previous task-level ratios: migration-state model and journal foundations are 100% authored; auth-bound key and wrapped-key persistence foundations are 100% authored; production migration coordinator, repository/session enforcement, and physical-device/crash verification remain 0%.
 - These are draft assets on `docs/auth-bound-migration-design`, not changes to the live GitHub account profile. The username-named profile repository `D8v1d777/D8v1d777` is not present in the accessible repository list, and the available GitHub connector actions do not provide repository creation or direct profile editing.
+
+
+---
+
+## 2026-10-18 — Whole-project phase audit and Phase 12 CI fix
+
+- Added [whole-project phase audit](../reports/WHOLE-PROJECT-PHASE-AUDIT.md) with a phase-by-phase ledger and explicit separation between authored implementation, historical CI evidence, and release acceptance.
+- Native delivery track: Phases 2–9 have historical CI-pass evidence on the cited tested commits/descendant stacks. These are implementation-slice results, not proof of device or release acceptance.
+- Phases 10–12 remain incomplete. Do not advance to a new phase until the auth-bound lock, migration, and repository/session gates pass.
+- Preserved the overall weighted product estimate at **35%**. Do not use a simple phase count as the overall ratio.
+- CI run #285 failed because `AuthBoundVaultKey.kt` used an instance helper in a constructor default argument (`loadAndroidKeyStore` unresolved). Moved that helper into the companion object in commit `adc79268b139baa22cde099e786f9960854d9150`.
+- Fresh Android CI run [#290](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39143321668) was in progress at the time of this update. The fix is not considered verified until this run finishes green.
+- Next: resolve any CI errors, then implement the migration coordinator and enforce the unlocked-session boundary; keep the docs branch separate from application code and main.
