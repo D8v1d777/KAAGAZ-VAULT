@@ -39,7 +39,7 @@ test("favourites update the list and the count", async ({ page }) => {
 });
 
 test("sort toggle changes document order", async ({ page }) => {
-  await page.getByRole("button", { name: /Recently added/ }).click();
+  await page.locator("#sort").click();
   await expect(page.locator(".card h3").first()).toHaveText("Bank account details");
 });
 
