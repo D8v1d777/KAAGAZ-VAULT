@@ -125,7 +125,7 @@ internal data class VaultMigrationState(
         } catch (error: IllegalArgumentException) {
             throw IllegalArgumentException("Invalid document identifier", error)
         }
-        require(parsed.toString() == value.lowercase()) { "Non-canonical document identifier" }
+        require(parsed.toString() == value) { "Non-canonical document identifier" }
         return parsed.toString()
     }
 }
