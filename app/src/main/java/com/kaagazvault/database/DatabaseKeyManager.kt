@@ -16,7 +16,9 @@ import java.security.SecureRandom
 internal class DatabaseKeyManager(context: Context) {
     private val keyFile = File(context.noBackupFilesDir, WRAPPED_KEY_FILE)
     private val databaseFile = context.getDatabasePath(DATABASE_NAME)
-    private val wrapperKeyProvider = AndroidKeystoreDocumentKeyProvider(WRAPPING_KEY_ALIAS)
+    private val wrapperKeyProvider = AndroidKeystoreDocumentKeyProvider(WRAPPING_KEY_ALIAS) {
+        keyFile.exists() || databaseFile.exists()
+    }
     private val envelope = AesGcmEnvelope()
 
     @Synchronized
