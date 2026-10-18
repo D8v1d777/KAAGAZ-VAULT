@@ -20,6 +20,12 @@ A structured report covering the migration threat model, durable journal, target
 
 </details>
 
+## Profile presentation draft
+
+A custom SVG hero banner and a GitHub profile README concept are included for review. They are **not published** to the account profile because the username-named profile repository does not exist and the available GitHub actions cannot create repositories.
+
+**[Open the profile README draft →](GITHUB-PROFILE-README-DRAFT.md)**
+
 ## Reading guide
 
 1. **Decision and threat model** — why the current non-exportable document key requires document re-encryption rather than key export.
