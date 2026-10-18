@@ -2,7 +2,7 @@
 
 - A new Android CI run **39142020544** (run #279) has been created for code-branch head `14d79481784cd58c7de4dee4215f8761ae440dea`.
 - Its status was **pending** at the time of this update. The earlier run 39141614449 was cancelled during Gradle build/test work after branch updates.
-- Do not count the new journal/key-store tests as passing until run #279 completes its build, unit tests, lint, and offline-manifest gate.
+- Follow-up commits `13445df` and `13b3129` were pushed after run #279 was created, so run #279 does **not** cover the latest branch head. Do not count the latest journal/key-store tests as passing; a fresh run for the current head is required.
 
 ---
 
