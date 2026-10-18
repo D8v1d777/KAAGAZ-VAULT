@@ -27,8 +27,25 @@ Help people aged 20–90 store, locate, understand, and manage important documen
 - Test representative participants across ages and access needs; observe task completion, errors, time-on-task, and confidence.
 - Automated scans plus manual review; automated scans alone do not establish conformance.
 
+## Contrast and target-size review
+
+The sage/ivory palette was checked with the WCAG relative-luminance formula for these primary text pairs: #626f65 on white (5.28:1), #626f65 on #f6f7f4 (4.91:1), #53685a on #edf3e9 (5.32:1), #4d6b54 on #edf3e9 (5.24:1), and white on #28654f (6.85:1). These calculations cover selected CSS pairs only, not the full page or gradients. Other colors, icons, focus indicators, browser zoom and assistive-technology behavior still require manual review.
+
+The interface now retains accessible names on mobile navigation controls, gives key actions larger target dimensions, and includes a dependency-free Node test suite for syntax, selected contrast pairs, labels, and prototype boundaries. The file picker has a demo-only allowlist and 20 MB per-file limit; browser accept/extension checks are not security validation.
+
+## Phase 1 validation status
+- [x] Research and design rationale documented.
+- [x] Responsive CSS, visible focus, skip link, reduced-motion handling, and larger-text control implemented.
+- [x] Mobile navigation accessible names added.
+- [x] Primary muted text colors strengthened and selected contrast pairs covered by tests.
+- [x] File selection clearly labelled preview-only; unsupported extensions and files over 20 MB rejected by the demo.
+- [x] Dependency-free JavaScript syntax and static regression checks added.
+- [ ] GitHub Actions run passes on the branch.
+- [ ] Manual browser, screen-reader, zoom, and mobile checks completed.
+- [ ] Usability sessions conducted with participants across the target age range.
+
 ## Current prototype limitations
-The UI is a front-end concept using illustrative sample metadata. Selecting a file adds metadata to in-memory browser state only. It does not upload files, persist them after refresh, encrypt them, authenticate users, or connect to a backend. Sample documents are fictional examples.
+The UI is a front-end concept using illustrative sample metadata. Selecting a file adds metadata to in-memory browser state only. It does not upload files, persist them after refresh, encrypt them, authenticate users, or connect to a backend. The 20 MB limit and extension allowlist are demo-level UX guards only, not security controls. Sample documents are fictional examples.
 
 ## Next phases
 1. Foundation: accessible dashboard, responsive layout, search/filter/favourites, local preview interactions.
