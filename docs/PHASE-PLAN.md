@@ -5,7 +5,7 @@ Progress is reported against verifiable repository changes, not estimates of cod
 | Phase | Deliverable | Status |
 |---|---|---|
 | 1. Research and UI foundation | Accessibility-informed design notes, responsive dashboard, search, category filters, favourites, grid/list views, local file-selection preview | Implemented; validation pending |
-| 2. Architecture and data flow | Framework/runtime audit, persistence decision, document lifecycle, auth and threat model | Not started |
+| 2. Architecture and data flow | Framework/runtime audit, persistence decision, document lifecycle, auth and threat model | Proposal documented; product decisions pending |
 | 3. Functional storage | Upload pipeline, metadata persistence, previews/downloads, rename/delete flows | Not started |
 | 4. Security | Authz, encryption, validation, safe file handling, backup/recovery | Not started |
 | 5. Quality gates | Automated tests, accessibility checks, performance and device testing | Not started |
@@ -18,7 +18,8 @@ Progress is reported against verifiable repository changes, not estimates of cod
 - [x] Search, category filters, favourites, sorting, grid/list controls and larger text implemented.
 - [x] File selection clearly labelled as local preview only; no upload is claimed.
 - [ ] Run browser-based functional checks and automated accessibility scan.
-- [ ] Confirm actual framework/backend direction before production storage.
+- [x] Confirm original repository had no app framework or package manifest; document a backend proposal and security gates.
+- [ ] Confirm user model, end-to-end encryption expectations, supported file formats, and budget before locking in the backend.
 
 ## Guardrails
 - Never report the vault as secure until implementation has been reviewed and tested.
