@@ -456,3 +456,13 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Verify the final stable-SDK build configuration through GitHub Actions.
 2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
 3. Start the encrypted-storage prototype only after researching Android Keystore, SQLCipher, Room, and backup/key-lifecycle constraints; keep ADR-0001 Proposed until prototype evidence exists.
+
+
+---
+
+## 2026-10-18 — Profile presentation revision
+
+- Updated `docs/reports/GITHUB-PROFILE-README-DRAFT.md` with a more structured profile layout, project evidence scorecard, and explicit progress semantics.
+- Refined `docs/reports/assets/profile-hero.svg` to include a 35% ring for the existing weighted Kaagaz Vault product estimate. The indicator is labelled as an estimate, not a security score.
+- Preserved the previous task-level ratios: migration-state model and journal foundations are 100% authored; auth-bound key and wrapped-key persistence foundations are 100% authored; production migration coordinator, repository/session enforcement, and physical-device/crash verification remain 0%.
+- These are draft assets on `docs/auth-bound-migration-design`, not changes to the live GitHub account profile. The username-named profile repository `D8v1d777/D8v1d777` is not present in the accessible repository list, and the available GitHub connector actions do not provide repository creation or direct profile editing.
