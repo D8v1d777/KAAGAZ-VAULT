@@ -62,7 +62,7 @@ test("file selection is explicitly preview-only and rejects unsupported or overs
   assert.match(js, /const allowed=new Set\(\["PDF","PNG","JPG","JPEG","WEBP","DOC","DOCX","TXT"\]\)/);
   assert.match(js, /const maxBytes=20\*1024\*1024/);
   assert.match(js, /The file contents have not been read or uploaded/);
-  assert.match(html, /not uploaded, saved after refresh, or protected by a vault backend/);
+  assert.match(html, /nothing is uploaded, saved after refresh, or protected by a vault backend/);
 });
 
 test("user-controlled document strings are HTML-escaped before insertion", () => {
