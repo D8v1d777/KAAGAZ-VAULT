@@ -49,10 +49,14 @@ internal class WrappedVaultKeyStore(private val file: File) {
     @Throws(IOException::class)
     fun saveIfAbsent(wrappedKey: ByteArray) {
         validateSize(wrappedKey.size)
-        if (file.exists() || backup.exists()) {
-            throw IOException("Wrapped vault key already exists; replacement is forbidden")
+        if (file.exists() || backup.exists() || pending.exists()) {
+            // Resolve a previous interrupted first write before deciding whether setup is new.
+            // Never discard a pending wrapped key: it may be the only surviving copy.
+            loadOrNull()
+            if (file.exists() || backup.exists()) {
+                throw IOException("Wrapped vault key already exists; replacement is forbidden")
+            }
         }
-        if (pending.exists() && !pending.delete()) throw IOException("Could not clear stale wrapped-key write")
         FileOutputStream(pending).use { output ->
             output.write(wrappedKey)
             output.fd.sync()
