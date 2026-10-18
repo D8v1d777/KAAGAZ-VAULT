@@ -14,7 +14,7 @@ Progress is reported against defined acceptance criteria, not code volume. Phase
 | 5. Quality gates | Automated security/accessibility tests, performance, cross-browser/device testing | **0% — not started** |
 | 6. User validation | Moderated usability sessions across ages 20–90 and varied access needs | **0% — not started** |
 
-## E2EE is now a required product constraint
+## Immediate validation follow-through\n- [x] Add static regression tests for E2EE claims, key lifecycle, research traceability, progress gates, and report content.\n- [x] Extend CI to run the E2EE documentation tests and to trigger for the E2EE branch.\n- [ ] Confirm CI passes on the E2EE branch; connector cannot execute tests locally.\n\n## E2EE is now a required product constraint
 - [x] Document client-side encryption and server trust boundary.
 - [x] Document key hierarchy, encrypted metadata, recovery and device onboarding options.
 - [x] Document browser-delivery/supply-chain limitations.
