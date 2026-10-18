@@ -40,9 +40,12 @@ The interface now retains accessible names on mobile navigation controls, gives 
 - [x] Primary muted text colors strengthened and selected contrast pairs covered by tests.
 - [x] File selection clearly labelled preview-only; unsupported extensions and files over 20 MB rejected by the demo.
 - [x] Dependency-free JavaScript syntax and static regression checks added.
-- [ ] GitHub Actions run passes on the branch.
+- [x] GitHub Actions run passes on the branch: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39120914235
+- [x] Playwright interaction tests and axe WCAG A/AA scans pass at desktop and mobile viewports.
 - [ ] Manual browser, screen-reader, zoom, and mobile checks completed.
 - [ ] Usability sessions conducted with participants across the target age range.
+
+Manual screen-reader, keyboard-only, 200% zoom, cross-browser and participant usability testing remain necessary before claiming full WCAG conformance or release readiness. These are tracked in the quality and user-validation phases.
 
 ## Current prototype limitations
 The UI is a front-end concept using illustrative sample metadata. Selecting a file adds metadata to in-memory browser state only. It does not upload files, persist them after refresh, encrypt them, authenticate users, or connect to a backend. The 20 MB limit and extension allowlist are demo-level UX guards only, not security controls. Sample documents are fictional examples.
