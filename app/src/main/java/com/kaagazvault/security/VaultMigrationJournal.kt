@@ -92,6 +92,10 @@ internal class VaultMigrationJournal(private val directory: File) {
         validate(state)
         val bytes = encode(state)
         if (bytes.size > MAX_JOURNAL_BYTES) throw IOException("Migration journal exceeds size limit")
+
+        // Resolve an interrupted prior transaction before starting another. Never overwrite a
+        // known-good backup merely because the primary path exists but contains invalid bytes.
+        if (primary.exists() || backup.exists() || pending.exists()) load()
         if (pending.exists() && !pending.delete()) throw IOException("Could not clear stale pending journal")
 
         FileOutputStream(pending).use { output ->
