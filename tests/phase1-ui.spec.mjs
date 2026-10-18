@@ -33,7 +33,7 @@ test("favourites update the list and the count", async ({ page }) => {
   await expect(page.locator("#starTotal")).toHaveText("2");
   await page.getByRole("button", { name: "Remove from favourites: Passport" }).click();
   await expect(page.locator("#starTotal")).toHaveText("1");
-  await page.getByRole("button", { name: "Favourites" }).click();
+  await page.locator('[data-view="starred"]').click();
   await expect(page.locator(".card")).toHaveCount(1);
   await expect(page.locator(".card h3")).toHaveText("Health insurance");
 });
