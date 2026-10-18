@@ -1,5 +1,7 @@
 <div align="center">
 
+![Custom profile banner](assets/profile-hero.svg)
+
 # David · D8v1d777
 
 ### Software builder · Privacy-minded systems · Human-centred engineering
