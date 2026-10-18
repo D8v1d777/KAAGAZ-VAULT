@@ -1,3 +1,33 @@
+## 2026-10-18 — Phase 11 missing-key fail-closed hardening
+
+### Research
+- Re-read the repository engineering contract and the Android, privacy/security, secure-storage/cryptography, testing-quality, implementation-quality, and accessibility/performance skills.
+- Reviewed the Android Developers biometric-authentication guidance, including its distinction between an app-level BiometricPrompt and a Keystore key configured for authentication-per-use. This change does not claim to implement the latter.
+- Reviewed OWASP Key Management guidance: key lifecycle and recovery must fail closed and must not silently replace lost key material.
+
+### Implemented on phase/11-auth-bound-vault-lock
+- Updated AndroidKeystoreDocumentKeyProvider to refuse first-time key creation when its caller reports protected data already exists, raising MissingEncryptionKeyException.
+- Wired the document payload store to check existing encrypted payloads and replacement backups before creating a missing document key.
+- Wired DatabaseKeyManager to check for an existing wrapped database key or database file before creating a missing wrapping key.
+- Added MissingEncryptionKeyPolicyTest for the pure allow/deny policy boundary.
+- Added ADR-0002-missing-key-fail-closed.md with the decision, limitations, and verification gates.
+
+### Verification status
+- Source edits and documentation are committed. The test source was added but has **not yet been run** in this environment.
+- This branch has no PR-triggered CI result for the new commits at the time of this entry. Build, JVM tests, lint, and offline-manifest checks remain pending until CI runs.
+- No Android Keystore alias-deletion test, SQLCipher recovery test, physical-device test, or independent security review was performed.
+- The guard depends on an accurate caller-supplied protected-data predicate. It prevents a specific silent-replacement path but does not recover a missing key.
+- This change does not add an authentication-bound Keystore key, biometric app lock, automatic relock, FLAG_SECURE validation, key rotation, or recovery mechanism.
+
+### Next actions
+1. Open/update a draft PR so the Android CI workflow runs against this branch.
+2. Resolve any compilation/test/lint failures based on actual logs.
+3. Add instrumented tests for missing Keystore aliases with existing document ciphertext and wrapped SQLCipher keys.
+4. Design the auth-bound lock and data/key migration as a separate reviewed change; do not just add a cosmetic biometric prompt.
+5. Update weighted progress only after verification evidence exists.
+
+---
+
 ## 2026-10-10 — Phase 9 reproducible build and artifact-level offline gate
 
 ### Research and decisions
