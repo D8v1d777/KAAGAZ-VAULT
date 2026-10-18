@@ -2,7 +2,7 @@ name: Phase 1 UI checks
 
 on:
   push:
-    branches: [feat/accessible-vault-foundation]
+    branches: [feat/accessible-vault-foundation, feat/e2ee-and-human-centered-design]
   pull_request:
     branches: [main]
 
