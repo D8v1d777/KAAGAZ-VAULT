@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">David — privacy-minded software builder</title>
+  <desc id="desc">A refined deep-ink and evergreen-teal banner with geometric rings, a warm amber accent, and a 35 percent weighted product-progress indicator for Kaagaz Vault.</desc>
+  <defs>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#F7F5EF" stroke-opacity=".055" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="field" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#172B2A"/>
+      <stop offset=".58" stop-color="#203F3C"/>
+      <stop offset="1" stop-color="#142624"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#78AAA2"/>
+      <stop offset="1" stop-color="#246B67"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="320" rx="28" fill="url(#field)"/>
+  <rect width="1200" height="320" rx="28" fill="url(#grid)"/>
+  <path d="M0 276C180 230 280 330 440 282S700 250 830 320H0Z" fill="#246B67" fill-opacity=".12"/>
+  <path d="M66 66H112" stroke="#D6A65D" stroke-width="4" stroke-linecap="round"/>
+  <text x="66" y="119" fill="#A9C9C2" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="650" letter-spacing="3.5">SOFTWARE BUILDER</text>
+  <text x="62" y="181" fill="#F7F5EF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="54" font-weight="750" letter-spacing="-1.5">DAVID</text>
+  <text x="66" y="216" fill="#A9C9C2" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="19" font-weight="550">D8v1d777</text>
+  <text x="66" y="259" fill="#F7F5EF" fill-opacity=".86" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" font-weight="450">Privacy-minded systems · Human-centred engineering</text>
+  <path d="M66 284H294" stroke="#246B67" stroke-width="3" stroke-linecap="round"/>
+  <path d="M66 284H146" stroke="#D6A65D" stroke-width="3" stroke-linecap="round"/>
+  <g transform="translate(986 160)">
+    <circle r="104" fill="#172B2A" fill-opacity=".38" stroke="#F7F5EF" stroke-opacity=".08" stroke-width="1"/>
+    <circle r="84" fill="none" stroke="#F7F5EF" stroke-opacity=".13" stroke-width="8"/>
+    <circle r="84" fill="none" stroke="url(#accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="184.7 527.8" transform="rotate(-90)"/>
+    <circle r="66" fill="none" stroke="#D6A65D" stroke-opacity=".5" stroke-width="1.3"/>
+    <circle cx="0" cy="-84" r="4" fill="#D6A65D"/>
+    <text x="0" y="-4" text-anchor="middle" fill="#F7F5EF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="39" font-weight="750" letter-spacing="-1">35%</text>
+    <text x="0" y="22" text-anchor="middle" fill="#A9C9C2" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="11" font-weight="650" letter-spacing="1.8">KAAGAZ VAULT</text>
+    <text x="0" y="42" text-anchor="middle" fill="#F7F5EF" fill-opacity=".65" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" font-weight="500" letter-spacing="1">WEIGHTED ESTIMATE</text>
+    <path d="M-118 0H-104M104 0H118M0 -118V-104M0 104V118" stroke="#F7F5EF" stroke-opacity=".18" stroke-width="1"/>
+    <circle cx="104" cy="0" r="4" fill="#78AAA2"/>
+  </g>
+  <text x="1104" y="294" text-anchor="end" fill="#F7F5EF" fill-opacity=".52" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="10" letter-spacing="1.6">BUILD · TEST · VERIFY</text>
+</svg>

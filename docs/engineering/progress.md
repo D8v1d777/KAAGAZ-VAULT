@@ -1,3 +1,45 @@
+## Latest CI follow-up — 2026-10-18
+
+- Android CI run **39142203706** (run #285) was created for the latest code-branch head `2358efabbe6dddcaaf6f650d1775afca83e4af23`.
+- Status was **pending** at last check; no passing result is claimed.
+- Earlier runs #271 and #279 are not evidence for the latest head. Run #283 covers the preceding head and was still in progress.
+- The latest code changes must pass debug/release builds, JVM tests, lint, and the offline-manifest gate before being considered verified.
+
+---
+
+## CI status follow-up — 2026-10-18
+
+- A new Android CI run **39142020544** (run #279) has been created for code-branch head `14d79481784cd58c7de4dee4215f8761ae440dea`.
+- Its status was **pending** at the time of this update. The earlier run 39141614449 was cancelled during Gradle build/test work after branch updates.
+- Follow-up commits `13445df` and `13b3129` were pushed after run #279 was created, so run #279 does **not** cover the latest branch head. Do not count the latest journal/key-store tests as passing; a fresh run for the current head is required.
+
+---
+
+## 2026-10-18 — Phase 12 durable journal and auth-bound key primitive
+
+### Research and implementation boundaries
+- Rechecked official Android BiometricPrompt.CryptoObject and KeyGenParameterSpec guidance. Android documents CryptoObject as the route for authorizing auth-per-use keys, and the current API allows a zero-second auth timeout for per-use authorization: https://developer.android.com/reference/android/hardware/biometrics/BiometricPrompt.CryptoObject and https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder
+- Added `VaultMigrationJournal` and JVM test source on `feat/durable-vault-migration-journal` (PR #12). It uses a bounded/versioned snapshot, CRC32 accidental-corruption check, synced file contents, a backup during replacement, and conservative recovery behavior.
+- Expanded test source for round-trip, interrupted first publication, backup recovery, invalid primary, impossible completion, version mismatch, truncation, checksum mismatch, and size limit.
+- Added `AuthBoundVaultKey` and `WrappedVaultKeyStore` source on the code branch. The first generates an AES-GCM Android Keystore key requiring strong-biometric authentication per operation and wraps a random 256-bit VEK; the second persists only the IV + ciphertext/tag envelope and refuses to overwrite existing key material. JVM tests cover wrapped-key persistence, malformed sizes, no-overwrite, and interrupted first publication.
+- The key primitive is **not** connected to the current payload store, SQLCipher key, app UI, or repository access gate. It has no device instrumentation tests yet. Device-credential fallback needs a separately reviewed design; do not claim a complete lock or accessible fallback.
+
+### Verification status
+- The first PR CI run (39141614449) was cancelled while Gradle build/tests were in progress after additional branch commits. The connector did not expose a fresh run for the latest head at the time of this update.
+- Source-authored tests are not counted as passing. No build/test/lint pass is claimed for the latest branch head.
+- The journal's CRC32 is not an authenticity mechanism; portable directory metadata fsync and physical power-loss behavior remain unverified.
+- Keep the weighted product estimate at 35%. The report `docs/reports/PHASE-12-AUTH-BOUND-VAULT-LOCK-REPORT.md` has the design scorecard and acceptance gates.
+
+### Next cycle
+1. Get a fresh CI run on PR #12 and fix actual compile/test/lint errors.
+2. Add instrumentation tests for auth-per-use Keystore operations, enrollment invalidation, prompt cancellation, and unauthenticated `doFinal`.
+3. Implement atomic wrapped-key persistence and an idempotent migration coordinator.
+4. Re-encrypt existing document payloads and rewrap SQLCipher only after recovery and sidecar behavior are verified.
+5. Add repository/session enforcement; only then build the unlock UI and relock lifecycle.
+6. Run device, accessibility, storage-leakage, and independent security-review gates.
+
+---
+
 ## 2026-10-18 — Authentication-bound lock design and migration-state foundation
 
 ### Research and source inspection
@@ -414,3 +456,44 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Verify the final stable-SDK build configuration through GitHub Actions.
 2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
 3. Start the encrypted-storage prototype only after researching Android Keystore, SQLCipher, Room, and backup/key-lifecycle constraints; keep ADR-0001 Proposed until prototype evidence exists.
+
+
+---
+
+## 2026-10-18 — Profile presentation revision
+
+- Updated `docs/reports/GITHUB-PROFILE-README-DRAFT.md` with a more structured profile layout, project evidence scorecard, and explicit progress semantics.
+- Refined `docs/reports/assets/profile-hero.svg` to include a 35% ring for the existing weighted Kaagaz Vault product estimate. The indicator is labelled as an estimate, not a security score.
+- Preserved the previous task-level ratios: migration-state model and journal foundations are 100% authored; auth-bound key and wrapped-key persistence foundations are 100% authored; production migration coordinator, repository/session enforcement, and physical-device/crash verification remain 0%.
+- These are draft assets on `docs/auth-bound-migration-design`, not changes to the live GitHub account profile. The username-named profile repository `D8v1d777/D8v1d777` is not present in the accessible repository list, and the available GitHub connector actions do not provide repository creation or direct profile editing.
+
+
+---
+
+## 2026-10-18 — Whole-project phase audit and Phase 12 CI fix
+
+- Added [whole-project phase audit](../reports/WHOLE-PROJECT-PHASE-AUDIT.md) with a phase-by-phase ledger and explicit separation between authored implementation, historical CI evidence, and release acceptance.
+- Native delivery track: Phases 2–9 have historical CI-pass evidence on the cited tested commits/descendant stacks. These are implementation-slice results, not proof of device or release acceptance.
+- Phases 10–12 remain incomplete. Do not advance to a new phase until the auth-bound lock, migration, and repository/session gates pass.
+- Preserved the overall weighted product estimate at **35%**. Do not use a simple phase count as the overall ratio.
+- CI run #285 failed because `AuthBoundVaultKey.kt` used an instance helper in a constructor default argument (`loadAndroidKeyStore` unresolved). Moved that helper into the companion object in commit `adc79268b139baa22cde099e786f9960854d9150`.
+- Fresh Android CI run [#290](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39143321668) was in progress at the time of this update. The fix is not considered verified until this run finishes green.
+- Next: resolve any CI errors, then implement the migration coordinator and enforce the unlocked-session boundary; keep the docs branch separate from application code and main.
+
+
+---
+
+## 2026-10-18 — Migration coordinator foundation added
+
+- Added a resumable coordinator and a backend adapter contract on the Phase 12 code branch. The coordinator records durable state snapshots, requires idempotent backend operations, verifies staged document ciphertext before publication, and records recovery state after failures.
+- Added JVM tests for a complete fake-backend run, interruption during publication followed by resume, and empty-vault database verification.
+- Safety boundary: this is not a production adapter. The current app's EncryptedDocumentStore / DocumentKeyProvider are not connected to the VEK, SQLCipher key rewrap is not wired, and repository/session enforcement is not implemented. Legacy cleanup is intentionally not automated pending device-level recovery review.
+- CI run [#290](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39143321668) passed on an earlier head. Latest coordinator/test head `6291594886eb6f6fb03c644797afc1217adb90e6` is being checked by [run #299](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144069929); it is still in progress at this update. No passing result is claimed for the new tests yet.
+- Added [Phase 12 migration coordinator status](../reports/PHASE-12-MIGRATION-COORDINATOR-STATUS.md) and updated the whole-project phase audit. Keep the overall weighted estimate at 35%; strict release-accepted phases remain 0/11.
+
+### Next actions
+1. Confirm run #299 on the exact latest head and fix failures from logs.
+2. Implement a real, idempotent VEK-backed document migration adapter with crash-safe staging/publication and legacy-source preservation.
+3. Integrate and verify SQLCipher key rewrap, including WAL/journal/shared-memory behavior.
+4. Implement a shared authenticated-session gate across repositories, OCR, search, camera, reminders, and background work.
+5. Add instrumentation/physical-device tests and accessibility/security review before changing phase acceptance ratios.
