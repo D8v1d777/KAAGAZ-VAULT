@@ -132,6 +132,29 @@ class VaultMigrationJournalTest {
         }
     }
 
+
+    @Test
+    fun roundTripsRecoverySnapshotFromVerificationPhase() {
+        withDirectory { directory ->
+            val completeDocument = VaultMigrationState()
+                .begin()
+                .beginDocumentMigration(listOf(documentId))
+                .advanceDocument(documentId, DocumentMigrationStep.STAGED)
+                .advanceDocument(documentId, DocumentMigrationStep.VERIFIED)
+                .advanceDocument(documentId, DocumentMigrationStep.PUBLISHED)
+                .beginDatabaseKeyMigration()
+                .markDatabaseKeyRewrapped()
+                .beginVerification()
+                .markDatabaseIntegrityVerified()
+                .requireRecovery()
+
+            val journal = VaultMigrationJournal(directory)
+            journal.save(completeDocument)
+
+            assertEquals(completeDocument, journal.load())
+        }
+    }
+
     private fun withDirectory(block: (File) -> Unit) {
         val directory = Files.createTempDirectory("kgv-migration-journal-test").toFile()
         try {
