@@ -9,6 +9,21 @@
 - This is a design-only slice; no simplified-mode preference, typography overlay, high-contrast scheme, or layout refactor was implemented.
 - The design requires 2.0x font-scale, TalkBack, switch access, keyboard, dynamic-color, high-contrast, reduced-motion, and physical-device evidence before release claims.
 
+## 2026-10-19 — elderly-feature integration and accessibility test pass
+
+### Executed
+- Added `docs/reports/ELDERLY-FEATURES-END-TO-END-TEST-REPORT.md` with exact commands, static contrast results, feature-presence audit, and the blocked device matrix.
+- `git diff --check` passed and static contrast recalculation passed; minimum tested static ratio was 5.48:1 and minimum body-text ratio after the ambient overlay was 8.38:1.
+- Attempted `:app:testDebugUnitTest`; Gradle stopped before test execution because the active sandbox has no Android SDK configured.
+
+### Findings
+- The repository has 12 JVM test source files but zero instrumentation-test files and no SDK, ADB, emulator, or AV​​D configuration in the active sandbox.
+- Phase 15 simplified mode and Phase 17 voice navigation are design-only at this head; no `SimplifiedMode`, simplified typography/layout tokens, `SpeechRecognizer`, `TextToSpeech`, `RECORD_AUDIO`, or voice controller exists to integrate or test.
+- Phase 14 source-level behavior and static contrast are reviewable, but low-end-device, TalkBack, switch-access, font-scale, dynamic-wallpaper, and performance evidence remain unrun.
+
+### Verification boundary
+- No end-to-end, instrumentation, physical-device, or release-readiness pass is claimed from this environment.
+
 ## 2026-10-19 — Phase 17 voice-assisted navigation design
 
 ### Designed
