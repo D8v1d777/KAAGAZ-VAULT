@@ -46,3 +46,11 @@ A mandatory AAD parameter reduces accidental misuse but does not prove correct m
 - A local isolated Node.js 22 snapshot reconstructed from the fetched implementation/test files passed **7/7 focused AAD tests**; an additional smoke check rejected **4/4** line-terminator inputs. The separate Python reference snapshot reproduced the 38-byte golden vector. These are local snapshot results, **not** repository CI or an exact-checkout test run.
 - Exact-head GitHub Actions and combined commit status queries for the new PR head returned empty lists. CI remains **unverified**; no claim of green CI is made.
 - Next: obtain exact-head CI evidence if available; then add bounded property/fuzz cases for malformed identifier inputs and test that JavaScript/Python implementations reject the same invalid grammar. Do not expand into key wrapping/manifest code before design review.
+
+
+## Web Crypto key-wrap constraint review — 2026-10-19
+
+- Verified against the W3C Web Cryptography Level 2 `wrapKey()` algorithm and MDN that a key with `extractable === false` cannot be wrapped using `SubtleCrypto.wrapKey()`: https://www.w3.org/TR/WebCryptoAPI/#SubtleCrypto-method-wrapKey and https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey.
+- Updated the separate manifest/key-lifecycle research memo with the constraint, alternative design questions, nonce implications, and explicit warning not to treat best-effort JS buffer clearing as guaranteed memory erasure.
+- This narrows the design space but does not select a key-wrapping scheme. Keep the existing non-extractable default; do not weaken it globally.
+- NIST SP 800-38D remains the primary source for GCM IV uniqueness/state-loss constraints; RFC 9106 informs Argon2 parameter selection. Parameters must be chosen against actual device/resource constraints and reviewed, not copied blindly.
