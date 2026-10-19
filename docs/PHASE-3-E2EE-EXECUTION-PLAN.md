@@ -103,7 +103,11 @@ Ratios describe deliverables, not a security score.
 5. Run tests and CI; report only checks with observed results.
 6. Update the phase tracker and visual report from verified evidence.
 
-## 9. Research references
+## 9. AAD serialization evaluation
+
+See [Phase 3 AAD Serialization Evaluation](PHASE-3-AAD-SERIALIZATION-EVALUATION.md) for the current evidence review of deterministic CBOR versus fixed-order binary encoding. The decision remains open; no format is approved until the parser, canonicality, dependency provenance, golden-vector and independent-review gates pass.
+
+## 10. Research references
 
 - OWASP Cryptographic Storage Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
 - OWASP Key Management Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Key_Management_Cheat_Sheet.html
@@ -113,6 +117,6 @@ Ratios describe deliverables, not a security score.
 - W3C Older Users and Web Accessibility: https://www.w3.org/WAI/older-users/
 - OWASP File Upload Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
 
-## 10. Release language
+## 11. Release language
 
 Until the vertical slice is implemented and independently reviewed, describe the product as an **E2EE design in progress**, not an end-to-end encrypted vault. A passing UI test suite is not evidence that cryptography, recovery, storage isolation, or deployment integrity is secure.
