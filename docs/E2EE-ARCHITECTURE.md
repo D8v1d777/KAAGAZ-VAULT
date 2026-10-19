@@ -1,6 +1,6 @@
 # Kaagaz Vault — End-to-End Encryption Architecture
 
-**Status:** Research-backed architecture proposal; implementation has not begun. Requires specialist cryptographic review before real user documents are accepted.
+**Status:** Research-backed architecture proposal plus an isolated AES-256-GCM primitive wrapper and regression tests. This is not a complete E2EE implementation; specialist cryptographic review is required before real user documents are accepted.
 
 ## 1. Security objective
 
@@ -143,13 +143,14 @@ If protection against a malicious web operator is a hard requirement, evaluate a
 ## 11. Implementation sequence
 
 1. Freeze and approve the threat model, supported platforms and recovery policy.
-2. Select a maintained cryptographic library and document its provenance, audit history, update process and licensing.
-3. Implement isolated crypto module with typed versioned formats and unit/property tests; no production documents yet.
-4. Implement encrypted metadata and private ciphertext storage in a development environment.
-5. Add recovery and multi-device flow; conduct destructive-loss drills.
-6. Integrate accessible setup/unlock/upload UX.
-7. Complete external review, threat-driven tests and usability validation.
-8. Enable production rollout only after all release gates pass.
+2. Select a maintained cryptographic library and document its provenance, audit history, update process and licensing; the current Web Crypto wrapper covers AES-GCM only and does not settle Argon2id or protocol design.
+3. [In progress] Keep the isolated AES-GCM primitive wrapper narrow, versioned and covered by unit tests; no production documents yet.
+4. Implement and review the versioned file/chunk format, nonce/retry policy, VEK/DEK wrapping, and Argon2id integration.
+5. Implement encrypted metadata and private ciphertext storage in a development environment.
+6. Add recovery and multi-device flow; conduct destructive-loss drills.
+7. Integrate accessible setup/unlock/upload UX.
+8. Complete external review, threat-driven tests and usability validation.
+9. Enable production rollout only after all release gates pass.
 
 ## References
 - OWASP Cryptographic Storage Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
