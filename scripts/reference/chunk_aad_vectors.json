@@ -20,7 +20,7 @@
     { "field": "vaultId", "value": "v1\r" },
     { "field": "documentId", "value": "d1\u2028" },
     { "field": "keyId", "value": "k1\u2029" },
-    { "field": "documentId", "value": "x".repeat(129) },
+    { "field": "documentId", "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" },
     { "field": "keyId", "value": "slash/name" }
   ]
 }
