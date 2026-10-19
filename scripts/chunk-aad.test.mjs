@@ -13,7 +13,7 @@ test("matches byte-exact AAD golden bytes from the shared cross-runtime fixture"
   assert.equal(hex(encodeChunkAAD(metadata())), vectors.valid.aadHex);
 });
 
-test("changes to each authenticated semantic field produce different AAD", () => {
+test("supported authenticated metadata changes produce different AAD", () => {
   const baseline = hex(encodeChunkAAD(metadata()));
   const changes = [
     { vaultId: "v2" },
@@ -21,16 +21,18 @@ test("changes to each authenticated semantic field produce different AAD", () =>
     { documentVersion: 2 },
     { keyId: "k2" },
     { contentType: "application/pdf" },
-    { chunkFormat: "chunked-v2" },
     { chunkIndex: 1 }
   ];
   for (const change of changes) {
-    if (change.chunkFormat) {
-      assert.throws(() => encodeChunkAAD({ ...metadata(), ...change }), /chunkFormat/);
-    } else {
-      assert.notEqual(hex(encodeChunkAAD({ ...metadata(), ...change })), baseline);
-    }
+    assert.notEqual(hex(encodeChunkAAD({ ...metadata(), ...change })), baseline);
   }
+});
+
+test("rejects unsupported chunk formats", () => {
+  assert.throws(
+    () => encodeChunkAAD({ ...metadata(), chunkFormat: "chunked-v2" }),
+    /chunkFormat/
+  );
 });
 
 test("rejects unknown/missing properties and non-record inputs", () => {
