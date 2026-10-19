@@ -6,25 +6,38 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -34,24 +47,28 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.kaagazvault.camera.CameraCaptureScreen
 import com.kaagazvault.database.EncryptedMetadataIndexProvider
 import com.kaagazvault.database.VaultDatabaseProvider
 import com.kaagazvault.documents.DocumentRepository
 import com.kaagazvault.documents.ImportedDocument
 import com.kaagazvault.ocr.OfflineOcrEngine
-import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
-import com.kaagazvault.security.EncryptedDocumentStore
 import com.kaagazvault.reminders.ReminderRepository
 import com.kaagazvault.reminders.ReminderSection
+import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
+import com.kaagazvault.security.EncryptedDocumentStore
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.util.concurrent.Executors
@@ -64,26 +81,23 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val store = EncryptedDocumentStore(
             java.io.File(filesDir, "encrypted_documents"),
-            AndroidKeystoreDocumentKeyProvider(
-                hasExistingProtectedData = {
-                    java.io.File(filesDir, "encrypted_documents")
-                        .listFiles()
-                        ?.any { it.name.endsWith(".kgv") || it.name.endsWith(".backup") } == true
-                }
-            )
+            AndroidKeystoreDocumentKeyProvider {
+                java.io.File(filesDir, "encrypted_documents").listFiles()
+                    ?.any { it.name.endsWith(".kgv") || it.name.endsWith(".backup") } == true
+            }
         )
         val provider = VaultDatabaseProvider(applicationContext)
         databaseProvider = provider
-        val indexProvider = EncryptedMetadataIndexProvider(provider)
-        val repository = DocumentRepository(contentResolver, store, indexProvider)
+        val repository = DocumentRepository(
+            contentResolver,
+            store,
+            EncryptedMetadataIndexProvider(provider)
+        )
         val ocrEngine = OfflineOcrEngine(applicationContext)
         val reminderRepository = ReminderRepository(applicationContext, provider)
         setContent {
-            MaterialTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
+            KaagazTheme {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     VaultHomeScreen(
                         lifecycleOwner = this@MainActivity,
                         repository = repository,
@@ -112,470 +126,205 @@ private fun VaultHomeScreen(
     submitIo: (() -> Unit) -> Unit
 ) {
     val documents = remember { mutableStateListOf<ImportedDocument>() }
-    val status = remember { mutableStateOf("Your documents stay on this device.") }
-    val busy = remember { mutableStateOf(false) }
-    val searchQuery = remember { mutableStateOf("") }
-    val searchAvailable = remember { mutableStateOf(false) }
-    val showLicenses = remember { mutableStateOf(false) }
-    val showCamera = remember { mutableStateOf(false) }
-    val thirdPartyNotices = remember { mutableStateOf("Loading third-party notices…") }
+    var status by remember { mutableStateOf("Your documents stay on this device.") }
+    var busy by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    var searchAvailable by remember { mutableStateOf(false) }
+    var showLicenses by remember { mutableStateOf(false) }
+    var showCamera by remember { mutableStateOf(false) }
+    var notices by remember { mutableStateOf("Loading third-party notices…") }
     val context = LocalContext.current
+    val view = LocalView.current
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            showCamera.value = true
-        } else {
-            status.value = "Camera permission denied. You can still import existing files."
-        }
-    }
-
-    val picker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri: Uri? ->
-        if (uri == null) {
-            status.value = "Import cancelled. Nothing was changed."
-        } else {
-            busy.value = true
-            status.value = "Encrypting document locally…"
-            submitIo {
-                try {
-                    val imported = repository.import(uri)
-                    val refreshed = repository.list()
-                    mainHandler.post {
-                        documents.clear()
-                        documents.addAll(refreshed)
-                        searchAvailable.value = repository.encryptedSearchAvailable
-                        status.value = "Saved encrypted: ${imported.displayName}"
-                        busy.value = false
-                    }
-                } catch (error: Exception) {
-                    mainHandler.post {
-                        status.value = safeMessage(error)
-                        busy.value = false
-                    }
-                }
-            }
-        }
-    }
-
-    LaunchedEffect(repository) {
+    fun refresh(message: String? = null) {
         submitIo {
-            try {
-                val refreshed = repository.list()
+            runCatching { repository.list() }.onSuccess { result ->
                 mainHandler.post {
-                    documents.clear()
-                    documents.addAll(refreshed)
-                    searchAvailable.value = repository.encryptedSearchAvailable
-                    status.value = if (refreshed.isEmpty()) {
-                        "No documents yet. Import a PDF or image to begin."
-                    } else {
-                        "${refreshed.size} encrypted document(s) on this device."
-                    }
+                    documents.clear(); documents.addAll(result)
+                    searchAvailable = repository.encryptedSearchAvailable
+                    status = message ?: if (result.isEmpty()) "Your private shelf is ready for its first document." else "${result.size} document(s) safely stored on this device."
                 }
-            } catch (_: Exception) {
-                mainHandler.post {
-                    status.value = "Could not unlock stored documents. Existing data was left untouched."
-                }
+            }.onFailure { mainHandler.post { status = "Could not unlock stored documents. Existing data was left untouched." } }
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) showCamera = true else status = "Camera permission denied. You can still import existing files."
+    }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) status = "Import cancelled. Nothing was changed."
+        else {
+            busy = true; status = "Encrypting locally…"
+            submitIo {
+                runCatching { repository.import(uri) }.onSuccess { imported ->
+                    mainHandler.post { busy = false; status = "Saved privately: ${imported.displayName}"; refresh() }
+                }.onFailure { error -> mainHandler.post { busy = false; status = safeMessage(error as? Exception ?: Exception()) } }
             }
         }
     }
 
-    Scaffold { contentPadding ->
-        if (showCamera.value) {
+    LaunchedEffect(repository) { refresh() }
+
+    Scaffold { padding ->
+        if (showCamera) {
             CameraCaptureScreen(
                 lifecycleOwner = lifecycleOwner,
-                modifier = Modifier.padding(contentPadding),
-                onClose = { showCamera.value = false },
+                modifier = Modifier.padding(padding),
+                onClose = { playVaultClick(view); showCamera = false },
                 onCaptured = { bytes ->
-                    showCamera.value = false
-                    busy.value = true
+                    showCamera = false; busy = true
                     submitIo {
-                        try {
-                            val imported = repository.importBytes(
-                                "Scan_${System.currentTimeMillis()}.jpg",
-                                "image/jpeg",
-                                bytes
-                            )
-                            val refreshed = repository.list()
-                            mainHandler.post {
-                                documents.clear()
-                                documents.addAll(refreshed)
-                                searchAvailable.value = repository.encryptedSearchAvailable
-                                status.value = "Captured page encrypted: ${imported.displayName}"
-                                busy.value = false
-                            }
-                        } catch (_: Exception) {
-                            mainHandler.post {
-                                status.value = "Capture could not be encrypted. No document was added."
-                                busy.value = false
-                            }
-                        }
+                        runCatching { repository.importBytes("Scan_${System.currentTimeMillis()}.jpg", "image/jpeg", bytes) }
+                            .onSuccess { imported -> mainHandler.post { busy = false; status = "Captured privately: ${imported.displayName}"; refresh() } }
+                            .onFailure { mainHandler.post { busy = false; status = "Capture could not be encrypted. No document was added." } }
                     }
                 }
             )
         } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(contentPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "KAAGAZ VAULT",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "Your documents.\nYour control.",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "An offline-first place for the papers that matter.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                )
+            Column(
+                modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 22.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text("PRIVATE LOCAL VAULT", style = MaterialTheme.typography.labelMedium)
-                    Text(
-                        "Files, document names, and extracted text are encrypted before storage.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Button(
-                        onClick = { picker.launch(arrayOf("application/pdf", "image/*")) },
-                        enabled = !busy.value,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Import PDF or image")
+                Header(documentCount = documents.size)
+                VaultActionCard(
+                    busy = busy,
+                    status = status,
+                    onImport = { playVaultClick(view); picker.launch(arrayOf("application/pdf", "image/*")) },
+                    onScan = {
+                        playVaultClick(view)
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) showCamera = true
+                        else cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                     }
-                    OutlinedButton(
-                        onClick = {
-                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-                                PackageManager.PERMISSION_GRANTED
-                            ) {
-                                showCamera.value = true
-                            } else {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        },
-                        enabled = !busy.value,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Scan with camera")
-                    }
-                    if (busy.value) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CircularProgressIndicator()
-                            Text("Working locally…", style = MaterialTheme.typography.bodyMedium)
+                )
+                SearchCard(
+                    query = query,
+                    enabled = !busy,
+                    encryptedAvailable = searchAvailable,
+                    onQueryChange = { query = it },
+                    onSearch = {
+                        playVaultClick(view); busy = true
+                        submitIo {
+                            runCatching { repository.search(query) }.onSuccess { result -> mainHandler.post { documents.clear(); documents.addAll(result); searchAvailable = repository.encryptedSearchAvailable; status = "Found ${result.size} local result(s)."; busy = false } }
+                                .onFailure { mainHandler.post { busy = false; status = "Search failed. Your encrypted documents were left untouched." } }
                         }
-                    }
-                    Text(status.value, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "Maximum file size: 31 MiB. No account or network connection is used.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("LOCAL SEARCH", style = MaterialTheme.typography.titleMedium)
-                OutlinedTextField(
-                    value = searchQuery.value,
-                    onValueChange = { searchQuery.value = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Search names and extracted text") },
-                    singleLine = true,
-                    enabled = !busy.value
+                    },
+                    onClear = { playVaultClick(view); query = ""; refresh("Showing all local documents.") }
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            busy.value = true
-                            submitIo {
-                                try {
-                                    val results = repository.search(searchQuery.value)
-                                    mainHandler.post {
-                                        documents.clear()
-                                        documents.addAll(results)
-                                        searchAvailable.value = repository.encryptedSearchAvailable
-                                        status.value = if (searchAvailable.value) {
-                                            "Encrypted local search found ${results.size} result(s)."
-                                        } else {
-                                            "Search used a local in-memory scan; encrypted database is unavailable."
-                                        }
-                                        busy.value = false
-                                    }
-                                } catch (_: Exception) {
-                                    mainHandler.post {
-                                        status.value = "Search failed. Your encrypted documents were left untouched."
-                                        busy.value = false
-                                    }
-                                }
-                            }
-                        },
-                        enabled = !busy.value
-                    ) { Text("Search") }
-                    OutlinedButton(
-                        onClick = {
-                            searchQuery.value = ""
-                            busy.value = true
-                            submitIo {
-                                val refreshed = repository.list()
-                                mainHandler.post {
-                                    documents.clear()
-                                    documents.addAll(refreshed)
-                                    searchAvailable.value = repository.encryptedSearchAvailable
-                                    status.value = "Showing all local documents."
-                                    busy.value = false
-                                }
-                            }
-                        },
-                        enabled = !busy.value
-                    ) { Text("Clear") }
+                ReminderSection(context, reminderRepository, submitIo, mainHandler)
+                SectionTitle("YOUR DOCUMENTS", "${documents.size} private item${if (documents.size == 1) "" else "s"}")
+                AnimatedVisibility(visible = documents.isEmpty(), enter = fadeIn(), exit = fadeOut()) {
+                    EmptyVaultCard(onImport = { playVaultClick(view); picker.launch(arrayOf("application/pdf", "image/*")) })
                 }
-                if (!searchAvailable.value) {
-                    Text(
-                        "Encrypted search database unavailable. Search will scan encrypted documents in memory.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-
-            ReminderSection(context = context, repository = reminderRepository, submitIo = submitIo, mainHandler = mainHandler)
-
-            Text("YOUR DOCUMENTS", style = MaterialTheme.typography.titleMedium)
-            if (documents.isEmpty()) {
-                Text(
-                    "Your vault is empty. Imported documents will appear here.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
                 documents.forEach { document ->
-                    val editedOcr = remember(document.id, document.ocrText) {
-                        mutableStateOf(document.ocrText.orEmpty())
-                    }
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                document.displayName,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "${document.mimeType} • ${formatBytes(document.byteSize)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "Encrypted on this device",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-
-                            if (document.ocrText != null) {
-                                Text(
-                                    "Text extraction • ${document.ocrConfidence?.let { "raw engine confidence $it/100 (not a probability)" } ?: "no calibrated confidence"} • ${if (document.ocrReviewed) "reviewed" else "needs review"}",
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                                Text(
-                                    "Source: ${document.ocrSource ?: "legacy result"} • Languages: ${document.ocrLanguages ?: "not recorded"}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                if (document.ocrTruncated) {
-                                    Text(
-                                        "Extracted text was shortened to fit local storage. Re-run OCR on smaller sections if needed.",
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                                OutlinedTextField(
-                                    value = editedOcr.value,
-                                    onValueChange = { editedOcr.value = it },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    label = { Text("Review or correct extracted text") },
-                                    minLines = 3,
-                                    maxLines = 8,
-                                    enabled = !busy.value
-                                )
-                                OutlinedButton(
-                                    onClick = {
-                                        busy.value = true
-                                        submitIo {
-                                            try {
-                                                repository.saveReviewedOcr(document.id, editedOcr.value)
-                                                val refreshed = repository.list()
-                                                mainHandler.post {
-                                                    documents.clear()
-                                                    documents.addAll(refreshed)
-                                                    searchAvailable.value = repository.encryptedSearchAvailable
-                                                    status.value = "Corrections encrypted and marked reviewed. Verify every field before relying on it."
-                                                    busy.value = false
-                                                }
-                                            } catch (_: Exception) {
-                                                mainHandler.post {
-                                                    status.value = "Could not save OCR corrections. Existing encrypted data was left untouched."
-                                                    busy.value = false
-                                                }
-                                            }
-                                        }
-                                    },
-                                    enabled = !busy.value
-                                ) {
-                                    Text(if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
-                                }
-                            } else if (document.mimeType.startsWith("image/") || document.mimeType == "application/pdf") {
-                                OutlinedButton(
-                                    onClick = {
-                                        busy.value = true
-                                        status.value = "Recognizing text locally…"
-                                        submitIo {
-                                            try {
-                                                repository.recognizeDocument(document.id, ocrEngine)
-                                                val refreshed = repository.list()
-                                                mainHandler.post {
-                                                    documents.clear()
-                                                    documents.addAll(refreshed)
-                                                    searchAvailable.value = repository.encryptedSearchAvailable
-                                                    status.value = "Text extracted locally. Review it before relying on any field."
-                                                    busy.value = false
-                                                }
-                                            } catch (_: Exception) {
-                                                mainHandler.post {
-                                                    status.value = "Offline text extraction failed. The original encrypted document remains stored."
-                                                    busy.value = false
-                                                }
-                                            }
-                                        }
-                                    },
-                                    enabled = !busy.value
-                                ) {
-                                    Text(if (document.mimeType == "application/pdf") "Extract text from PDF offline" else "Recognize text offline")
-                                }
-                            } else {
-                                Text(
-                                    "Text extraction is unavailable for this file type.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    busy.value = true
-                                    submitIo {
-                                        try {
-                                            repository.delete(document.id)
-                                            val refreshed = repository.list()
-                                            mainHandler.post {
-                                                documents.clear()
-                                                documents.addAll(refreshed)
-                                                searchAvailable.value = repository.encryptedSearchAvailable
-                                                status.value = "Document removed from the vault."
-                                                busy.value = false
-                                            }
-                                        } catch (_: Exception) {
-                                            mainHandler.post {
-                                                status.value = "Could not remove the document."
-                                                busy.value = false
-                                            }
-                                        }
-                                    }
-                                },
-                                enabled = !busy.value
-                            ) {
-                                Text("Delete")
-                            }
-                        }
-                    }
+                    DocumentCard(document, busy, ocrEngine, repository, submitIo, mainHandler) { message -> busy = false; status = message; refresh() }
                 }
+                Text("Offline OCR: English, Hindi, and Telugu • review required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = {
+                    playVaultClick(view); showLicenses = true
+                    submitIo { val result = runCatching { context.assets.open("licenses/THIRD_PARTY_NOTICES.txt").bufferedReader().use { it.readText() } }.getOrDefault("Third-party license notices are packaged with this application."); mainHandler.post { notices = result } }
+                }) { Text("Third-party licenses") }
             }
-
-            Text(
-                "Offline OCR: English, Hindi, and Telugu • PDF text-layer extraction • encrypted local search • review required",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            TextButton(
-                onClick = {
-                    showLicenses.value = true
-                    submitIo {
-                        val notices = runCatching {
-                            context.assets.open("licenses/THIRD_PARTY_NOTICES.txt")
-                                .bufferedReader()
-                                .use { it.readText() }
-                        }.getOrDefault("Third-party license notices are packaged with this application.")
-                        mainHandler.post { thirdPartyNotices.value = notices }
-                    }
-                }
-            ) { Text("Third-party licenses") }
         }
     }
-    }
+    if (showLicenses) AlertDialog(onDismissRequest = { showLicenses = false }, title = { Text("Third-party licenses") }, text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) { Text(notices) } }, confirmButton = { TextButton(onClick = { playVaultClick(view); showLicenses = false }) { Text("Close") } })
+}
 
-    if (showLicenses.value) {
-        AlertDialog(
-            onDismissRequest = { showLicenses.value = false },
-            title = { Text("Third-party licenses") },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 420.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    Text(thirdPartyNotices.value)
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showLicenses.value = false }) { Text("Close") }
-            }
-        )
+@Composable
+private fun Header(documentCount: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("KAAGAZ", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.secondaryContainer) { Text("ON DEVICE", Modifier.padding(horizontal = 12.dp, vertical = 7.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.SemiBold) }
+        }
+        Text("A calmer place\nfor important papers.", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        Text(if (documentCount == 0) "Private by default. Ready when you are." else "Everything important, close at hand and under your control.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
+@Composable
+private fun SectionTitle(title: String, supporting: String? = null) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        supporting?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+@Composable
+private fun VaultActionCard(busy: Boolean, status: String, onImport: () -> Unit, onScan: () -> Unit) {
+    Card(Modifier.fillMaxWidth().animateContentSize(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(28.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+            Text("YOUR PRIVATE SHELF", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+            Text("Bring a paper in. We’ll keep it close.", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.SemiBold)
+            Text("Files, names, and extracted text stay encrypted on this device.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(onClick = onImport, enabled = !busy, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) { Text("Import") }
+                OutlinedButton(onClick = onScan, enabled = !busy, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp)) { Text("Scan") }
+            }
+            AnimatedVisibility(visible = busy, enter = fadeIn(), exit = fadeOut()) { LinearProgressIndicator(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary) }
+            Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        }
+    }
+}
+
+@Composable
+private fun SearchCard(query: String, enabled: Boolean, encryptedAvailable: Boolean, onQueryChange: (String) -> Unit, onSearch: () -> Unit, onClear: () -> Unit) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), shape = RoundedCornerShape(24.dp)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SectionTitle("FIND SOMETHING", if (encryptedAvailable) "encrypted search" else "local fallback")
+            OutlinedTextField(query, onQueryChange, Modifier.fillMaxWidth(), placeholder = { Text("Search names or text") }, singleLine = true, enabled = enabled, shape = RoundedCornerShape(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                FilledTonalButton(onClick = onSearch, enabled = enabled, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Search") }
+                OutlinedButton(onClick = onClear, enabled = enabled, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Show all") }
+            }
+            if (!encryptedAvailable) Text("Encrypted search is unavailable; this search scans locally in memory.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
+private fun EmptyVaultCard(onImport: () -> Unit) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), shape = RoundedCornerShape(24.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Nothing here yet", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onTertiaryContainer, fontWeight = FontWeight.SemiBold)
+            Text("Start with one document. You can always add more later.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+            FilledTonalButton(onClick = onImport, shape = RoundedCornerShape(16.dp)) { Text("Add first document") }
+        }
+    }
+}
+
+@Composable
+private fun DocumentCard(document: ImportedDocument, busy: Boolean, ocrEngine: OfflineOcrEngine, repository: DocumentRepository, submitIo: (() -> Unit) -> Unit, mainHandler: Handler, onDone: (String) -> Unit) {
+    var editedOcr by remember(document.id, document.ocrText) { mutableStateOf(document.ocrText.orEmpty()) }
+    val view = LocalView.current
+    Card(Modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { Text(document.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); Text("${document.mimeType} • ${formatBytes(document.byteSize)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Text("SAFE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+            Divider()
+            if (document.ocrText != null) {
+                Text("Text extraction • ${if (document.ocrReviewed) "reviewed" else "needs review"}", style = MaterialTheme.typography.labelMedium, color = if (document.ocrReviewed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
+                OutlinedTextField(editedOcr, { editedOcr = it }, Modifier.fillMaxWidth(), label = { Text("Review extracted text") }, minLines = 3, maxLines = 8, enabled = !busy, shape = RoundedCornerShape(16.dp))
+                SoftButton(onClick = { playVaultClick(view); submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { mainHandler.post { onDone("Could not save OCR corrections. Existing data was left untouched.") } } } }, enabled = !busy, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
+            } else if (document.mimeType.startsWith("image/") || document.mimeType == "application/pdf") {
+                SoftButton(onClick = { playVaultClick(view); submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { mainHandler.post { onDone("Offline text extraction failed. The original remains stored.") } } } }, enabled = !busy, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
+            }
+            TextButton(onClick = { playVaultClick(view); submitIo { runCatching { repository.delete(document.id) }.onSuccess { mainHandler.post { onDone("Document removed from the vault.") } }.onFailure { mainHandler.post { onDone("Could not remove the document.") } } } }, enabled = !busy) { Text("Remove document") }
+        }
+    }
+}
+
+@Composable
+private fun SoftButton(onClick: () -> Unit, enabled: Boolean, label: String) { FilledTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(label) } }
+
 private fun safeMessage(error: Exception): String = when (error) {
-    is com.kaagazvault.documents.DocumentTooLargeException ->
-        "This file exceeds the 31 MiB limit. Nothing was saved."
-    is com.kaagazvault.documents.UnsupportedDocumentTypeException ->
-        "Choose a supported PDF or image file. Nothing was saved."
-    is IOException ->
-        error.message?.takeIf { it in setOf(
-            "The selected document is empty",
-            "Could not open the selected document",
-            "Could not determine the selected file type"
-        ) } ?: "Import failed. No document was added."
-    is GeneralSecurityException ->
-        "Encryption failed. No document was added."
+    is com.kaagazvault.documents.DocumentTooLargeException -> "This file exceeds the 31 MiB limit. Nothing was saved."
+    is com.kaagazvault.documents.UnsupportedDocumentTypeException -> "Choose a supported PDF or image file. Nothing was saved."
+    is IOException -> "Import failed. No document was added."
+    is GeneralSecurityException -> "Encryption failed. No document was added."
     else -> "Import failed. No document was added."
 }
 
-private fun formatBytes(size: Int): String =
-    if (size < 1024 * 1024) "${size / 1024} KiB"
-    else String.format(java.util.Locale.ROOT, "%.1f MiB", size / (1024f * 1024f))
+private fun formatBytes(size: Int): String = if (size < 1024 * 1024) "${size / 1024} KiB" else String.format(java.util.Locale.ROOT, "%.1f MiB", size / (1024f * 1024f))

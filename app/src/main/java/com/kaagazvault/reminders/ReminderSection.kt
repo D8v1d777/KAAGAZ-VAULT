@@ -27,9 +27,11 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kaagazvault.database.ReminderEntity
+import com.kaagazvault.playVaultClick
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
@@ -47,6 +49,7 @@ internal fun ReminderSection(
     val showCreate = remember { mutableStateOf(false) }
     val status = remember { mutableStateOf("Reminders are created only when you confirm them.") }
     val busy = remember { mutableStateOf(false) }
+    val view = LocalView.current
 
     fun refresh() {
         submitIo {
@@ -79,7 +82,7 @@ internal fun ReminderSection(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Button(onClick = { title.value = ""; dueAt.value = 0L; showCreate.value = true }) {
+            Button(onClick = { playVaultClick(view); title.value = ""; dueAt.value = 0L; showCreate.value = true }) {
                 Text("Add reminder")
             }
             Text(status.value, style = MaterialTheme.typography.bodySmall)
@@ -94,6 +97,7 @@ internal fun ReminderSection(
                         )
                     }
                     TextButton(onClick = {
+                        playVaultClick(view)
                         busy.value = true
                         submitIo {
                             try {
@@ -127,6 +131,7 @@ internal fun ReminderSection(
                         singleLine = true
                     )
                     OutlinedButton(onClick = {
+                        playVaultClick(view)
                         val now = Calendar.getInstance()
                         DatePickerDialog(
                             context,
@@ -158,6 +163,7 @@ internal fun ReminderSection(
             },
             confirmButton = {
                 TextButton(enabled = !busy.value, onClick = {
+                    playVaultClick(view)
                     busy.value = true
                     submitIo {
                         try {
@@ -180,7 +186,7 @@ internal fun ReminderSection(
                     }
                 }) { Text("Save") }
             },
-            dismissButton = { TextButton(onClick = { showCreate.value = false }) { Text("Cancel") }
+            dismissButton = { TextButton(onClick = { playVaultClick(view); showCreate.value = false }) { Text("Cancel") }
             }
         )
     }

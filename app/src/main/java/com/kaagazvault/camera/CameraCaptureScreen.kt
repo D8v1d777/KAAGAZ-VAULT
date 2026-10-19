@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import com.kaagazvault.playVaultClick
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import android.util.Size
@@ -129,7 +130,7 @@ internal fun CameraCaptureScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Scan a document", style = MaterialTheme.typography.titleLarge)
-            OutlinedButton(onClick = onClose, enabled = !captureBusy.value) {
+            OutlinedButton(onClick = { playVaultClick(previewView); onClose() }, enabled = !captureBusy.value) {
                 Text("Close")
             }
         }
@@ -143,6 +144,7 @@ internal fun CameraCaptureScreen(
 
         Button(
             onClick = {
+                playVaultClick(previewView)
                 val capture = imageCapture.value
                 if (capture == null || captureBusy.value) return@Button
                 captureBusy.value = true
