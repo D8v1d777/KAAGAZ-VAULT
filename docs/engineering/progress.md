@@ -1,3 +1,16 @@
+## 2026-10-19 — Android 12+ Material You color extraction
+
+### Implemented
+- Refactored `KaagazTheme` around an explicit `materialYouColorScheme` engine.
+- Android 12+ uses Material 3 `dynamicLightColorScheme`/`dynamicDarkColorScheme` to extract the wallpaper-derived Material You palette.
+- Preserved generated `on-*` and container role pairings without post-processing so dynamic contrast relationships remain intact.
+- Added `dynamicColor` opt-out support and safe fallback to the reviewed calm light/dark palettes when unsupported, disabled, or extraction throws.
+
+### Verification boundary
+- Source-level fallback and API gating are implemented; physical Android 12+ wallpaper, light/dark, font-scale, and contrast-mode validation remains required.
+- `git diff --check` passed; `:app:compileDebugKotlin` could not start because the active sandbox has no Android SDK configured (`SDK location not found`).
+- No dependency, permission, network, persistence, encryption, or authentication changes were introduced.
+
 ## 2026-10-19 — UI/UX accessibility and contrast review
 
 ### Reviewed

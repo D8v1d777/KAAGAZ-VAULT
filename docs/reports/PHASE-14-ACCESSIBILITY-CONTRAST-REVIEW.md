@@ -4,7 +4,7 @@
 
 **Scope:** Static light/dark calm palettes, ambient backdrop interaction, Compose accessibility semantics, touch targets, motion behavior, and elderly-user readability risks through approximately age 90.
 
-**Status:** Static palette pass; dynamic-color device validation remains required.
+**Status:** Static palette pass; explicit Android 12+ Material You extraction path implemented; dynamic-color device validation remains required.
 
 ## Executive summary
 
@@ -15,7 +15,7 @@ No color change was necessary in the static calm palettes. Two low-risk accessib
 1. The search field now has a persistent label instead of relying only on placeholder text.
 2. The live camera preview now exposes the semantic label “Live camera preview” to TalkBack and switch access.
 
-Android 12+ dynamic color is selected from the user's wallpaper at runtime. Material 3's tonal role system is intended to provide accessible pairings, but a complete dynamic-color claim requires runtime tests on representative wallpapers and contrast modes. This report does not claim that every possible wallpaper-derived scheme has been physically verified.
+Android 12+ dynamic color is now selected from the user's wallpaper at runtime through an explicit `materialYouColorScheme` engine. The engine preserves Material 3's generated role pairs and falls back to the reviewed calm palettes when dynamic color is disabled, unsupported, or throws during extraction. Material 3's tonal role system is intended to provide accessible pairings, but a complete dynamic-color claim requires runtime tests on representative wallpapers and contrast modes. This report does not claim that every possible wallpaper-derived scheme has been physically verified.
 
 ## Contrast method
 
@@ -78,7 +78,7 @@ The ambient canvas is also placed behind opaque cards and does not contain text.
 
 ### Remaining risks and recommended runtime checks
 
-1. **Dynamic color:** On Android 12+, run the app with light and dark wallpapers containing low-, medium-, and high-saturation palettes. Verify primary buttons, containers, links, body text, error text, outlines, and disabled states with a screenshot contrast tool.
+1. **Dynamic color:** The code path is explicit and has a safe fallback. On Android 12+, run the app with light and dark wallpapers containing low-, medium-, and high-saturation palettes. Verify primary buttons, containers, links, body text, error text, outlines, and disabled states with a screenshot contrast tool.
 2. **Large text:** Test at Android font scales 1.3x, 1.5x, and 2.0x. Confirm that the headline, private-shelf actions, search label, document rows, reminder rows, dialog buttons, and OCR review controls do not clip or overlap.
 3. **Touch targets:** Confirm all actions remain at least 48dp and that adjacent actions do not have overlapping expanded touch regions, especially the document removal controls and reminder Delete actions.
 4. **TalkBack:** Verify traversal order: screen heading → status/privacy explanation → primary action → search label/input → reminder controls → document heading/content → document action controls. Confirm that OCR text is not announced merely because a review animation runs.
