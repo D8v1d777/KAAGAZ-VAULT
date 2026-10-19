@@ -13,6 +13,17 @@
 
 These sources establish constraints; they do not validate this application's proposed design.
 
+## Argon2id implementation selection — evidence gathered 2026-10-19
+
+No KDF dependency is selected. Initial source review found two plausible browser-compatible candidates, neither ready for automatic adoption:
+
+- `hash-wasm` advertises Argon2id v1.3 in WebAssembly, browser/Node support, and an MIT license. Its npm page currently lists version 4.12.0 with a last publication roughly two years ago. Review release activity, reproducible WASM build provenance, memory behavior on low-end devices, and exact Argon2 version/parameters before considering it.
+- `@noble/hashes` provides an Argon2id implementation and has an MIT license, but its own README states the Argon2 implementation was outside the scope of the referenced independent audit and warns that pure JavaScript Argon2 can be slow. Do not treat the library-wide audit claim as an Argon2 audit.
+
+Neither package has been installed or benchmarked in this repository. Next gate: inspect exact source/tag, license, transitive/runtime requirements, upstream security policy and Argon2 test vectors; then benchmark realistic memory/time parameters on the lowest supported device class. Select nothing based on package popularity or bundle size alone.
+
+Sources: [hash-wasm npm package](https://www.npmjs.com/package/hash-wasm), [hash-wasm repository](https://github.com/Daninet/hash-wasm), [noble-hashes repository and audit scope](https://github.com/paulmillr/noble-hashes/), [RFC 9106 Argon2](https://www.rfc-editor.org/rfc/rfc9106).
+
 ## Current NIST revision status — checked 2026-10-19
 
 NIST's current publication page lists **SP 800-38D Rev. 1 (2nd Preliminary Draft)**, published 2026-06-01. The page explicitly says there is not yet an actual draft document; NIST is gathering feedback on proposed revision topics, including GCM tag sizes, variable-length IVs, and a wider-block variant. It is not a finalized replacement for the 2007 SP 800-38D final.
