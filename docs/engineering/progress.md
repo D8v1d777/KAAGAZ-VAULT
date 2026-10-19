@@ -1,3 +1,14 @@
+## 2026-10-19 — Phase 15 elderly-friendly simplified mode design
+
+### Designed
+- Added `docs/PHASE-15-ELDERLY-SIMPLIFIED-MODE-DESIGN.md` with a user-controlled simplified mode, large typography, high-contrast role strategy, layout tokens, 48dp minimum and 56–64dp preferred controls, TalkBack semantics, focus order, dynamic-color interaction, and device acceptance gates.
+- Clarified the Android unit boundary: touch targets are measured in dp, while text is measured in sp; 48sp is reserved for hero typography rather than used as a touch-target unit.
+- Explicitly excluded age inference, profiling, medical claims, patronizing defaults, analytics, pressure mechanics, and changes to encryption/authentication.
+
+### Verification boundary
+- This is a design-only slice; no simplified-mode preference, typography overlay, high-contrast scheme, or layout refactor was implemented.
+- The design requires 2.0x font-scale, TalkBack, switch access, keyboard, dynamic-color, high-contrast, reduced-motion, and physical-device evidence before release claims.
+
 ## 2026-10-19 — Android 12+ Material You color extraction
 
 ### Implemented
