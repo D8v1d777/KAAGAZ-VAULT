@@ -31,6 +31,8 @@ Do not settle the wrapping algorithm by convenience alone. Compare:
 
 Whichever route is selected, define the exact envelope fields, authenticated context, version/downgrade rules, failure behavior, key rotation, and known-answer tests. Never invent a custom wrapping primitive. Confirm supported Web Crypto behavior on the target browsers before selecting.
 
+**Compatibility gap found in the current primitive wrapper:** `generateDocumentKey()` returns a non-extractable AES-GCM key. That is a good default for direct content use, but it cannot be passed straight into a Web Crypto key-wrapping flow that requires exporting/wrapping an extractable key. Before implementing the hierarchy, design and test a dedicated lifecycle that generates or derives a DEK, wraps it, and makes the content-use key non-extractable without persisting raw key bytes. Do not weaken the existing API's non-extractability globally just to make wrapping convenient. Record the brief exposure window, cleanup behavior, algorithm usages, and failure/retry semantics in the ADR.
+
 ### 3. Chunk nonce and retry policy
 
 Candidate direction: fresh random 96-bit nonce per content-chunk encryption under the version's DEK, with an enforced maximum number of encryptions and maximum byte/chunk limits derived from the selected GCM policy and actual product file-size limits. Do not choose numeric limits until chunk size, maximum file size, per-version key scope, and NIST usage constraints have been reconciled.
