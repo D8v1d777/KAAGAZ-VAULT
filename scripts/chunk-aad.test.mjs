@@ -14,7 +14,7 @@ test("matches byte-exact AAD golden bytes from the shared cross-runtime fixture"
 });
 
 test("matches every shared cross-runtime golden vector", () => {
-  for (const vector of vectors.additionalValidVectors ?? []) {
+  for (const vector of [...(vectors.additionalValidVectors ?? []), ...(vectors.propertyVectors ?? [])]) {
     assert.equal(
       hex(encodeChunkAAD(vector.metadata)),
       vector.aadHex,
