@@ -26,6 +26,17 @@ Implications:
 
 Sources: NIST CSRC, [SP 800-38D Rev. 1 (2nd Preliminary Draft)](https://csrc.nist.gov/pubs/sp/800/38/d/r1/2prd), [superseded initial preliminary page](https://csrc.nist.gov/pubs/sp/800/38/d/r1/iprd), and [SP 800-38D (2007 final)](https://csrc.nist.gov/pubs/sp/800/38/d/final).
 
+## Current NIST key-wrapping revision status — checked 2026-10-19
+
+NIST's current SP 800-38F Rev. 1 page is an **initial preliminary call for comments** dated 2026-05-05, not a draft replacement standard. It says NIST plans to revisit approval for unspecified combinations of an approved encryption mode with an approved authentication method because such combinations may introduce unexpected vulnerabilities. The existing 2012 SP 800-38F final specifies AES-KW and AES-KWP as deterministic authenticated-encryption key-wrapping modes.
+
+Implications:
+- Do not create an ad hoc "encryption + MAC" key-wrapping composition to work around Web Crypto constraints.
+- Compare fully specified, standardized constructions and their target-runtime support; document the exact mode, key sizes, metadata-binding mechanism, and failure behavior.
+- Re-check the revision status before protocol freeze. The pre-draft page requests feedback; it is not itself a finalized new requirement.
+
+Sources: NIST CSRC [SP 800-38F Rev. 1 initial preliminary page](https://csrc.nist.gov/pubs/sp/800/38/f/r1/iprd) and [SP 800-38F (2012 final)](https://csrc.nist.gov/pubs/sp/800/38/f/final).
+
 ## Recommended design direction (not approved)
 
 ### 1. Key roles and separation
