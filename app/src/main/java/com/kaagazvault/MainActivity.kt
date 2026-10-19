@@ -276,7 +276,7 @@ private fun SearchCard(query: String, enabled: Boolean, encryptedAvailable: Bool
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), shape = RoundedCornerShape(24.dp)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SectionTitle("FIND SOMETHING", if (encryptedAvailable) "encrypted search" else "local fallback")
-            OutlinedTextField(query, onQueryChange, Modifier.fillMaxWidth(), placeholder = { Text("Search names or text") }, singleLine = true, enabled = enabled, shape = RoundedCornerShape(16.dp))
+            OutlinedTextField(query, onQueryChange, Modifier.fillMaxWidth(), label = { Text("Search names or text") }, placeholder = { Text("Search names or text") }, singleLine = true, enabled = enabled, shape = RoundedCornerShape(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FilledTonalButton(onClick = onSearch, enabled = enabled, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Search") }
                 OutlinedButton(onClick = onClear, enabled = enabled, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Show all") }

@@ -1,3 +1,18 @@
+## 2026-10-19 — UI/UX accessibility and contrast review
+
+### Reviewed
+- Calculated WCAG contrast ratios for explicit light and dark calm-theme role pairings; all tested normal-text pairs passed 4.5:1, with the lowest static result at 5.48:1.
+- Stress-tested the maximum 4.5% ambient backdrop overlay; tested body and action pairings remained above 4.5:1.
+- Reviewed elderly-user risks around font scaling, touch targets, semantics, reduced motion, color-only status, dynamic color, and TalkBack.
+- Added `docs/reports/PHASE-14-ACCESSIBILITY-CONTRAST-REVIEW.md` with results, methodology, fixes, and physical-device acceptance gates.
+
+### Implemented
+- Added a persistent search-field label and a semantic “Live camera preview” description.
+
+### Verification boundary
+- Explicit light/dark palette calculations and source review pass.
+- Android 12+ dynamic-color wallpapers, 2.0x font scale, TalkBack, switch access, high-contrast display, glare, and physical-device checks remain required before a complete accessibility claim.
+
 ## 2026-10-19 — Phase 14 ambient vault backdrop
 
 ### Implemented
