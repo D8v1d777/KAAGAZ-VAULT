@@ -52,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -166,7 +167,9 @@ private fun VaultHomeScreen(
 
     LaunchedEffect(repository) { refresh() }
 
-    Scaffold { padding ->
+    Box(Modifier.fillMaxSize()) {
+        AmbientVaultBackdrop()
+        Scaffold(containerColor = Color.Transparent) { padding ->
         if (showCamera) {
             CameraCaptureScreen(
                 lifecycleOwner = lifecycleOwner,
@@ -228,6 +231,7 @@ private fun VaultHomeScreen(
         }
     }
     if (showLicenses) AlertDialog(onDismissRequest = { showLicenses = false }, title = { Text("Third-party licenses") }, text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) { Text(notices) } }, confirmButton = { TextButton(onClick = { playVaultClick(view); showLicenses = false }) { Text("Close") } })
+    }
 }
 
 @Composable

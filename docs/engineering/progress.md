@@ -1,3 +1,14 @@
+## 2026-10-19 — Phase 14 ambient vault backdrop
+
+### Implemented
+- Added a low-contrast `AmbientVaultBackdrop` with six fixed, content-independent particles and very slow primary/tertiary color drift.
+- Disabled particle motion when Android's animator duration scale indicates reduced motion; the fallback is a static, low-alpha gradient.
+- Layered the backdrop behind the transparent scaffold so it never intercepts input or competes with document cards, text, and actions.
+
+### Verification boundary
+- Ambient effects are atmosphere only: no document state, OCR text, filenames, counts, identifiers, or reminders influence them.
+- No custom audio, background service, dependency, permission, or network behavior was added.
+
 ## 2026-10-19 — Phase 14 calm micro-interactions implementation
 
 ### Implemented

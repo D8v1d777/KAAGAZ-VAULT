@@ -118,9 +118,9 @@ enum class VaultMotionToken(val durationMillis: Int) {
 }
 
 @Composable
-fun vaultMotionDuration(token: VaultMotionToken): Int {
+fun vaultReducedMotionEnabled(): Boolean {
     val context = LocalContext.current
-    val reducedMotion = androidx.compose.runtime.remember(context) {
+    return androidx.compose.runtime.remember(context) {
         runCatching {
             Settings.Global.getFloat(
                 context.contentResolver,
@@ -129,5 +129,9 @@ fun vaultMotionDuration(token: VaultMotionToken): Int {
             ) == 0f
         }.getOrDefault(false)
     }
-    return if (reducedMotion) 0 else token.durationMillis
+}
+
+@Composable
+fun vaultMotionDuration(token: VaultMotionToken): Int {
+    return if (vaultReducedMotionEnabled()) 0 else token.durationMillis
 }
