@@ -57,6 +57,85 @@ test("rejects missing or empty associated data and validates key size/usages", a
   await assert.rejects(decryptBytes({ version: 1, algorithm: "AES-256-GCM", nonce: new Uint8Array(12), ciphertext: new Uint8Array(16) }, encryptOnly, bytes("file:one"), webcrypto), /decrypt usage/);
 });
 
+test("reads envelope values from property descriptors, not ordinary property access", async () => {
+  const key = await generateDocumentKey(webcrypto);
+  const aad = bytes("file:proxy");
+  const original = await encryptBytes(bytes("proxy-safe"), key, aad, webcrypto);
+  let propertyRead = false;
+  const wrapped = new Proxy(original, {
+    get() {
+      propertyRead = true;
+      return null;
+    }
+  });
+  assert.equal(text(await decryptBytes(wrapped, key, aad, webcrypto)), "proxy-safe");
+  assert.equal(propertyRead, false);
+});
+
+test("rejects envelope accessor properties without evaluating them", async () => {
+  const key = await generateDocumentKey(webcrypto);
+  const aad = bytes("file:schema");
+  const original = await encryptBytes(bytes("schema-safe"), key, aad, webcrypto);
+  let invoked = false;
+  const envelope = { ...original };
+  Object.defineProperty(envelope, "nonce", {
+    enumerable: true,
+    get() { invoked = true; return original.nonce; }
+  });
+  await assert.rejects(decryptBytes(envelope, key, aad, webcrypto), /data properties/);
+  assert.equal(invoked, false);
+});
+
+test("rejects unknown envelope fields and symbol keys", async () => {
+  const key = await generateDocumentKey(webcrypto);
+  const aad = bytes("file:schema");
+  const original = await encryptBytes(bytes("schema-safe"), key, aad, webcrypto);
+  await assert.rejects(decryptBytes({ ...original, extra: true }, key, aad, webcrypto), /unexpected schema/);
+  const withSymbol = { ...original, [Symbol("extra")]: true };
+  await assert.rejects(decryptBytes(withSymbol, key, aad, webcrypto), /unexpected schema/);
+});
+
+test("proves AES-KW can restore a non-extractable content key", async () => {
+  const wrappingKey = await webcrypto.subtle.generateKey(
+    { name: "AES-KW", length: 256 },
+    false,
+    ["wrapKey", "unwrapKey"]
+  );
+  let temporaryKey = await webcrypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
+  const wrapped = await webcrypto.subtle.wrapKey("raw", temporaryKey, wrappingKey, "AES-KW");
+  temporaryKey = null;
+  const restored = await webcrypto.subtle.unwrapKey(
+    "raw",
+    wrapped,
+    wrappingKey,
+    "AES-KW",
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+
+  assert.equal(restored.extractable, false);
+  const aad = new TextEncoder().encode("feasibility-test");
+  const envelope = await encryptBytes(new TextEncoder().encode("round-trip"), restored, aad, webcrypto);
+  assert.equal(new TextDecoder().decode(await decryptBytes(envelope, restored, aad, webcrypto)), "round-trip");
+});
+
+test("documents the Web Crypto wrapping limitation for non-extractable document keys", async () => {
+  const documentKey = await generateDocumentKey(webcrypto);
+  const wrappingKey = await webcrypto.subtle.generateKey(
+    { name: "AES-KW", length: 256 },
+    false,
+    ["wrapKey", "unwrapKey"]
+  );
+  await assert.rejects(
+    webcrypto.subtle.wrapKey("raw", documentKey, wrappingKey, "AES-KW")
+  );
+});
+
 test("validates input types and has no insecure crypto fallback", async () => {
   const key = await generateDocumentKey(webcrypto);
   await assert.rejects(encryptBytes("not bytes", key, bytes("file:one"), webcrypto), TypeError);

@@ -50,6 +50,10 @@ Web Crypto exposes low-level primitives and explicitly warns that secure overall
 
 ## 4. File encryption format and large files
 
+### Current AAD implementation candidate
+
+The isolated candidate encoder is in `src/crypto/chunk-aad.mjs` and is specified in `docs/ADR-003-CHUNK-AAD-ENCODING.md`. It uses a `KVAD` domain separator, versioned fixed-order binary fields, bounded ASCII opaque IDs, an allowlisted content type, and explicit integer encodings. It intentionally has no decoder. This candidate remains unapproved until independently reviewed and reproduced against the golden vector. It does not implement a chunked file format or manifest, and must not be used as evidence that complete E2EE exists.
+
 Do not encrypt an entire large file in one unbounded browser memory operation. Use a versioned, reviewed chunked format with:
 - a unique nonce per chunk under a given key;
 - authenticated associated data binding vault/file identifier, file version, format version, chunk index, and relevant manifest fields;

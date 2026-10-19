@@ -8,7 +8,7 @@
     "test:ui": "playwright test",
     "test": "npm run test:static && npm run test:docs && npm run test:crypto && npm run test:ui",
     "test:docs": "node --test scripts/validate-e2ee-docs.test.mjs",
-    "test:crypto": "node --test scripts/crypto-primitives.test.mjs"
+    "test:crypto": "node --test scripts/crypto-primitives.test.mjs scripts/chunk-aad.test.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
