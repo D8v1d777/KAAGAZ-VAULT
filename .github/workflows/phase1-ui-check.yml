@@ -6,8 +6,10 @@ on:
   pull_request:
     branches: [main, feat/accessible-vault-foundation]
 
+# Keep push and PR validation runs separate: otherwise a push on a PR branch
+# can cancel the PR run before it starts, leaving no job/check result.
 concurrency:
-  group: phase1-ui-${{ github.head_ref || github.ref_name }}
+  group: phase1-ui-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
