@@ -95,10 +95,10 @@ def main() -> None:
 
     # Keep the independent reference grammar aligned with JavaScript's strict ID tests.
     invalid_ids = [
-        ("vaultId", "v1\\n"),
-        ("vaultId", "v1\\r"),
-        ("documentId", "d1\\u2028"),
-        ("keyId", "k1\\u2029"),
+        ("vaultId", "v1\n"),
+        ("vaultId", "v1\r"),
+        ("documentId", "d1\u2028"),
+        ("keyId", "k1\u2029"),
         ("vaultId", "has space"),
         ("keyId", "slash/name"),
         ("documentId", "x" * 129),
