@@ -103,3 +103,24 @@ A manifest MAC/tag does not prove the server returned the latest version; anti-r
 ## Current decision
 
 Keep this as a design memo. Do not implement key wrapping, Argon2id, chunk encryption, or manifest parsing until the above choices are reconciled and reviewed with the AAD schema. Phase 3 progress remains unchanged.
+
+
+## Additional primary-source verification — Web Crypto key wrapping — 2026-10-19
+
+The Web Cryptography Level 2 specification's `SubtleCrypto.wrapKey()` algorithm explicitly rejects a key whose `[[extractable]]` slot is false. MDN documents the same behavior and explains that `wrapKey()` exports the key before encrypting it. Therefore the current `generateDocumentKey()` implementation, which intentionally creates a non-extractable AES-GCM key, cannot be passed directly to `wrapKey()`. This is a confirmed API constraint, not merely a test failure.
+
+Primary sources:
+- W3C Web Cryptography Level 2, §14.3.11 `wrapKey`: https://www.w3.org/TR/WebCryptoAPI/#SubtleCrypto-method-wrapKey
+- MDN `CryptoKey.extractable`: https://developer.mozilla.org/en-US/docs/Web/API/CryptoKey/extractable
+- MDN `SubtleCrypto.wrapKey()`: https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/wrapKey
+- NIST SP 800-38D, GCM IV uniqueness and loss-of-state considerations: https://csrc.nist.gov/pubs/sp/800/38/d/final
+- RFC 9106, Argon2 parameter-selection procedure: https://www.rfc-editor.org/rfc/rfc9106
+
+Design implications (still unresolved; do not implement from this note alone):
+1. Decide the threat model for JavaScript-visible raw DEK bytes and transient extractability. Non-extractable keys reduce export paths but do not protect a live page from same-origin script that can invoke permitted cryptographic operations.
+2. Compare a narrowly scoped, explicit import/wrap lifecycle against keeping a non-extractable session key and separately persisting a wrapped key envelope. Specify exactly when raw bytes may exist, how they are zeroed best-effort, and how failures avoid leaving partial key state.
+3. Choose wrapping algorithm and authenticated context together. AES-KW is standardized, but it does not expose a GCM-style AAD parameter; if metadata binding is needed, the protocol must define how it is authenticated without inventing a custom primitive. AES-GCM wrapping brings nonce uniqueness/retry requirements of its own.
+4. Define what happens on tab/process restart, duplicate requests, storage failure, interrupted writes, passphrase change, recovery, and key rotation. Add known-answer tests and independent review before accepting the protocol.
+5. Do not claim that zeroing a JavaScript byte array guarantees physical memory erasure; runtimes may make copies and garbage collection is outside application control.
+
+This research confirms a hard constraint and narrows the design space; it does not select or approve a key-wrapping protocol.
