@@ -9,6 +9,17 @@
 - This is a design-only slice; no simplified-mode preference, typography overlay, high-contrast scheme, or layout refactor was implemented.
 - The design requires 2.0x font-scale, TalkBack, switch access, keyboard, dynamic-color, high-contrast, reduced-motion, and physical-device evidence before release claims.
 
+## 2026-10-19 — Phase 17 voice-assisted navigation design
+
+### Designed
+- Added `docs/PHASE-17-VOICE-ASSISTED-NAVIGATION-DESIGN.md` with a privacy-first push-to-talk model, bounded `SpeechRecognizer` lifecycle, Android 12+ on-device availability check, fixed-phrase Text-to-Speech guidance, elderly-friendly controls, supported command grammar, confirmation rules, accessibility semantics, and acceptance gates.
+- Restricted voice to reversible navigation and explicitly excluded always-listening, voice unlock, voice deletion, voice export, document dictation, OCR dictation, raw content read-aloud, and cloud search.
+- Required complete touch, keyboard, TalkBack, and switch-access alternatives so voice remains optional.
+
+### Verification boundary
+- This is a design-only slice; no microphone permission, recognizer, Text-to-Speech engine, manifest query, or voice preference was added.
+- Android's documented remote-processing possibility, `RECORD_AUDIO` requirement, main-thread lifecycle, on-device availability check, and TTS cleanup requirements are cited in the design and must be verified in implementation tests.
+
 ## 2026-10-19 — Android 12+ Material You color extraction
 
 ### Implemented
