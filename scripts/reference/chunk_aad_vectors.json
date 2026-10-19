@@ -13,14 +13,66 @@
     },
     "aadHex": "4b5641440100027631000264310000000100026b31000a746578742f706c61696e0100000000"
   },
+  "additionalValidVectors": [
+    {
+      "name": "pdf_second_chunk",
+      "metadata": {
+        "vaultId": "vault_01",
+        "documentId": "doc-42",
+        "documentVersion": 7,
+        "keyId": "keyA",
+        "contentType": "application/pdf",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1
+      },
+      "aadHex": "4b5641440100087661756c745f30310006646f632d34320000000700046b657941000f6170706c69636174696f6e2f7064660100000001"
+    },
+    {
+      "name": "maximum_u32_fields",
+      "metadata": {
+        "vaultId": "v",
+        "documentId": "d",
+        "documentVersion": 4294967295,
+        "keyId": "k",
+        "contentType": "application/octet-stream",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 4294967295
+      },
+      "aadHex": "4b56414401000176000164ffffffff00016b00186170706c69636174696f6e2f6f637465742d73747265616d01ffffffff"
+    }
+  ],
   "invalidIdentifiers": [
-    { "field": "vaultId", "value": "" },
-    { "field": "vaultId", "value": "has space" },
-    { "field": "vaultId", "value": "v1\n" },
-    { "field": "vaultId", "value": "v1\r" },
-    { "field": "documentId", "value": "d1\u2028" },
-    { "field": "keyId", "value": "k1\u2029" },
-    { "field": "documentId", "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" },
-    { "field": "keyId", "value": "slash/name" }
+    {
+      "field": "vaultId",
+      "value": ""
+    },
+    {
+      "field": "vaultId",
+      "value": "has space"
+    },
+    {
+      "field": "vaultId",
+      "value": "v1\n"
+    },
+    {
+      "field": "vaultId",
+      "value": "v1\r"
+    },
+    {
+      "field": "documentId",
+      "value": "d1 "
+    },
+    {
+      "field": "keyId",
+      "value": "k1 "
+    },
+    {
+      "field": "documentId",
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "field": "keyId",
+      "value": "slash/name"
+    }
   ]
 }
