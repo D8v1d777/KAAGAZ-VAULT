@@ -2,12 +2,14 @@ name: Phase 1 UI checks
 
 on:
   push:
-    branches: [feat/accessible-vault-foundation]
+    branches: [feat/accessible-vault-foundation, feat/e2ee-and-human-centered-design, feat/phase3-canonical-aad-vectors]
   pull_request:
-    branches: [main]
+    branches: [main, feat/accessible-vault-foundation, feat/e2ee-and-human-centered-design]
 
+# Keep push and PR validation runs separate: otherwise a push on a PR branch
+# can cancel the PR run before it starts, leaving no job/check result.
 concurrency:
-  group: phase1-ui-${{ github.head_ref || github.ref_name }}
+  group: phase1-ui-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
@@ -27,5 +29,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Run independent Python AAD reference checks
+        run: python3 scripts/reference/chunk_aad_reference.py
       - name: Run static, browser, and axe checks
         run: npm test

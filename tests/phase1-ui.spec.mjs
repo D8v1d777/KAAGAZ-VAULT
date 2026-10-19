@@ -101,7 +101,7 @@ test("Phase 2 visual report renders its architecture, progress, and approval gat
   await page.goto(reportUrl);
   await expect(page).toHaveTitle("Kaagaz Vault — Phase 2 Report");
   await expect(page.getByRole("heading", { name: "Architecture report" })).toBeVisible();
-  await expect(page.getByRole("progressbar", { name: "Overall project progress" })).toHaveAttribute("aria-valuenow", "33");
+  await expect(page.getByRole("progressbar", { name: "Overall project progress" })).toHaveAttribute("aria-valuenow", "35");
   await expect(page.getByRole("heading", { name: "Proposed architecture" })).toBeVisible();
   await expect(page.getByText("Owner approval required before Phase 3")).toBeVisible();
   const results = await new AxeBuilder({ page })
