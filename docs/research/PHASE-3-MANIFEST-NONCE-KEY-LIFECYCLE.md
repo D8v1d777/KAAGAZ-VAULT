@@ -15,14 +15,16 @@ These sources establish constraints; they do not validate this application's pro
 
 ## Current NIST revision status — checked 2026-10-19
 
-NIST's publication page now lists **SP 800-38D Rev. 1 (2nd Preliminary Draft)** as published on 2026-06-01, superseding the January 2025 initial preliminary draft. It is still a draft, not a finalized replacement for the 2007 SP 800-38D publication. The draft's current public summary reiterates that random-nonce GCM has an invocation bound of (2^{32}) under the described construction and that nonce repetition can compromise the authentication subkey. Treat this as an important current research signal, not a finalized normative requirement for this application.
+NIST's current publication page lists **SP 800-38D Rev. 1 (2nd Preliminary Draft)**, published 2026-06-01. The page explicitly says there is not yet an actual draft document; NIST is gathering feedback on proposed revision topics, including GCM tag sizes, variable-length IVs, and a wider-block variant. It is not a finalized replacement for the 2007 SP 800-38D final.
+
+The superseded January 2025 initial preliminary page discussed the (2^{32}) invocation bound for the described random-nonce construction. That statement belongs to the earlier pre-draft page, not the current second preliminary page; do not attribute it to the current draft. The final 2007 publication remains the current final reference while revision work continues.
 
 Implications:
-- Re-check NIST's current publication status before protocol freeze; do not cite only the 2007 final as if revision work were inactive.
-- Do not interpret (2^{32}) as a sensible product target. Set a much more conservative, explicit per-key limit from the approved construction, maximum file/chunk sizes, and failure/retry model.
-- The application must enforce its chosen cap and rotate to a fresh key/version before reaching it; logging or monitoring alone is not enforcement.
+- Re-check NIST's publication status before protocol freeze; distinguish final standards from preliminary calls for comments.
+- Derive the app's GCM usage policy from the applicable current final guidance, then choose a conservative, explicit per-key cap based on approved constructions, maximum file/chunk sizes, and failure/retry behavior.
+- Enforce the selected cap and rotate to a fresh key/version before reaching it; logging or monitoring alone is not enforcement.
 
-Source: NIST CSRC, [SP 800-38D Rev. 1 (2nd Preliminary Draft)](https://csrc.nist.gov/pubs/sp/800/38/d/r1/iprd), publication history and GCM invocation discussion. The earlier final remains at [SP 800-38D](https://csrc.nist.gov/pubs/sp/800/38/d/final).
+Sources: NIST CSRC, [SP 800-38D Rev. 1 (2nd Preliminary Draft)](https://csrc.nist.gov/pubs/sp/800/38/d/r1/2prd), [superseded initial preliminary page](https://csrc.nist.gov/pubs/sp/800/38/d/r1/iprd), and [SP 800-38D (2007 final)](https://csrc.nist.gov/pubs/sp/800/38/d/final).
 
 ## Recommended design direction (not approved)
 
