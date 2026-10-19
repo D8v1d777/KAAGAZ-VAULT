@@ -79,6 +79,13 @@ def main() -> None:
     assert actual == GOLDEN_HEX, f"golden mismatch: {actual}"
     assert encode_chunk_aad({**fixture, "chunkIndex": 1}) != bytes.fromhex(GOLDEN_HEX)
 
+    # Every shared valid vector must match byte-for-byte, not merely pass schema validation.
+    for case in VECTORS.get("additionalValidVectors", []):
+        encoded = encode_chunk_aad(case["metadata"]).hex()
+        assert encoded == case["aadHex"], (
+            f"golden mismatch for {case['name']}: expected {case['aadHex']}, got {encoded}"
+        )
+
     # Keep the independent reference grammar aligned with JavaScript's strict ID tests.
     # The documented 128-byte boundary must be accepted for each opaque ID field.
     for field in ("vaultId", "documentId", "keyId"):
@@ -114,7 +121,8 @@ def main() -> None:
                 continue
             raise AssertionError(f"invalid numeric value accepted: {field}={invalid!r}")
 
-    print(f"KVAD v1 golden vector verified: {actual} ({len(bytes.fromhex(actual))} bytes)")
+    vector_count = 1 + len(VECTORS.get("additionalValidVectors", []))
+    print(f"KVAD v1 golden vectors verified: {vector_count}; base vector {len(bytes.fromhex(actual))} bytes")
     print(f"invalid identifier cases rejected: {len(invalid_ids)}/{len(invalid_ids)}")
 
 
