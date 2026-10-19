@@ -86,6 +86,13 @@ def main() -> None:
             f"golden mismatch for {case['name']}: expected {case['aadHex']}, got {encoded}"
         )
 
+    # Differential corpus: compare every seeded metadata record to fixed bytes.
+    for case in VECTORS.get("propertyVectors", []):
+        encoded = encode_chunk_aad(case["metadata"]).hex()
+        assert encoded == case["aadHex"], (
+            f"property vector mismatch for {case['name']}: expected {case['aadHex']}, got {encoded}"
+        )
+
     # Keep the independent reference grammar aligned with JavaScript's strict ID tests.
     # The documented 128-byte boundary must be accepted for each opaque ID field.
     for field in ("vaultId", "documentId", "keyId"):
@@ -122,7 +129,8 @@ def main() -> None:
             raise AssertionError(f"invalid numeric value accepted: {field}={invalid!r}")
 
     vector_count = 1 + len(VECTORS.get("additionalValidVectors", []))
-    print(f"KVAD v1 golden vectors verified: {vector_count}; base vector {len(bytes.fromhex(actual))} bytes")
+    property_count = len(VECTORS.get("propertyVectors", []))
+    print(f"KVAD v1 golden vectors verified: {vector_count}; differential cases verified: {property_count}")
     print(f"invalid identifier cases rejected: {len(invalid_ids)}/{len(invalid_ids)}")
 
 
