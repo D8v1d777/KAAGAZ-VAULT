@@ -33,7 +33,7 @@ test("research separates published evidence from design hypotheses and provides 
 });
 
 test("delivery plan keeps implementation and independent review as explicit incomplete gates", () => {
-  assert.match(plan, /Phase 3 implementation: 0%/);
+  assert.match(plan, /\| 3\. Functional storage and crypto \|[^\n]*\| \*\*0% — not started\*\*/);
   assert.match(plan, /independent review/i);
   assert.match(plan, /Do not claim E2EE or production security until implemented/i);
   assert.match(architecture, /E2EE architecture decision/i);
