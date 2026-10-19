@@ -74,5 +74,423 @@
       "field": "keyId",
       "value": "slash/name"
     }
+  ],
+  "propertyVectors": [
+    {
+      "name": "seeded_case_01",
+      "metadata": {
+        "vaultId": "v1to5gnv_0",
+        "documentId": "d1n2f8gl_0",
+        "documentVersion": 3998573325,
+        "keyId": "k1aoonq_0",
+        "contentType": "application/octet-stream",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 41376557
+      },
+      "aadHex": "4b56414401000a7631746f35676e765f30000a64316e326638676c5f30ee55630d00096b31616f6f6e715f3000186170706c69636174696f6e2f6f637465742d73747265616d0102775b2d"
+    },
+    {
+      "name": "seeded_case_02",
+      "metadata": {
+        "vaultId": "v1kecd2c_1",
+        "documentId": "d93urx3_1",
+        "documentVersion": 1411563300,
+        "keyId": "ky5qtvk_1",
+        "contentType": "application/pdf",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 2741505890
+      },
+      "aadHex": "4b56414401000a76316b65636432635f310009643933757278335f315422bf2400096b79357174766b5f31000f6170706c69636174696f6e2f70646601a3680f62"
+    },
+    {
+      "name": "seeded_case_03",
+      "metadata": {
+        "vaultId": "v1v5krog_2",
+        "documentId": "d97tcbl_2",
+        "documentVersion": 1030480952,
+        "keyId": "kyhh881_2",
+        "contentType": "image/jpeg",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 828545131
+      },
+      "aadHex": "4b56414401000a763176356b726f675f3200096439377463626c5f323d6be43800096b7968683838315f32000a696d6167652f6a706567013162986b"
+    },
+    {
+      "name": "seeded_case_04",
+      "metadata": {
+        "vaultId": "vd7cuzg_3",
+        "documentId": "d12er5ve_3",
+        "documentVersion": 4190293963,
+        "keyId": "k1aemalz_3",
+        "contentType": "image/png",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 3744730180
+      },
+      "aadHex": "4b56414401000976643763757a675f33000a64313265723576655f33f9c2cfcb000a6b3161656d616c7a5f330009696d6167652f706e6701df340c44"
+    },
+    {
+      "name": "seeded_case_05",
+      "metadata": {
+        "vaultId": "v1221m56_4",
+        "documentId": "d1ebi2sr_4",
+        "documentVersion": 43451805,
+        "keyId": "k1a9ef66_4",
+        "contentType": "image/webp",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 2825509031
+      },
+      "aadHex": "4b56414401000a76313232316d35365f34000a64316562693273725f340297059d000a6b316139656636365f34000a696d6167652f7765627001a869d8a7"
+    },
+    {
+      "name": "seeded_case_06",
+      "metadata": {
+        "vaultId": "v1y5eiih_5",
+        "documentId": "divz7df_5",
+        "documentVersion": 4175292684,
+        "keyId": "k1xhb5g5_5",
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 3634475956
+      },
+      "aadHex": "4b56414401000a76317935656969685f3500096469767a3764665f35f8dde90c000a6b317868623567355f35000a746578742f706c61696e01d8a1b3b4"
+    },
+    {
+      "name": "seeded_case_07",
+      "metadata": {
+        "vaultId": "vehwlrz_6",
+        "documentId": "dennmwj_6",
+        "documentVersion": 3424948946,
+        "keyId": "k14f4b3i_6",
+        "contentType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 2159519162
+      },
+      "aadHex": "4b564144010009766568776c727a5f36000964656e6e6d776a5f36cc2492d2000a6b313466346233695f3600476170706c69636174696f6e2f766e642e6f70656e786d6c666f726d6174732d6f6666696365646f63756d656e742e776f726470726f63657373696e676d6c2e646f63756d656e740180b7a5ba"
+    },
+    {
+      "name": "seeded_case_08",
+      "metadata": {
+        "vaultId": "v1vqb2t6_7",
+        "documentId": "d1d906t4_7",
+        "documentVersion": 964811952,
+        "keyId": "khx191h_7",
+        "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 131402332
+      },
+      "aadHex": "4b56414401000a76317671623274365f37000a64316439303674345f373981dcb000096b6878313931685f3700416170706c69636174696f6e2f766e642e6f70656e786d6c666f726d6174732d6f6666696365646f63756d656e742e73707265616473686565746d6c2e73686565740107d50a5c"
+    },
+    {
+      "name": "seeded_case_09",
+      "metadata": {
+        "vaultId": "vwjesmr_8",
+        "documentId": "d13ro7fq_8",
+        "documentVersion": 689844967,
+        "keyId": "k1ymox3_8",
+        "contentType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 377188980
+      },
+      "aadHex": "4b56414401000976776a65736d725f38000a643133726f3766715f38291e32e700096b31796d6f78335f3800496170706c69636174696f6e2f766e642e6f70656e786d6c666f726d6174732d6f6666696365646f63756d656e742e70726573656e746174696f6e6d6c2e70726573656e746174696f6e01167b7274"
+    },
+    {
+      "name": "seeded_case_10",
+      "metadata": {
+        "vaultId": "vz41ige_9",
+        "documentId": "d9do68i_9",
+        "documentVersion": 1184798621,
+        "keyId": "k75h90q_9",
+        "contentType": "application/octet-stream",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1604491879
+      },
+      "aadHex": "4b564144010009767a34316967655f3900096439646f3638695f39469e979d00096b3735683930715f3900186170706c69636174696f6e2f6f637465742d73747265616d015fa29a67"
+    },
+    {
+      "name": "seeded_case_11",
+      "metadata": {
+        "vaultId": "v149ovf4_10",
+        "documentId": "dvsl54x_10",
+        "documentVersion": 3856695199,
+        "keyId": "k1aq9ilz_10",
+        "contentType": "application/pdf",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 2548350309
+      },
+      "aadHex": "4b56414401000b763134396f7666345f3130000a6476736c3534785f3130e5e07f9f000b6b31617139696c7a5f3130000f6170706c69636174696f6e2f7064660197e4bd65"
+    },
+    {
+      "name": "seeded_case_12",
+      "metadata": {
+        "vaultId": "v2kuov5_11",
+        "documentId": "d10d9gia_11",
+        "documentVersion": 1561463831,
+        "keyId": "k13jq4ri_11",
+        "contentType": "image/jpeg",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1759235619
+      },
+      "aadHex": "4b56414401000a76326b756f76355f3131000b64313064396769615f31315d120c17000b6b31336a713472695f3131000a696d6167652f6a7065670168dbce23"
+    },
+    {
+      "name": "seeded_case_13",
+      "metadata": {
+        "vaultId": "ve4mfcc_12",
+        "documentId": "d1kz0ruz_12",
+        "documentVersion": 164631938,
+        "keyId": "ksotr0x_12",
+        "contentType": "image/png",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 2502729379
+      },
+      "aadHex": "4b56414401000a7665346d6663635f3132000b64316b7a3072757a5f313209d01582000a6b736f747230785f31320009696d6167652f706e6701952c9ea3"
+    },
+    {
+      "name": "seeded_case_14",
+      "metadata": {
+        "vaultId": "v1ogkr3z_13",
+        "documentId": "d5vxbgv_13",
+        "documentVersion": 4085259105,
+        "keyId": "k1tv2ml2_13",
+        "contentType": "image/webp",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1175214107
+      },
+      "aadHex": "4b56414401000b76316f676b72337a5f3133000a643576786267765f3133f3801b61000b6b317476326d6c325f3133000a696d6167652f7765627001460c581b"
+    },
+    {
+      "name": "seeded_case_15",
+      "metadata": {
+        "vaultId": "vu7p6os_14",
+        "documentId": "dnrmwdb_14",
+        "documentVersion": 3514369807,
+        "keyId": "k1hzehky_14",
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1704805661
+      },
+      "aadHex": "4b56414401000a76753770366f735f3134000a646e726d7764625f3134d179070f000b6b31687a65686b795f3134000a746578742f706c61696e01659d451d"
+    },
+    {
+      "name": "seeded_case_16",
+      "metadata": {
+        "vaultId": "vto4lvm_15",
+        "documentId": "damj3xl_15",
+        "documentVersion": 4135851719,
+        "keyId": "k1yyo6p4_15",
+        "contentType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 4001315798
+      },
+      "aadHex": "4b56414401000a76746f346c766d5f3135000a64616d6a33786c5f3135f68416c7000b6b3179796f3670345f313500476170706c69636174696f6e2f766e642e6f70656e786d6c666f726d6174732d6f6666696365646f63756d656e742e776f726470726f63657373696e676d6c2e646f63756d656e7401ee7f3bd6"
+    },
+    {
+      "name": "seeded_case_17",
+      "metadata": {
+        "vaultId": "vbksqms_16",
+        "documentId": "d32okb8_16",
+        "documentVersion": 1468193684,
+        "keyId": "k14rd763_16",
+        "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 742221808
+      },
+      "aadHex": "4b56414401000a76626b73716d735f3136000a6433326f6b62385f31365782db94000b6b313472643736335f313600416170706c69636174696f6e2f766e642e6f70656e786d6c666f726d6174732d6f6666696365646f63756d656e742e73707265616473686565746d6c2e7368656574012c3d67f0"
+    },
+    {
+      "name": "seeded_case_18",
+      "metadata": {
+        "vaultId": "v16cu181_17",
+        "documentId": "d8x921l_17",
+        "documentVersion": 1091870773,
+        "keyId": "kx47nz1_17",
+        "contentType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 2347653953
+      },
+      "aadHex": "4b56414401000b76313663753138315f3137000a6438783932316c5f31374114a035000a6b7834376e7a315f313700496170706c69636174696f6e2f766e642e6f70656e786d6c666f726d6174732d6f6666696365646f63756d656e742e70726573656e746174696f6e6d6c2e70726573656e746174696f6e018bee5b41"
+    },
+    {
+      "name": "seeded_case_19",
+      "metadata": {
+        "vaultId": "vma401u_18",
+        "documentId": "d5ez93k_18",
+        "documentVersion": 2872513888,
+        "keyId": "kxuw52p_18",
+        "contentType": "application/octet-stream",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1751286185
+      },
+      "aadHex": "4b56414401000a766d61343031755f3138000a6435657a39336b5f3138ab371560000a6b7875773532705f313800186170706c69636174696f6e2f6f637465742d73747265616d01686281a9"
+    },
+    {
+      "name": "seeded_case_20",
+      "metadata": {
+        "vaultId": "ve1oipu_19",
+        "documentId": "dm7u0lq_19",
+        "documentVersion": 2143294400,
+        "keyId": "k1kerobo_19",
+        "contentType": "application/pdf",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 3912149501
+      },
+      "aadHex": "4b56414401000a7665316f6970755f3139000a646d3775306c715f31397fc013c0000b6b316b65726f626f5f3139000f6170706c69636174696f6e2f70646601e92ea9fd"
+    },
+    {
+      "name": "seeded_case_21",
+      "metadata": {
+        "vaultId": "v1grvrrp_20",
+        "documentId": "d18gjlkp_20",
+        "documentVersion": 3995278297,
+        "keyId": "kamuhv8_20",
+        "contentType": "image/jpeg",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1569104802
+      },
+      "aadHex": "4b56414401000b76316772767272705f3230000b643138676a6c6b705f3230ee231bd9000a6b616d756876385f3230000a696d6167652f6a706567015d86a3a2"
+    },
+    {
+      "name": "seeded_case_22",
+      "metadata": {
+        "vaultId": "v1eyfad7_21",
+        "documentId": "d1fm1c97_21",
+        "documentVersion": 1300625903,
+        "keyId": "k19z0p9u_21",
+        "contentType": "image/png",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1118202341
+      },
+      "aadHex": "4b56414401000b76316579666164375f3231000b6431666d316339375f32314d85f9ef000b6b31397a307039755f32310009696d6167652f706e670142a669e5"
+    },
+    {
+      "name": "seeded_case_23",
+      "metadata": {
+        "vaultId": "vymj7l4_22",
+        "documentId": "d18i702n_22",
+        "documentVersion": 2601554030,
+        "keyId": "k1bd3on7_22",
+        "contentType": "image/webp",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 601852178
+      },
+      "aadHex": "4b56414401000a76796d6a376c345f3232000b643138693730326e5f32329b10906e000b6b316264336f6e375f3232000a696d6167652f776562700123df8912"
+    },
+    {
+      "name": "seeded_case_24",
+      "metadata": {
+        "vaultId": "v137a8rw_23",
+        "documentId": "d1a6wc46_23",
+        "documentVersion": 739147679,
+        "keyId": "k17cw6sg_23",
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 2634645732
+      },
+      "aadHex": "4b56414401000b76313337613872775f3233000b64316136776334365f32332c0e7f9f000b6b313763773673675f3233000a746578742f706c61696e019d0980e4"
+    },
+    {
+      "name": "seeded_case_25",
+      "metadata": {
+        "vaultId": "v4db1ym_24",
+        "documentId": "ds6fb8r_24",
+        "documentVersion": 1970230119,
+        "keyId": "kzd9cef_24",
+        "contentType": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 2557209819
+      },
+      "aadHex": "4b56414401000a7634646231796d5f3234000a647336666238725f3234756f5367000a6b7a64396365665f323400476170706c69636174696f6e2f766e642e6f70656e786d6c666f726d6174732d6f6666696365646f63756d656e742e776f726470726f63657373696e676d6c2e646f63756d656e7401986becdb"
+    },
+    {
+      "name": "seeded_case_26",
+      "metadata": {
+        "vaultId": "vpib32b_25",
+        "documentId": "db6c840_25",
+        "documentVersion": 3359154195,
+        "keyId": "kpd5sdr_25",
+        "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1614832164
+      },
+      "aadHex": "4b56414401000a767069623332625f3235000a646236633834305f3235c838a013000a6b7064357364725f323500416170706c69636174696f6e2f766e642e6f70656e786d6c666f726d6174732d6f6666696365646f63756d656e742e73707265616473686565746d6c2e73686565740160406224"
+    },
+    {
+      "name": "seeded_case_27",
+      "metadata": {
+        "vaultId": "v1tnik12_26",
+        "documentId": "d1whgg93_26",
+        "documentVersion": 2943494171,
+        "keyId": "k19ldlya_26",
+        "contentType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 2628688765
+      },
+      "aadHex": "4b56414401000b7631746e696b31325f3236000b64317768676739335f3236af72281b000b6b31396c646c79615f323600496170706c69636174696f6e2f766e642e6f70656e786d6c666f726d6174732d6f6666696365646f63756d656e742e70726573656e746174696f6e6d6c2e70726573656e746174696f6e019cae9b7d"
+    },
+    {
+      "name": "seeded_case_28",
+      "metadata": {
+        "vaultId": "v1f0rxod_27",
+        "documentId": "daqe6sf_27",
+        "documentVersion": 1199432598,
+        "keyId": "k16zcqj6_27",
+        "contentType": "application/octet-stream",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 691872387
+      },
+      "aadHex": "4b56414401000b7631663072786f645f3237000a646171653673665f3237477de396000b6b31367a63716a365f323700186170706c69636174696f6e2f6f637465742d73747265616d01293d2283"
+    },
+    {
+      "name": "seeded_case_29",
+      "metadata": {
+        "vaultId": "v93nogl_28",
+        "documentId": "d10gz7oa_28",
+        "documentVersion": 1835234427,
+        "keyId": "kz2qgi4_28",
+        "contentType": "application/pdf",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 4085873753
+      },
+      "aadHex": "4b56414401000a7639336e6f676c5f3238000b643130677a376f615f32386d63747b000a6b7a32716769345f3238000f6170706c69636174696f6e2f70646601f3897c59"
+    },
+    {
+      "name": "seeded_case_30",
+      "metadata": {
+        "vaultId": "vplmtso_29",
+        "documentId": "d1gvczdb_29",
+        "documentVersion": 4205883834,
+        "keyId": "kyjek6y_29",
+        "contentType": "image/jpeg",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 4075206284
+      },
+      "aadHex": "4b56414401000a76706c6d74736f5f3239000b64316776637a64625f3239fab0b1ba000a6b796a656b36795f3239000a696d6167652f6a70656701f2e6b68c"
+    },
+    {
+      "name": "seeded_case_31",
+      "metadata": {
+        "vaultId": "v196flvb_30",
+        "documentId": "docaxcp_30",
+        "documentVersion": 1004791186,
+        "keyId": "k1c4b1nd_30",
+        "contentType": "image/png",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 546222718
+      },
+      "aadHex": "4b56414401000b76313936666c76625f3330000a646f63617863705f33303be3e592000b6b31633462316e645f33300009696d6167652f706e6701208eb27e"
+    },
+    {
+      "name": "seeded_case_32",
+      "metadata": {
+        "vaultId": "vd087a6_31",
+        "documentId": "dpqm4pv_31",
+        "documentVersion": 975834648,
+        "keyId": "k1xegeb_31",
+        "contentType": "image/webp",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 861808194
+      },
+      "aadHex": "4b56414401000a766430383761365f3331000a6470716d3470765f33313a2a0e18000a6b3178656765625f3331000a696d6167652f7765627001335e2642"
+    }
   ]
 }
