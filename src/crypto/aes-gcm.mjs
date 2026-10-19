@@ -23,7 +23,31 @@ function validateAssociatedData(value) {
   if (bytes.byteLength === 0) {
     throw new TypeError("associatedData must not be empty.");
   }
-  return bytes;
+  return bytes.slice();
+}
+
+function snapshotRecord(record, expectedKeys, name) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    throw new TypeError(`${name} must be an object.`);
+  }
+
+  const ownKeys = Reflect.ownKeys(record);
+  if (
+    ownKeys.length !== expectedKeys.length ||
+    ownKeys.some((key) => typeof key !== "string" || !expectedKeys.includes(key))
+  ) {
+    throw new TypeError(`${name} has an unexpected schema.`);
+  }
+
+  const snapshot = Object.create(null);
+  for (const key of expectedKeys) {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor || !descriptor.enumerable || !("value" in descriptor)) {
+      throw new TypeError(`${name} fields must be enumerable data properties.`);
+    }
+    snapshot[key] = descriptor.value;
+  }
+  return snapshot;
 }
 
 function validateKey(key, usage) {
@@ -49,7 +73,7 @@ export async function generateDocumentKey(cryptoProvider) {
 
 export async function encryptBytes(plaintext, key, associatedData, cryptoProvider) {
   const provider = getCrypto(cryptoProvider);
-  toBytes(plaintext, "plaintext");
+  const plaintextSnapshot = toBytes(plaintext, "plaintext").slice();
   validateKey(key, "encrypt");
   const aad = validateAssociatedData(associatedData);
 
@@ -57,7 +81,7 @@ export async function encryptBytes(plaintext, key, associatedData, cryptoProvide
   const ciphertext = await provider.subtle.encrypt(
     { name: ALGORITHM, iv: nonce, additionalData: aad, tagLength: TAG_LENGTH_BITS },
     key,
-    plaintext
+    plaintextSnapshot
   );
 
   return Object.freeze({
@@ -70,11 +94,16 @@ export async function encryptBytes(plaintext, key, associatedData, cryptoProvide
 
 export async function decryptBytes(envelope, key, associatedData, cryptoProvider) {
   const provider = getCrypto(cryptoProvider);
-  if (!envelope || envelope.version !== 1 || envelope.algorithm !== "AES-256-GCM") {
+  const fields = snapshotRecord(
+    envelope,
+    ["version", "algorithm", "nonce", "ciphertext"],
+    "envelope"
+  );
+  if (fields.version !== 1 || fields.algorithm !== "AES-256-GCM") {
     throw new Error("Unsupported encrypted envelope version or algorithm.");
   }
-  const nonce = toBytes(envelope.nonce, "nonce");
-  const ciphertext = toBytes(envelope.ciphertext, "ciphertext");
+  const nonce = toBytes(fields.nonce, "nonce").slice();
+  const ciphertext = toBytes(fields.ciphertext, "ciphertext").slice();
   if (nonce.byteLength !== NONCE_LENGTH_BYTES) {
     throw new Error("Invalid AES-GCM nonce length.");
   }
