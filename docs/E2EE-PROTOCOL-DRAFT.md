@@ -12,6 +12,7 @@ Primary sources:
 - W3C Web Cryptography API, AES-GCM: https://www.w3.org/TR/WebCryptoAPI/#aes-gcm
 - NIST SP 800-38D: https://csrc.nist.gov/pubs/sp/800/38/d/final
 - RFC 9106, Argon2: https://www.rfc-editor.org/rfc/rfc9106
+- RFC 8949, CBOR deterministic encoding (Section 4.2): https://www.rfc-editor.org/rfc/rfc8949.html
 
 These references establish primitive constraints, not the security of this proposed protocol.
 
@@ -37,7 +38,12 @@ Reject duplicate fields, unknown critical fields, unsupported versions, malforme
 
 Do **not** use casual delimiter concatenation or a generic JSON serializer as AAD. Property order, number formatting, Unicode and duplicate-key behavior can differ.
 
-Draft direction: define a fixed-order binary encoding with a domain-separation prefix such as the ASCII bytes `KAAGAZ-VAULT-AAD\0\x01`, followed by length-prefixed fields and fixed-width big-endian integers. The specification must define exact byte lengths, maximum lengths, string normalization, integer widths, and whether optional fields are forbidden or encoded with explicit presence bytes. The decoder must reject non-canonical input rather than normalize it silently.
+**Serialization decision remains OPEN.** Compare two approaches before implementing either:
+
+1. **Deterministically encoded CBOR (RFC 8949 §4.2):** a maintained CBOR implementation may reduce bespoke byte-encoding code. The protocol must define a narrow schema and require deterministic/preferred encodings, definite-length items only, no floats or unneeded tags, strict length/type/range limits, duplicate-map-key rejection, rejection of unknown critical fields, and rejection of non-deterministic encodings. RFC 8949 describes deterministic encoding rules; it does not automatically make an application protocol safe.
+2. **Fixed-order binary encoding:** a bespoke encoding with a domain-separation prefix such as the ASCII bytes \`KAAGAZ-VAULT-AAD\\0\\x01\`, length-prefixed fields and fixed-width big-endian integers. This avoids a general-purpose parser but transfers the burden of specifying, implementing and reviewing every byte-level rule to this project.
+
+**Current recommendation:** prefer a small, maintained deterministic-CBOR implementation only if dependency provenance, strict parsing behavior, browser support and duplicate-key handling can be verified. Otherwise, keep the fixed-order binary option as a reviewed alternative. Do not treat either as selected until the comparison is recorded, test vectors are agreed, and an independent reviewer checks the format. In either case, define exact byte lengths, maximum lengths, string normalization, integer widths and optional-field representation. Reject non-deterministic/non-canonical input rather than silently normalizing it.
 
 Per-chunk AAD should bind at least:
 - protocol/domain version;
