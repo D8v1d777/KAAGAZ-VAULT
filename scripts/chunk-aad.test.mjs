@@ -9,7 +9,7 @@ const vectors = JSON.parse(readFileSync(new URL("./reference/chunk_aad_vectors.j
 const metadata = () => ({ ...vectors.valid.metadata });
 const hex = (bytes) => Buffer.from(bytes).toString("hex");
 
-test("matches byte-exact AAD golden bytes (manual fixture; independent reproduction pending)", () => {
+test("matches byte-exact AAD golden bytes from the shared cross-runtime fixture", () => {
   assert.equal(hex(encodeChunkAAD(metadata())), vectors.valid.aadHex);
 });
 
