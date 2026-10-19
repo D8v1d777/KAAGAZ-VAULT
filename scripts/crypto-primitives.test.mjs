@@ -11,10 +11,10 @@ test("generates a non-extractable AES-256-GCM document key", async () => {
   assert.equal(key.algorithm.name, "AES-GCM");
   assert.equal(key.algorithm.length, 256);
   assert.equal(key.extractable, false);
-  assert.deepEqual(key.usages.sort(), ["decrypt", "encrypt"]);
+  assert.deepEqual([...key.usages].sort(), ["decrypt", "encrypt"]);
 });
 
-test("encrypts and decrypts bytes with authenticated associated data", async () => {
+test("encrypts and decrypts bytes with mandatory authenticated associated data", async () => {
   const key = await generateDocumentKey(webcrypto);
   const plaintext = bytes("Kaagaz Vault crypto foundation");
   const aad = bytes("vault-id:demo;file-id:42;version:1");
@@ -38,14 +38,27 @@ test("fails closed when ciphertext or authenticated metadata is modified", async
 test("rejects wrong keys, unsupported formats, malformed nonces and truncated ciphertext", async () => {
   const key = await generateDocumentKey(webcrypto);
   const otherKey = await generateDocumentKey(webcrypto);
-  const envelope = await encryptBytes(bytes("private"), key, undefined, webcrypto);
-  await assert.rejects(decryptBytes(envelope, otherKey, undefined, webcrypto));
-  await assert.rejects(decryptBytes({ ...envelope, version: 999 }, key));
-  await assert.rejects(decryptBytes({ ...envelope, nonce: new Uint8Array(8) }, key));
-  await assert.rejects(decryptBytes({ ...envelope, ciphertext: new Uint8Array(4) }, key));
+  const aad = bytes("file:one");
+  const envelope = await encryptBytes(bytes("private"), key, aad, webcrypto);
+  await assert.rejects(decryptBytes(envelope, otherKey, aad, webcrypto));
+  await assert.rejects(decryptBytes({ ...envelope, version: 999 }, key, aad, webcrypto));
+  await assert.rejects(decryptBytes({ ...envelope, nonce: new Uint8Array(8) }, key, aad, webcrypto));
+  await assert.rejects(decryptBytes({ ...envelope, ciphertext: new Uint8Array(4) }, key, aad, webcrypto));
+});
+
+test("rejects missing or empty associated data and validates key size/usages", async () => {
+  const key = await generateDocumentKey(webcrypto);
+  await assert.rejects(encryptBytes(bytes("private"), key, undefined, webcrypto), /associatedData/);
+  await assert.rejects(encryptBytes(bytes("private"), key, new Uint8Array(), webcrypto), /must not be empty/);
+  await assert.rejects(decryptBytes({ version: 1, algorithm: "AES-256-GCM", nonce: new Uint8Array(12), ciphertext: new Uint8Array(16) }, key, undefined, webcrypto), /associatedData/);
+  const aes128 = await webcrypto.subtle.generateKey({ name: "AES-GCM", length: 128 }, false, ["encrypt", "decrypt"]);
+  await assert.rejects(encryptBytes(bytes("x"), aes128, bytes("file:one"), webcrypto), /AES-256-GCM key/);
+  const encryptOnly = await webcrypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt"]);
+  await assert.rejects(decryptBytes({ version: 1, algorithm: "AES-256-GCM", nonce: new Uint8Array(12), ciphertext: new Uint8Array(16) }, encryptOnly, bytes("file:one"), webcrypto), /decrypt usage/);
 });
 
 test("validates input types and has no insecure crypto fallback", async () => {
-  await assert.rejects(encryptBytes("not bytes", await generateDocumentKey(webcrypto), undefined, webcrypto), TypeError);
+  const key = await generateDocumentKey(webcrypto);
+  await assert.rejects(encryptBytes("not bytes", key, bytes("file:one"), webcrypto), TypeError);
   await assert.rejects(generateDocumentKey({}), /Web Crypto API is required/);
 });
