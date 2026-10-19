@@ -77,3 +77,11 @@ A mandatory AAD parameter reduces accidental misuse but does not prove correct m
 - Ran a local Node.js 22 reconstructed snapshot of the configured crypto test pair (crypto-primitives.test.mjs + chunk-aad.test.mjs): **13/13 tests passed**.
 - Shared-fixture smoke checks: JavaScript and Python each accepted all 3 maximum-length (128-character) valid identifier cases and rejected all 8 invalid cases. The Python reference independently reproduced the 38-byte golden vector.
 - These tests were run against a local reconstruction of fetched source/test content because a repository clone was unavailable; they are not exact-checkout or CI evidence. Exact-head CI remains unverified.
+
+
+## Manifest design gate — 2026-10-19
+
+- Added [ADR-004: Manifest and all-or-nothing reads](ADR-004-MANIFEST-AND-ALL-OR-NOTHING-READS.md) as a review-only requirements/options document.
+- It defines the minimum authenticated manifest fields, bounded parsing requirements, all-or-nothing plaintext release invariant, rollback limitation, candidate key-separation options, and crash/retry/adversarial acceptance tests.
+- No manifest or key-wrapping code was added. The protocol is not approved; key hierarchy, nonce lifecycle, Web Crypto constraints, recovery and anti-rollback must be reconciled and independently reviewed first.
+- Latest queried candidate head: 6c2789b3b7758a9ab637eb94d9ba0409d3743b56. Exact-head workflow/status queries returned no records; CI remains unverified.
