@@ -69,7 +69,16 @@ import com.kaagazvault.reminders.ReminderRepository
 import com.kaagazvault.reminders.ReminderSection
 import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
 import com.kaagazvault.security.EncryptedDocumentStore
+import com.kaagazvault.sync.SettingsMergeDecision
+import com.kaagazvault.sync.SettingsPairingTicket
+import com.kaagazvault.sync.SettingsSyncCrypto
+import com.kaagazvault.sync.SettingsSyncMerger
+import com.kaagazvault.sync.SettingsTransferCode
+import com.kaagazvault.sync.SyncableSettingsStore
+import com.kaagazvault.sync.SyncableVaultSettings
+import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.security.GeneralSecurityException
 import java.util.concurrent.Executors
 
@@ -138,6 +147,15 @@ private fun VaultHomeScreen(
     val context = LocalContext.current
     val view = LocalView.current
     val simplifiedMode = rememberSimplifiedMode(context)
+    val syncStore = remember { SyncableSettingsStore(context) }
+    var syncEnabled by remember { mutableStateOf(syncStore.isSyncEnabled()) }
+    var pendingExportBundle by remember { mutableStateOf<ByteArray?>(null) }
+    var exportCode by remember { mutableStateOf<String?>(null) }
+    var showExportCode by remember { mutableStateOf(false) }
+    var pendingImportBundle by remember { mutableStateOf<ByteArray?>(null) }
+    var showImportCode by remember { mutableStateOf(false) }
+    var importCode by remember { mutableStateOf("") }
+    var pendingIncomingSettings by remember { mutableStateOf<SyncableVaultSettings?>(null) }
     val activeTypography = if (simplifiedMode.value) MaterialTheme.typography.simplified() else MaterialTheme.typography
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
@@ -164,6 +182,35 @@ private fun VaultHomeScreen(
                 runCatching { repository.import(uri) }.onSuccess { imported ->
                     mainHandler.post { playVaultSuccess(view); busy = false; status = "Saved privately: ${imported.displayName}"; refresh() }
                 }.onFailure { error -> mainHandler.post { busy = false; status = safeMessage(error as? Exception ?: Exception()) } }
+            }
+        }
+    }
+    val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri: Uri? ->
+        val bundle = pendingExportBundle
+        pendingExportBundle = null
+        if (uri == null || bundle == null) {
+            status = "Settings export cancelled. Nothing was changed."
+        } else {
+            submitIo {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(bundle) }
+                        ?: throw IOException("Could not open the selected destination")
+                }.onSuccess { mainHandler.post { status = "Encrypted accessibility settings saved. Transfer the code separately." } }
+                    .onFailure { mainHandler.post { status = "Could not save settings. Nothing was changed." } }
+            }
+        }
+    }
+    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) {
+            status = "Settings import cancelled. Nothing was changed."
+        } else {
+            submitIo {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { input ->
+                        input.readBounded(MAX_SETTINGS_FILE_BYTES)
+                    } ?: throw IOException("Could not open the selected settings file")
+                }.onSuccess { bytes -> mainHandler.post { pendingImportBundle = bytes; importCode = ""; showImportCode = true } }
+                    .onFailure { mainHandler.post { status = "This is not a valid Kaagaz settings file." } }
             }
         }
     }
@@ -200,6 +247,30 @@ private fun VaultHomeScreen(
                         playVaultClick(view)
                         simplifiedMode.value = enabled
                         SimplifiedModePreferences.write(context, enabled)
+                    }
+                )
+                SyncSettingsCard(
+                    enabled = syncEnabled,
+                    simplified = simplifiedMode.value,
+                    onEnabledChange = { enabled ->
+                        playVaultClick(view)
+                        syncStore.setSyncEnabled(enabled)
+                        syncEnabled = enabled
+                        status = if (enabled) "Encrypted settings transfer is ready. Documents remain on this device." else "Settings transfer is off. Your local vault is unchanged."
+                    },
+                    onExport = {
+                        val ticket = SettingsPairingTicket.create(System.currentTimeMillis())
+                        pendingExportBundle = SettingsSyncCrypto.encrypt(syncStore.read(), ticket.secret)
+                        exportCode = SettingsTransferCode.encode(ticket.secret)
+                        showExportCode = true
+                    },
+                    onImport = { importPicker.launch(arrayOf("application/octet-stream", "application/octet-stream+kaagaz")) },
+                    onReset = {
+                        syncStore.resetSyncableSettings()
+                        syncStore.setSyncEnabled(false)
+                        syncEnabled = false
+                        simplifiedMode.value = false
+                        status = "Synced accessibility settings reset locally. Documents were not changed."
                     }
                 )
                 VaultActionCard(
@@ -244,6 +315,49 @@ private fun VaultHomeScreen(
         }
     }
             if (showLicenses) AlertDialog(onDismissRequest = { showLicenses = false }, title = { Text("Third-party licenses") }, text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) { Text(notices) } }, confirmButton = { TextButton(onClick = { playVaultClick(view); showLicenses = false }) { Text("Close") } })
+            if (showExportCode && exportCode != null) {
+                TransferCodeDialog(
+                    code = exportCode!!,
+                    onSave = { showExportCode = false; exportPicker.launch("kaagaz-accessibility-settings.kgs") },
+                    onDismiss = { showExportCode = false; pendingExportBundle = null }
+                )
+            }
+            if (showImportCode) {
+                ImportCodeDialog(
+                    code = importCode,
+                    onCodeChange = { importCode = it },
+                    onContinue = {
+                        runCatching {
+                            val bundle = pendingImportBundle ?: throw IOException("Settings file is missing")
+                            SettingsSyncCrypto.decrypt(bundle, SettingsTransferCode.decode(importCode))
+                        }.onSuccess { incoming ->
+                            pendingIncomingSettings = incoming
+                            showImportCode = false
+                            pendingImportBundle = null
+                        }.onFailure { status = "That code could not unlock this settings file. Nothing was changed." }
+                    },
+                    onDismiss = { showImportCode = false; pendingImportBundle = null }
+                )
+            }
+            pendingIncomingSettings?.let { incoming ->
+                SettingsImportPreviewDialog(
+                    incoming = incoming,
+                    onKeepLocal = {
+                        val result = SettingsSyncMerger.merge(syncStore.read(), incoming, SettingsMergeDecision.KEEP_LOCAL)
+                        syncStore.write(result.settings)
+                        pendingIncomingSettings = null
+                        status = "Local accessibility settings kept. Nothing else was changed."
+                    },
+                    onUseIncoming = {
+                        val result = SettingsSyncMerger.merge(syncStore.read(), incoming, SettingsMergeDecision.USE_INCOMING)
+                        syncStore.write(result.settings)
+                        simplifiedMode.value = result.settings.simplifiedModeEnabled
+                        pendingIncomingSettings = null
+                        status = if (result.voiceEnablementNeedsReview) "Settings applied; voice navigation still needs local review." else "Accessibility settings applied on this device."
+                    },
+                    onDismiss = { pendingIncomingSettings = null }
+                )
+            }
         }
     }
 }
@@ -402,3 +516,127 @@ private fun safeMessage(error: Exception): String = when (error) {
 }
 
 private fun formatBytes(size: Int): String = if (size < 1024 * 1024) "${size / 1024} KiB" else String.format(java.util.Locale.ROOT, "%.1f MiB", size / (1024f * 1024f))
+
+private fun InputStream.readBounded(maxBytes: Int): ByteArray {
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(4096)
+    var total = 0
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        total += count
+        if (total > maxBytes) throw IOException("Settings file is too large")
+        output.write(buffer, 0, count)
+    }
+    return output.toByteArray()
+}
+
+private const val MAX_SETTINGS_FILE_BYTES = 64 * 1024
+
+
+@Composable
+private fun SyncSettingsCard(
+    enabled: Boolean,
+    simplified: Boolean,
+    onEnabledChange: (Boolean) -> Unit,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+    onReset: () -> Unit
+) {
+    val view = LocalView.current
+    Card(
+        modifier = Modifier.fillMaxWidth().vaultAnimateContentSize(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(SimplifiedLayout.cornerRadius)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(if (simplified) SimplifiedLayout.cardPadding else 18.dp),
+            verticalArrangement = Arrangement.spacedBy(if (simplified) SimplifiedLayout.actionGap else 12.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Sync accessibility settings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Only text size, simplified view, voice guidance, and haptic choices can transfer. Documents and recordings never leave this device.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = enabled, onCheckedChange = onEnabledChange)
+            }
+            if (enabled) {
+                Text("Encrypted file transfer is ready. Use the code shown during export on the other device.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                if (simplified) {
+                    VaultTonalButton(onClick = onExport, modifier = Modifier.fillMaxWidth().heightIn(min = SimplifiedLayout.controlMinHeight), content = { Text("Export settings") })
+                    VaultOutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth().heightIn(min = SimplifiedLayout.controlMinHeight), content = { Text("Import settings") })
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        FilledTonalButton(onClick = { playVaultClick(view); onExport() }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Export") }
+                        OutlinedButton(onClick = { playVaultClick(view); onImport() }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Import") }
+                    }
+                }
+                TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); onReset() }) { Text("Reset synced settings on this device") }
+            } else {
+                Text("Not syncing. Your local accessibility choices still work normally.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransferCodeDialog(code: String, onSave: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save encrypted settings") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Save the settings file, then enter this code on the other device. Keep the code private and use it for this transfer only.")
+                Text(code, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text("Documents, reminders, OCR, and voice recordings are not included.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = { Button(onClick = onSave) { Text("Save settings file") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+private fun ImportCodeDialog(code: String, onCodeChange: (String) -> Unit, onContinue: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Unlock settings file") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Enter the transfer code from the other device. Nothing will be applied until you review the changes.")
+                OutlinedTextField(value = code, onValueChange = onCodeChange, modifier = Modifier.fillMaxWidth(), label = { Text("Transfer code") }, minLines = 2, maxLines = 3)
+            }
+        },
+        confirmButton = { Button(onClick = onContinue, enabled = code.isNotBlank()) { Text("Review settings") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+private fun SettingsImportPreviewDialog(
+    incoming: SyncableVaultSettings,
+    onKeepLocal: () -> Unit,
+    onUseIncoming: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Review incoming settings") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Only accessibility and voice preferences are included. Your documents stay on this device.")
+                Text("Simplified view: ${if (incoming.simplifiedModeEnabled) "On" else "Off"}")
+                Text("Voice navigation: ${if (incoming.voiceNavigationEnabled) "On" else "Off"}")
+                Text("Spoken guidance: ${if (incoming.spokenGuidanceEnabled) "On" else "Off"}")
+                Text("Voice haptics: ${incoming.voiceHapticPreference.name.replace('_', ' ')}")
+            }
+        },
+        confirmButton = { Button(onClick = onUseIncoming) { Text("Use incoming settings") } },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = onKeepLocal) { Text("Keep local") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        }
+    )
+}

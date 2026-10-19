@@ -1,6 +1,6 @@
 # Phase 19 — Cross-Device Synchronization of Elderly-Friendly Settings
 
-**Status:** Settings-transfer protocol core implemented; account, network sync, UI, and backup-rule integration remain pending.
+**Status:** Settings-transfer protocol core and local encrypted transfer UI implemented; account, network sync, and backup-rule integration remain pending.
 
 **Target branch:** `feat/durable-vault-migration-journal`
 

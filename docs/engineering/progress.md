@@ -9,6 +9,19 @@
 - This is a design-only slice; no simplified-mode preference, typography overlay, high-contrast scheme, or layout refactor was implemented.
 - The design requires 2.0x font-scale, TalkBack, switch access, keyboard, dynamic-color, high-contrast, reduced-motion, and physical-device evidence before release claims.
 
+## 2026-10-19 — Phase 19 local encrypted transfer UI implementation
+
+### Implemented
+- Added an elderly-friendly **Sync accessibility settings** card to the home screen with a clear opt-in toggle, 56dp+ simplified-mode controls, local reset, and explicit copy explaining that documents and recordings never transfer.
+- Added encrypted settings export through the Android document picker, a large copyable transfer code, encrypted settings import, code entry, preview-before-apply, Keep local, Use incoming, and Cancel actions.
+- Kept transfer fully local/user-mediated: no account, backend, socket, network permission, document picker access to vault files, or background sync was introduced.
+- Added bounded 64 KiB settings-file reads and preserved the existing document/OCR/reminder/license UI paths.
+
+### Verification boundary
+- `git diff --check`, source-shape checks, original-activity preservation checks, and forbidden-scope audit passed.
+- Android Kotlin compilation was attempted but could not start because the active sandbox has no Android SDK configured.
+- Android device-picker behavior, TalkBack traversal, 2.0x font scale, and two-device transfer must be validated on physical/emulated devices before release claims.
+
 ## 2026-10-19 — Phase 19 settings-sync protocol implementation
 
 ### Implemented

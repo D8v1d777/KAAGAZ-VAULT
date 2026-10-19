@@ -74,6 +74,14 @@ class SettingsSyncProtocolTest {
     }
 
     @Test
+    fun transferCodeRoundTripsOnlyTheOpaqueKey() {
+        val ticket = SettingsPairingTicket.create(nowEpochMillis = 1_000L)
+        val code = SettingsTransferCode.encode(ticket.secret)
+        assertEquals(ticket.secret.encoded.toList(), SettingsTransferCode.decode(code).encoded.toList())
+        assertThrows(IOException::class.java) { SettingsTransferCode.decode("not-a-transfer-code") }
+    }
+
+    @Test
     fun mergeKeepsLocalByDefaultAndRequiresVoiceReview() {
         val local = settings.copy(
             simplifiedModeEnabled = false,

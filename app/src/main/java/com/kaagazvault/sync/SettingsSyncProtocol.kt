@@ -203,6 +203,28 @@ object SettingsSyncCrypto {
 
 class SettingsSyncAuthenticationException(cause: Throwable) : IOException("Settings authentication failed", cause)
 
+/** Large-text/copyable representation for the user-mediated offline transfer flow. */
+object SettingsTransferCode {
+    fun encode(key: SecretKey): String {
+        val bytes = key.encoded ?: throw IllegalArgumentException("Transfer key is not exportable")
+        require(bytes.size == 32) { "Transfer key must be 256 bits" }
+        return bytes.joinToString(separator = "") { byte -> "%02X".format(byte.toInt() and 0xff) }
+    }
+
+    fun decode(code: String): SecretKey {
+        val normalized = code.filterNot { it.isWhitespace() || it == '-' }
+        if (normalized.length != 64 || normalized.any { it !in "0123456789abcdefABCDEF" }) {
+            throw IOException("Transfer code is invalid")
+        }
+        val bytes = ByteArray(32) { index ->
+            val high = normalized[index * 2].digitToInt(16)
+            val low = normalized[index * 2 + 1].digitToInt(16)
+            ((high shl 4) or low).toByte()
+        }
+        return javax.crypto.spec.SecretKeySpec(bytes, "AES")
+    }
+}
+
 enum class SettingsMergeDecision {
     KEEP_LOCAL,
     USE_INCOMING
