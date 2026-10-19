@@ -41,14 +41,19 @@ function assertRecord(record) {
     throw new TypeError("AAD metadata must contain exactly the documented fields.");
   }
 
-  // Reject getters/setters so validation and serialization cannot invoke caller code
-  // or observe values that change between reads.
+  // Snapshot own data-property values once. This rejects ordinary getters/setters
+  // and avoids later property reads that could return different values. Proxy
+  // traps on reflection operations can still execute; callers must pass trusted
+  // metadata records, not adversarial proxies.
+  const values = Object.create(null);
   for (const key of FIELDS) {
     const descriptor = Object.getOwnPropertyDescriptor(record, key);
     if (!descriptor || !descriptor.enumerable || !("value" in descriptor)) {
       throw new TypeError("AAD metadata fields must be enumerable data properties.");
     }
+    values[key] = descriptor.value;
   }
+  return values;
 }
 
 function encodeId(value, name) {
@@ -83,39 +88,39 @@ function encodeU32(value, name, allowZero) {
  * infer semantic metadata by parsing attacker-controlled AAD.
  */
 export function encodeChunkAAD(metadata) {
-  assertRecord(metadata);
+  const fields = assertRecord(metadata);
 
-  const vaultId = encodeId(metadata.vaultId, "vaultId");
-  const documentId = encodeId(metadata.documentId, "documentId");
-  const keyId = encodeId(metadata.keyId, "keyId");
+  const vaultId = encodeId(fields.vaultId, "vaultId");
+  const documentId = encodeId(fields.documentId, "documentId");
+  const keyId = encodeId(fields.keyId, "keyId");
 
-  if (!Number.isSafeInteger(metadata.documentVersion) ||
-      metadata.documentVersion < 1 || metadata.documentVersion > MAX_U32) {
+  if (!Number.isSafeInteger(fields.documentVersion) ||
+      fields.documentVersion < 1 || fields.documentVersion > MAX_U32) {
     throw new RangeError("documentVersion must be an integer from 1 to 2^32-1.");
   }
-  if (!Number.isSafeInteger(metadata.chunkIndex) ||
-      metadata.chunkIndex < 0 || metadata.chunkIndex > MAX_U32) {
+  if (!Number.isSafeInteger(fields.chunkIndex) ||
+      fields.chunkIndex < 0 || fields.chunkIndex > MAX_U32) {
     throw new RangeError("chunkIndex must be an integer from 0 to 2^32-1.");
   }
-  if (typeof metadata.contentType !== "string" ||
-      !ALLOWED_CONTENT_TYPES.has(metadata.contentType)) {
+  if (typeof fields.contentType !== "string" ||
+      !ALLOWED_CONTENT_TYPES.has(fields.contentType)) {
     throw new TypeError("contentType is not in the supported canonical allowlist.");
   }
-  if (metadata.chunkFormat !== "chunked-v1") {
+  if (fields.chunkFormat !== "chunked-v1") {
     throw new TypeError("Unsupported chunkFormat.");
   }
 
-  const contentType = new TextEncoder().encode(metadata.contentType);
+  const contentType = new TextEncoder().encode(fields.contentType);
   const bytes = [
     ...MAGIC,
     PROTOCOL_VERSION,
     ...encodeU16LengthPrefixed(vaultId, "vaultId"),
     ...encodeU16LengthPrefixed(documentId, "documentId"),
-    ...encodeU32(metadata.documentVersion, "documentVersion", false),
+    ...encodeU32(fields.documentVersion, "documentVersion", false),
     ...encodeU16LengthPrefixed(keyId, "keyId"),
     ...encodeU16LengthPrefixed(contentType, "contentType"),
     1, // chunkFormat enum: chunked-v1
-    ...encodeU32(metadata.chunkIndex, "chunkIndex", true)
+    ...encodeU32(fields.chunkIndex, "chunkIndex", true)
   ];
   return new Uint8Array(bytes);
 }
