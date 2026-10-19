@@ -55,7 +55,7 @@ test("protocol draft defines canonical AAD, key separation, and explicit release
     "VEK",
     "DEK",
     "RFC 9106",
-    "Nonce and chunk constraints",
+    "nonce and chunk constraints",
     "independent cryptographic review"
   ]) {
     assert.ok(protocol.includes(phrase), "Missing protocol design criterion: " + phrase);
