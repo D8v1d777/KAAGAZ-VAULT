@@ -70,3 +70,10 @@ A mandatory AAD parameter reduces accidental misuse but does not prove correct m
 - Added explicit acceptance tests for the maximum permitted 128-character identifier across vaultId, documentId and keyId in both Node and Python implementations.
 - Local reconstructed-snapshot checks: Node focused AAD suite **7/7 passed**; additional shared-fixture smoke checks accepted all **3/3** 128-character valid IDs and rejected all **8/8** invalid IDs in both runtimes. Python golden vector remains 38 bytes.
 - These results are not exact-checkout or GitHub CI evidence. Exact-head status remains unverified.
+
+
+## Combined focused crypto suite — 2026-10-19
+
+- Ran a local Node.js 22 reconstructed snapshot of the configured crypto test pair (crypto-primitives.test.mjs + chunk-aad.test.mjs): **13/13 tests passed**.
+- Shared-fixture smoke checks: JavaScript and Python each accepted all 3 maximum-length (128-character) valid identifier cases and rejected all 8 invalid cases. The Python reference independently reproduced the 38-byte golden vector.
+- These tests were run against a local reconstruction of fetched source/test content because a repository clone was unavailable; they are not exact-checkout or CI evidence. Exact-head CI remains unverified.
