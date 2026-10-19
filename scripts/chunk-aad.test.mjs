@@ -80,6 +80,9 @@ test("rejects invalid identifiers, content types, formats and numeric boundaries
   ]) {
     assert.throws(() => encodeChunkAAD({ ...metadata(), ...patch }));
   }
+  for (const field of ["vaultId", "documentId", "keyId"]) {
+    assert.doesNotThrow(() => encodeChunkAAD({ ...metadata(), [field]: "A".repeat(128) }));
+  }
   for (const { field, value } of vectors.invalidIdentifiers) {
     assert.throws(() => encodeChunkAAD({ ...metadata(), [field]: value }));
   }
