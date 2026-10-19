@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -79,6 +80,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Keep sensitive document previews out of the app switcher snapshot.
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         val store = EncryptedDocumentStore(
             java.io.File(filesDir, "encrypted_documents"),
             AndroidKeystoreDocumentKeyProvider {
@@ -296,6 +299,8 @@ private fun EmptyVaultCard(onImport: () -> Unit) {
 @Composable
 private fun DocumentCard(document: ImportedDocument, busy: Boolean, ocrEngine: OfflineOcrEngine, repository: DocumentRepository, submitIo: (() -> Unit) -> Unit, mainHandler: Handler, onDone: (String) -> Unit) {
     var editedOcr by remember(document.id, document.ocrText) { mutableStateOf(document.ocrText.orEmpty()) }
+    var showReview by remember(document.id) { mutableStateOf(false) }
+    var showDeleteConfirm by remember(document.id) { mutableStateOf(false) }
     val view = LocalView.current
     Card(Modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -306,13 +311,34 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, ocrEngine: O
             Divider()
             if (document.ocrText != null) {
                 Text("Text extraction • ${if (document.ocrReviewed) "reviewed" else "needs review"}", style = MaterialTheme.typography.labelMedium, color = if (document.ocrReviewed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
-                OutlinedTextField(editedOcr, { editedOcr = it }, Modifier.fillMaxWidth(), label = { Text("Review extracted text") }, minLines = 3, maxLines = 8, enabled = !busy, shape = RoundedCornerShape(16.dp))
-                SoftButton(onClick = { playVaultClick(view); submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { mainHandler.post { onDone("Could not save OCR corrections. Existing data was left untouched.") } } } }, enabled = !busy, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
+                if (showReview) {
+                    OutlinedTextField(editedOcr, { editedOcr = it }, Modifier.fillMaxWidth(), label = { Text("Review extracted text") }, minLines = 3, maxLines = 8, enabled = !busy, shape = RoundedCornerShape(16.dp))
+                    SoftButton(onClick = { playVaultClick(view); submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { mainHandler.post { onDone("Could not save OCR corrections. Existing data was left untouched.") } } } }, enabled = !busy, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
+                    TextButton(onClick = { playVaultClick(view); showReview = false }, enabled = !busy) { Text("Hide extracted text") }
+                } else {
+                    Text("Extracted text is hidden until you choose to review it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SoftButton(onClick = { playVaultClick(view); showReview = true }, enabled = !busy, label = "Review extracted text")
+                }
             } else if (document.mimeType.startsWith("image/") || document.mimeType == "application/pdf") {
                 SoftButton(onClick = { playVaultClick(view); submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { mainHandler.post { onDone("Offline text extraction failed. The original remains stored.") } } } }, enabled = !busy, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
             }
-            TextButton(onClick = { playVaultClick(view); submitIo { runCatching { repository.delete(document.id) }.onSuccess { mainHandler.post { onDone("Document removed from the vault.") } }.onFailure { mainHandler.post { onDone("Could not remove the document.") } } } }, enabled = !busy) { Text("Remove document") }
+            TextButton(onClick = { playVaultClick(view); showDeleteConfirm = true }, enabled = !busy) { Text("Remove document") }
         }
+    }
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Remove this document?") },
+            text = { Text("This removes the encrypted copy from the vault. This action cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    playVaultClick(view)
+                    showDeleteConfirm = false
+                    submitIo { runCatching { repository.delete(document.id) }.onSuccess { mainHandler.post { onDone("Document removed from the vault.") } }.onFailure { mainHandler.post { onDone("Could not remove the document.") } } }
+                }) { Text("Remove") }
+            },
+            dismissButton = { TextButton(onClick = { playVaultClick(view); showDeleteConfirm = false }) { Text("Keep it") } }
+        )
     }
 }
 
