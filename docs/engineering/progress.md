@@ -1,3 +1,13 @@
+## 2026-10-19 — Phase 14 calm micro-interactions and audio feedback design
+
+### Designed
+- Added `docs/PHASE-14-CALM-MICROINTERACTIONS-AUDIO-DESIGN.md` with semantic feedback events, platform-respecting sound policy, sparse predefined haptics, named motion tokens, reduced-motion behavior, accessibility requirements, preference guidance, implementation slices, and acceptance gates.
+- Explicitly rejected dark-pattern engagement mechanics, repeated prompt loops, urgency theater, background audio, analytics, and sensory feedback that would make the app harder to leave or understand.
+
+### Verification boundary
+- This is a design-only slice. No new audio assets, haptic implementation, motion system, preference storage, or dependency was added.
+- Existing platform click feedback remains the only implemented audio behavior until the policy and tests are approved.
+
 ## 2026-10-19 — Phase 13 biometric authentication and vault-lock UI design
 
 ### Designed
