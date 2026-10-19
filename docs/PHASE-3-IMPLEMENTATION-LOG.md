@@ -26,3 +26,13 @@
 ## Security note
 
 A mandatory AAD parameter reduces accidental misuse but does not prove correct metadata binding unless callers use a reviewed canonical schema. Random 96-bit GCM nonces are not a substitute for a documented per-key usage limit and retry/interruption policy. Do not use real documents with this experimental wrapper.
+
+
+## Canonical chunk AAD candidate — 2026-10-19
+
+- Added `src/crypto/chunk-aad.mjs`: strict fixed-order binary encoder with a domain separator, protocol version, bounded opaque identifiers, allowlisted content types, explicit chunk-format enum and uint32 big-endian version/index fields. No parser or decoder was added.
+- Added `scripts/chunk-aad.test.mjs`: byte-exact golden fixture, strict schema and boundary rejection, per-field differentiation, and AES-GCM metadata-tampering checks.
+- Added `docs/ADR-003-CHUNK-AAD-ENCODING.md` describing the candidate format and release gates. Decision status remains **proposed, awaiting independent review**.
+- Included the new test in `npm run test:crypto`.
+- This is not yet merged and has not been independently reproduced in a second implementation. Do not treat this as a frozen protocol or use real documents. CI must run on the exact PR head; the current editor has not executed the repository test suite locally.
+- Remaining blockers: independent golden-vector verification; manifest authentication and chunk completion semantics; key hierarchy/wrapping; Argon2id library/parameters; nonce usage/retry/rotation policy; recovery UX; fuzz/cross-runtime tests; independent cryptographic review.
