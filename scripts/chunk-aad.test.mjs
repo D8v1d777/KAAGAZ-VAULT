@@ -1,31 +1,16 @@
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { webcrypto } from "node:crypto";
 import { decryptBytes, encryptBytes, generateDocumentKey } from "../src/crypto/aes-gcm.mjs";
 import { encodeChunkAAD } from "../src/crypto/chunk-aad.mjs";
 
-const metadata = () => ({
-  vaultId: "v1",
-  documentId: "d1",
-  documentVersion: 1,
-  keyId: "k1",
-  contentType: "text/plain",
-  chunkFormat: "chunked-v1",
-  chunkIndex: 0
-});
+const vectors = JSON.parse(readFileSync(new URL("./reference/chunk_aad_vectors.json", import.meta.url), "utf8"));
+const metadata = () => ({ ...vectors.valid.metadata });
 const hex = (bytes) => Buffer.from(bytes).toString("hex");
 
 test("matches byte-exact AAD golden bytes (manual fixture; independent reproduction pending)", () => {
-  const expected =
-    "4b56414401" + // KVAD domain separator + protocol version
-    "00027631" +   // vaultId: length 2, "v1"
-    "00026431" +   // documentId: length 2, "d1"
-    "00000001" +   // documentVersion: uint32 big-endian
-    "00026b31" +   // keyId: length 2, "k1"
-    "000a746578742f706c61696e" + // contentType: length 10, "text/plain"
-    "01" +         // chunked-v1 enum
-    "00000000";    // chunkIndex: uint32 big-endian
-  assert.equal(hex(encodeChunkAAD(metadata())), expected);
+  assert.equal(hex(encodeChunkAAD(metadata())), vectors.valid.aadHex);
 });
 
 test("changes to each authenticated semantic field produce different AAD", () => {
@@ -83,14 +68,6 @@ test("rejects accessor fields without invoking them", () => {
 
 test("rejects invalid identifiers, content types, formats and numeric boundaries", () => {
   for (const patch of [
-    { vaultId: "" },
-    { vaultId: "has space" },
-    { vaultId: "v1\n" },
-    { vaultId: "v1\r" },
-    { documentId: "d1\u2028" },
-    { documentId: "x".repeat(129) },
-    { keyId: "slash/name" },
-    { keyId: "k1\u2029" },
     { contentType: "Text/Plain" },
     { contentType: "text/html" },
     { chunkFormat: "unknown" },
@@ -102,6 +79,9 @@ test("rejects invalid identifiers, content types, formats and numeric boundaries
     { chunkIndex: 0x1_0000_0000 }
   ]) {
     assert.throws(() => encodeChunkAAD({ ...metadata(), ...patch }));
+  }
+  for (const { field, value } of vectors.invalidIdentifiers) {
+    assert.throws(() => encodeChunkAAD({ ...metadata(), [field]: value }));
   }
 });
 
