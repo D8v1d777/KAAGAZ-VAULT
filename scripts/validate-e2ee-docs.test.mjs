@@ -55,6 +55,8 @@ test("protocol draft defines canonical AAD, key separation, and explicit release
     "VEK",
     "DEK",
     "RFC 9106",
+    "RFC 8949",
+    "deterministic-CBOR implementation",
     "nonce and chunk constraints",
     "independent cryptographic review"
   ]) {
