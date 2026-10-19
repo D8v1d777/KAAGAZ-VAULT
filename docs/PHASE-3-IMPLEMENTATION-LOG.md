@@ -62,3 +62,11 @@ A mandatory AAD parameter reduces accidental misuse but does not prove correct m
 - Updated the Node test and Python reference encoder to consume the same fixture file, reducing drift between the two independently written encoders.
 - Local snapshot reconstructed from fetched branch files: Node.js 22 focused AAD suite **7/7 passed**; Python reference verified the 38-byte vector and rejected **7/7** invalid identifier cases. This is local snapshot evidence only. A network attempt to clone the repository failed because the execution environment could not resolve GitHub, so no exact repository checkout was available for local execution.
 - GitHub Actions/status endpoints returned no runs/checks for the latest queried commit. CI remains **unverified**; PR #14 remains draft and unmerged.
+
+
+## Identifier-boundary parity extension — 2026-10-19
+
+- Extended the shared fixture to **8 invalid identifiers**, including line terminators, whitespace, a slash, and an overlong value.
+- Added explicit acceptance tests for the maximum permitted 128-character identifier across vaultId, documentId and keyId in both Node and Python implementations.
+- Local reconstructed-snapshot checks: Node focused AAD suite **7/7 passed**; additional shared-fixture smoke checks accepted all **3/3** 128-character valid IDs and rejected all **8/8** invalid IDs in both runtimes. Python golden vector remains 38 bytes.
+- These results are not exact-checkout or GitHub CI evidence. Exact-head status remains unverified.
