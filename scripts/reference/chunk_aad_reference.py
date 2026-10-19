@@ -80,6 +80,10 @@ def main() -> None:
     assert encode_chunk_aad({**fixture, "chunkIndex": 1}) != bytes.fromhex(GOLDEN_HEX)
 
     # Keep the independent reference grammar aligned with JavaScript's strict ID tests.
+    # The documented 128-byte boundary must be accepted for each opaque ID field.
+    for field in ("vaultId", "documentId", "keyId"):
+        encode_chunk_aad({**fixture, field: "A" * 128})
+
     invalid_ids = VECTORS["invalidIdentifiers"]
     for case in invalid_ids:
         field, invalid = case["field"], case["value"]
