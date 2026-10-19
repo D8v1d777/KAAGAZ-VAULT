@@ -37,3 +37,12 @@ A mandatory AAD parameter reduces accidental misuse but does not prove correct m
 - Included the new test in `npm run test:crypto`.
 - The candidate remains unmerged and is not a frozen protocol. Exact-head GitHub Actions must pass. No full repository test suite has been run locally in this environment.
 - Remaining blockers: independent human review; adversarial fuzz/cross-runtime tests; authenticated manifest and chunk completion semantics; key hierarchy/wrapping; Argon2id library/parameters; nonce usage/retry/rotation policy; recovery UX; independent cryptographic review.
+
+
+## Additional validation fix — 2026-10-19
+
+- Review identified a JavaScript end-anchor edge case: `$` can match immediately before a final line terminator, so the prior identifier pattern could accept some values outside the documented ASCII identifier grammar (for example `"v1\\n"`).
+- Updated `src/crypto/chunk-aad.mjs` to use an absolute-end assertion and added regression cases for LF, CR, U+2028, and U+2029 in identifier fields. The Python reference encoder already uses `fullmatch` and rejects these characters.
+- A local isolated Node.js 22 snapshot reconstructed from the fetched implementation/test files passed **7/7 focused AAD tests**; an additional smoke check rejected **4/4** line-terminator inputs. The separate Python reference snapshot reproduced the 38-byte golden vector. These are local snapshot results, **not** repository CI or an exact-checkout test run.
+- Exact-head GitHub Actions and combined commit status queries for the new PR head returned empty lists. CI remains **unverified**; no claim of green CI is made.
+- Next: obtain exact-head CI evidence if available; then add bounded property/fuzz cases for malformed identifier inputs and test that JavaScript/Python implementations reject the same invalid grammar. Do not expand into key wrapping/manifest code before design review.
