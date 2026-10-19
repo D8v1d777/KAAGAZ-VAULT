@@ -93,6 +93,27 @@ def main() -> None:
             continue
         raise AssertionError(f"invalid identifier accepted: {field}={invalid!r}")
 
+
+    # Cross-check the complete currently supported content-type allowlist and
+    # the u32 boundaries independently of the JavaScript implementation.
+    for content_type in sorted(CONTENT_TYPES):
+        encode_chunk_aad({**fixture, "contentType": content_type})
+    encode_chunk_aad({**fixture, "documentVersion": 1, "chunkIndex": 0})
+    encode_chunk_aad({
+        **fixture,
+        "documentVersion": 0xFFFFFFFF,
+        "chunkIndex": 0xFFFFFFFF,
+    })
+
+    # Python bool is an int subclass; the strict type check must reject it.
+    for field in ("documentVersion", "chunkIndex"):
+        for invalid in (True, False, 1.5, float("nan"), float("inf"), "1", None, 0x1_0000_0000):
+            try:
+                encode_chunk_aad({**fixture, field: invalid})
+            except (ValueError, TypeError, OverflowError):
+                continue
+            raise AssertionError(f"invalid numeric value accepted: {field}={invalid!r}")
+
     print(f"KVAD v1 golden vector verified: {actual} ({len(bytes.fromhex(actual))} bytes)")
     print(f"invalid identifier cases rejected: {len(invalid_ids)}/{len(invalid_ids)}")
 
