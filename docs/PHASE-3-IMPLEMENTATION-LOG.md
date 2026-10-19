@@ -85,3 +85,12 @@ A mandatory AAD parameter reduces accidental misuse but does not prove correct m
 - It defines the minimum authenticated manifest fields, bounded parsing requirements, all-or-nothing plaintext release invariant, rollback limitation, candidate key-separation options, and crash/retry/adversarial acceptance tests.
 - No manifest or key-wrapping code was added. The protocol is not approved; key hierarchy, nonce lifecycle, Web Crypto constraints, recovery and anti-rollback must be reconciled and independently reviewed first.
 - Latest queried candidate head: 6c2789b3b7758a9ab637eb94d9ba0409d3743b56. Exact-head workflow/status queries returned no records; CI remains unverified.
+
+
+## Cross-runtime AAD candidate verification — 2026-10-19
+
+- Added 32 deterministic byte-exact AAD vectors to the shared fixture and made both JavaScript and Python assert every vector. Added eight shared invalid metadata cases and retained eight invalid identifier cases; JavaScript additionally runs a deterministic 256-case property-style corpus.
+- Hardened `encodeChunkAAD` to snapshot validated own data-property values and use the snapshot rather than rereading caller properties. Added a regression test showing an ordinary Proxy `get` trap cannot substitute encoded field values. Reflection traps still execute during object inspection; this API requires trusted metadata records.
+- Exact GitHub Actions run [#39220430174](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39220430174) passed on code commit `51c7c50b894c8d0ebbe618febb36e29be26f6f47`: independent Python reference and full static/browser/axe suite succeeded.
+- Updated ADR-003 with exact evidence. This completes the current AAD candidate test slice only; it does not approve the protocol or implement the manifest, key lifecycle, nonce/retry policy, recovery, anti-rollback, or storage integration.
+- PR #14 remains open, draft, unmerged. Keep Phase 3 at 10% and overall project at 35% until a larger implementation milestone is delivered. Do not use real sensitive documents.
