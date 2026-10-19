@@ -2,9 +2,9 @@ name: Phase 1 UI checks
 
 on:
   push:
-    branches: [feat/accessible-vault-foundation, feat/e2ee-and-human-centered-design]
+    branches: [feat/accessible-vault-foundation, feat/e2ee-and-human-centered-design, feat/phase3-canonical-aad-vectors]
   pull_request:
-    branches: [main, feat/accessible-vault-foundation]
+    branches: [main, feat/accessible-vault-foundation, feat/e2ee-and-human-centered-design]
 
 # Keep push and PR validation runs separate: otherwise a push on a PR branch
 # can cancel the PR run before it starts, leaving no job/check result.
