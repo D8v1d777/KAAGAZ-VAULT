@@ -15,7 +15,7 @@ const metadata = () => ({
 });
 const hex = (bytes) => Buffer.from(bytes).toString("hex");
 
-test("matches independently specified fixed-order AAD golden bytes", () => {
+test("matches byte-exact AAD golden bytes (manual fixture; independent reproduction pending)", () => {
   const expected =
     "4b56414401" + // KVAD domain separator + protocol version
     "00027631" +   // vaultId: length 2, "v1"
@@ -54,6 +54,31 @@ test("rejects unknown/missing properties and non-record inputs", () => {
   const { keyId, ...missing } = metadata();
   assert.equal(keyId, "k1");
   assert.throws(() => encodeChunkAAD(missing), /exactly/);
+});
+
+test("rejects symbol and non-enumerable extra properties", () => {
+  const symbolExtra = metadata();
+  symbolExtra[Symbol("unexpected")] = true;
+  assert.throws(() => encodeChunkAAD(symbolExtra), /exactly/);
+
+  const hiddenExtra = metadata();
+  Object.defineProperty(hiddenExtra, "unexpected", { value: true });
+  assert.throws(() => encodeChunkAAD(hiddenExtra), /exactly/);
+});
+
+test("rejects accessor fields without invoking them", () => {
+  let getterCalled = false;
+  const withGetter = metadata();
+  Object.defineProperty(withGetter, "vaultId", {
+    enumerable: true,
+    configurable: true,
+    get() {
+      getterCalled = true;
+      return "v1";
+    }
+  });
+  assert.throws(() => encodeChunkAAD(withGetter), /data properties/);
+  assert.equal(getterCalled, false);
 });
 
 test("rejects invalid identifiers, content types, formats and numeric boundaries", () => {
