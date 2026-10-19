@@ -63,6 +63,18 @@ test("rejects symbol and non-enumerable extra properties", () => {
   assert.throws(() => encodeChunkAAD(hiddenExtra), /exactly/);
 });
 
+test("serializes a descriptor snapshot instead of rereading proxy properties", () => {
+  let getTrapCalled = false;
+  const proxy = new Proxy(metadata(), {
+    get() {
+      getTrapCalled = true;
+      return "attacker-controlled value";
+    }
+  });
+  assert.equal(hex(encodeChunkAAD(proxy)), vectors.valid.aadHex);
+  assert.equal(getTrapCalled, false);
+});
+
 test("rejects accessor fields without invoking them", () => {
   let getterCalled = false;
   const withGetter = metadata();
