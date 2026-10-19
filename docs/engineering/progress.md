@@ -9,6 +9,17 @@
 - This is a design-only slice; no simplified-mode preference, typography overlay, high-contrast scheme, or layout refactor was implemented.
 - The design requires 2.0x font-scale, TalkBack, switch access, keyboard, dynamic-color, high-contrast, reduced-motion, and physical-device evidence before release claims.
 
+## 2026-10-19 — Phase 19 cross-device settings synchronization design
+
+### Designed
+- Added `docs/PHASE-19-CROSS-DEVICE-SETTINGS-SYNC-DESIGN.md` for opt-in synchronization of only simplified view, voice navigation, spoken guidance, and voice-haptic preferences.
+- Defined a separate allowlisted settings record instead of syncing the general Phase 15 `ui_preferences` file, with explicit exclusion of documents, OCR, reminders, raw voice, permissions, keys, tokens, identifiers, and biometric material.
+- Defined new-device restore versus optional live sync as distinct experiences, encrypted user-mediated pairing/transfer, explicit Android cloud/D2D backup rules, conflict-safe resolution, device removal, revocation, local reset, accessibility behavior, and offline-first failure handling.
+
+### Verification boundary
+- This is a design-only slice; no account, backend, network permission, backup rule, settings-sync serializer, pairing flow, or cross-device transport was implemented.
+- Android Auto Backup and Android 12+ cloud/D2D separation requirements are cited in the design and must be validated on API 24/API 31+ and representative manufacturer transfer paths before release claims.
+
 ## 2026-10-19 — Phase 18 voice-navigation haptic synchronization design
 
 ### Designed
