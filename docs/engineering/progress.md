@@ -1,3 +1,13 @@
+## 2026-10-19 — Phase 13 biometric authentication and vault-lock UI design
+
+### Designed
+- Added `docs/PHASE-13-BIOMETRIC-VAULT-LOCK-DESIGN.md` covering the auth-per-use `BiometricPrompt.CryptoObject` flow, biometric/device-credential policy choice, locked/authenticating/recovery UI states, session boundaries, lifecycle lock policy, accessibility, error copy, implementation slices, and acceptance gates.
+- Kept the design UI- and coordinator-focused; it does not claim that the existing auth-bound primitive is integrated into production access control.
+
+### Verification boundary
+- No biometric prompt, repository gate, migration runner, or key-policy change was implemented in this design-only slice.
+- Product approval is required before implementation: biometric-only versus biometric-plus-device-credential fallback changes the Keystore flags, prompt configuration, copy, and device-test matrix.
+
 ## 2026-10-18 — Authentication-bound lock design and migration-state foundation
 
 ### Research and source inspection
