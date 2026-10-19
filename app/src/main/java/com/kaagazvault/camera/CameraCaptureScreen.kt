@@ -39,6 +39,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.kaagazvault.playVaultClick
+import com.kaagazvault.playVaultSuccess
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import android.util.Size
@@ -195,6 +196,7 @@ internal fun CameraCaptureScreen(
                                     }
                                 }
                                 mainHandler.post {
+                                    playVaultSuccess(previewView)
                                     captureBusy.value = false
                                     status.value = "Photo captured. Encrypting locally…"
                                     onCaptured(normalizedBytes)

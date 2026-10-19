@@ -1,3 +1,17 @@
+## 2026-10-19 — Phase 14 calm micro-interactions implementation
+
+### Implemented
+- Added semantic `VaultFeedbackEvent` routing for platform click audio and brief predefined key haptics.
+- Added reusable `VaultPrimaryButton`, `VaultTonalButton`, `VaultOutlinedButton`, and `VaultTextButton` Compose components.
+- Added named motion tokens and reduced-motion-aware `AnimatedVisibility`/`animateContentSize` helpers using the system animator-duration scale.
+- Wired success-only haptic confirmation into import, camera capture, OCR completion/review save, and reminder save without adding custom audio assets or media dependencies.
+- Kept failures, cancellation, typing, scrolling, polling, and progress updates quiet; no sensitive content enters feedback payloads.
+
+### Verification boundary
+- `git diff --check` passed.
+- `./gradlew --no-daemon :app:compileDebugKotlin` could not reach Kotlin compilation because the active sandbox has no Android SDK configured (`SDK location not found`); no build or test pass is claimed.
+- No manifest, dependency, network-permission, persistence, encryption, or authentication changes were introduced.
+
 ## 2026-10-19 — Phase 14 calm micro-interactions and audio feedback design
 
 ### Designed

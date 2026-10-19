@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kaagazvault.database.ReminderEntity
 import com.kaagazvault.playVaultClick
+import com.kaagazvault.playVaultSuccess
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
@@ -170,6 +171,7 @@ internal fun ReminderSection(
                             repository.create(title.value, dueAt.value)
                             val list = repository.list()
                             mainHandler.post {
+                                playVaultSuccess(view)
                                 reminders.clear(); reminders.addAll(list)
                                 status.value = "Reminder saved. Notification content will remain generic."
                                 busy.value = false

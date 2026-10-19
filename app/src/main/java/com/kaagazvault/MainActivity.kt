@@ -13,9 +13,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -161,7 +158,7 @@ private fun VaultHomeScreen(
             busy = true; status = "Encrypting locally…"
             submitIo {
                 runCatching { repository.import(uri) }.onSuccess { imported ->
-                    mainHandler.post { busy = false; status = "Saved privately: ${imported.displayName}"; refresh() }
+                    mainHandler.post { playVaultSuccess(view); busy = false; status = "Saved privately: ${imported.displayName}"; refresh() }
                 }.onFailure { error -> mainHandler.post { busy = false; status = safeMessage(error as? Exception ?: Exception()) } }
             }
         }
@@ -179,7 +176,7 @@ private fun VaultHomeScreen(
                     showCamera = false; busy = true
                     submitIo {
                         runCatching { repository.importBytes("Scan_${System.currentTimeMillis()}.jpg", "image/jpeg", bytes) }
-                            .onSuccess { imported -> mainHandler.post { busy = false; status = "Captured privately: ${imported.displayName}"; refresh() } }
+                            .onSuccess { imported -> mainHandler.post { playVaultSuccess(view); busy = false; status = "Captured privately: ${imported.displayName}"; refresh() } }
                             .onFailure { mainHandler.post { busy = false; status = "Capture could not be encrypted. No document was added." } }
                     }
                 }
@@ -216,7 +213,7 @@ private fun VaultHomeScreen(
                 )
                 ReminderSection(context, reminderRepository, submitIo, mainHandler)
                 SectionTitle("YOUR DOCUMENTS", "${documents.size} private item${if (documents.size == 1) "" else "s"}")
-                AnimatedVisibility(visible = documents.isEmpty(), enter = fadeIn(), exit = fadeOut()) {
+                AnimatedVisibility(visible = documents.isEmpty(), enter = vaultFadeIn(), exit = vaultFadeOut()) {
                     EmptyVaultCard(onImport = { playVaultClick(view); picker.launch(arrayOf("application/pdf", "image/*")) })
                 }
                 documents.forEach { document ->
@@ -255,7 +252,7 @@ private fun SectionTitle(title: String, supporting: String? = null) {
 
 @Composable
 private fun VaultActionCard(busy: Boolean, status: String, onImport: () -> Unit, onScan: () -> Unit) {
-    Card(Modifier.fillMaxWidth().animateContentSize(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(28.dp)) {
+    Card(Modifier.fillMaxWidth().vaultAnimateContentSize(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(28.dp)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
             Text("YOUR PRIVATE SHELF", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
             Text("Bring a paper in. We’ll keep it close.", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.SemiBold)
@@ -264,7 +261,7 @@ private fun VaultActionCard(busy: Boolean, status: String, onImport: () -> Unit,
                 Button(onClick = onImport, enabled = !busy, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) { Text("Import") }
                 OutlinedButton(onClick = onScan, enabled = !busy, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp)) { Text("Scan") }
             }
-            AnimatedVisibility(visible = busy, enter = fadeIn(), exit = fadeOut()) { LinearProgressIndicator(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary) }
+            AnimatedVisibility(visible = busy, enter = vaultFadeIn(), exit = vaultFadeOut()) { LinearProgressIndicator(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary) }
             Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
         }
     }
@@ -302,7 +299,7 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, ocrEngine: O
     var showReview by remember(document.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember(document.id) { mutableStateOf(false) }
     val view = LocalView.current
-    Card(Modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    Card(Modifier.fillMaxWidth().vaultAnimateContentSize(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { Text(document.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); Text("${document.mimeType} • ${formatBytes(document.byteSize)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -313,14 +310,14 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, ocrEngine: O
                 Text("Text extraction • ${if (document.ocrReviewed) "reviewed" else "needs review"}", style = MaterialTheme.typography.labelMedium, color = if (document.ocrReviewed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
                 if (showReview) {
                     OutlinedTextField(editedOcr, { editedOcr = it }, Modifier.fillMaxWidth(), label = { Text("Review extracted text") }, minLines = 3, maxLines = 8, enabled = !busy, shape = RoundedCornerShape(16.dp))
-                    SoftButton(onClick = { playVaultClick(view); submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { mainHandler.post { onDone("Could not save OCR corrections. Existing data was left untouched.") } } } }, enabled = !busy, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
+                    SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { mainHandler.post { onDone("Could not save OCR corrections. Existing data was left untouched.") } } } }, enabled = !busy, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
                     TextButton(onClick = { playVaultClick(view); showReview = false }, enabled = !busy) { Text("Hide extracted text") }
                 } else {
                     Text("Extracted text is hidden until you choose to review it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    SoftButton(onClick = { playVaultClick(view); showReview = true }, enabled = !busy, label = "Review extracted text")
+                    SoftButton(onClick = { showReview = true }, enabled = !busy, label = "Review extracted text")
                 }
             } else if (document.mimeType.startsWith("image/") || document.mimeType == "application/pdf") {
-                SoftButton(onClick = { playVaultClick(view); submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { mainHandler.post { onDone("Offline text extraction failed. The original remains stored.") } } } }, enabled = !busy, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
+                SoftButton(onClick = { submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { mainHandler.post { onDone("Offline text extraction failed. The original remains stored.") } } } }, enabled = !busy, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
             }
             TextButton(onClick = { playVaultClick(view); showDeleteConfirm = true }, enabled = !busy) { Text("Remove document") }
         }
@@ -343,7 +340,7 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, ocrEngine: O
 }
 
 @Composable
-private fun SoftButton(onClick: () -> Unit, enabled: Boolean, label: String) { FilledTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(label) } }
+private fun SoftButton(onClick: () -> Unit, enabled: Boolean, label: String) { VaultTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth()) { Text(label) } }
 
 private fun safeMessage(error: Exception): String = when (error) {
     is com.kaagazvault.documents.DocumentTooLargeException -> "This file exceeds the 31 MiB limit. Nothing was saved."
