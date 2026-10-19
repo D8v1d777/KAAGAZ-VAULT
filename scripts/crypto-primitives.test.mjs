@@ -57,6 +57,29 @@ test("rejects missing or empty associated data and validates key size/usages", a
   await assert.rejects(decryptBytes({ version: 1, algorithm: "AES-256-GCM", nonce: new Uint8Array(12), ciphertext: new Uint8Array(16) }, encryptOnly, bytes("file:one"), webcrypto), /decrypt usage/);
 });
 
+test("rejects envelope accessor properties without evaluating them", async () => {
+  const key = await generateDocumentKey(webcrypto);
+  const aad = bytes("file:schema");
+  const original = await encryptBytes(bytes("schema-safe"), key, aad, webcrypto);
+  let invoked = false;
+  const envelope = { ...original };
+  Object.defineProperty(envelope, "nonce", {
+    enumerable: true,
+    get() { invoked = true; return original.nonce; }
+  });
+  await assert.rejects(decryptBytes(envelope, key, aad, webcrypto), /data properties/);
+  assert.equal(invoked, false);
+});
+
+test("rejects unknown envelope fields and symbol keys", async () => {
+  const key = await generateDocumentKey(webcrypto);
+  const aad = bytes("file:schema");
+  const original = await encryptBytes(bytes("schema-safe"), key, aad, webcrypto);
+  await assert.rejects(decryptBytes({ ...original, extra: true }, key, aad, webcrypto), /unexpected schema/);
+  const withSymbol = { ...original, [Symbol("extra")]: true };
+  await assert.rejects(decryptBytes(withSymbol, key, aad, webcrypto), /unexpected schema/);
+});
+
 test("validates input types and has no insecure crypto fallback", async () => {
   const key = await generateDocumentKey(webcrypto);
   await assert.rejects(encryptBytes("not bytes", key, bytes("file:one"), webcrypto), TypeError);
