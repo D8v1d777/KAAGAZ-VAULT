@@ -78,6 +78,12 @@ test("rejects accessor fields without invoking them", () => {
   assert.equal(getterCalled, false);
 });
 
+test("rejects every shared invalid metadata fixture in JavaScript", () => {
+  for (const vector of vectors.invalidMetadata ?? []) {
+    assert.throws(() => encodeChunkAAD(vector.metadata), undefined, vector.name);
+  }
+});
+
 test("rejects invalid identifiers, content types, formats and numeric boundaries", () => {
   for (const patch of [
     { contentType: "Text/Plain" },
