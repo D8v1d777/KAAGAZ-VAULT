@@ -57,6 +57,19 @@ Whichever route is selected, define the exact envelope fields, authenticated con
 
 **Compatibility gap found in the current primitive wrapper:** `generateDocumentKey()` returns a non-extractable AES-GCM key. That is a good default for direct content use, but it cannot be passed straight into a Web Crypto key-wrapping flow that requires exporting/wrapping an extractable key. Before implementing the hierarchy, design and test a dedicated lifecycle that generates or derives a DEK, wraps it, and makes the content-use key non-extractable without persisting raw key bytes. Do not weaken the existing API's non-extractability globally just to make wrapping convenient. Record the brief exposure window, cleanup behavior, algorithm usages, and failure/retry semantics in the ADR.
 
+### 2a. Web Crypto wrapping constraint — verified behavior, design still open
+
+The W3C Web Cryptography API specifies that `wrapKey()` requires the wrapped key's export operation, while `unwrapKey()` imports the resulting key. A key generated with `extractable: false` therefore cannot be passed directly to `wrapKey()`. This is a platform API constraint, not a reason to weaken `generateDocumentKey()` globally.
+
+The repository's new regression test attempts to wrap the current non-extractable AES-GCM document key using an AES-KW wrapping key and asserts that the operation rejects. Exact-head CI must confirm this test passes before the observation is treated as verified for the supported runtime.
+
+Design consequences to review:
+- If the product accepts transient raw-key exposure, one candidate is a narrowly scoped lifecycle that creates an extractable DEK, wraps it, exports/imports it into a non-extractable content-use key, and immediately discards temporary references. This still exposes raw key bytes to JavaScript memory and must not be described as equivalent to never exposing them.
+- If transient raw-key exposure is unacceptable, investigate a platform-backed key store or a different architecture whose supported API can meet the requirement; do not invent custom key wrapping.
+- Specify recovery, reload, crash, passphrase change, rotation, and cleanup semantics before selecting either option.
+
+Source: W3C [Web Cryptography API — wrapKey and unwrapKey](https://www.w3.org/TR/webcrypto/), especially the algorithm requirements for exportKey on the wrapped key and importKey on the unwrapped key.
+
 ### 3. Chunk nonce and retry policy
 
 Candidate direction: fresh random 96-bit nonce per content-chunk encryption under the version's DEK, with an enforced maximum number of encryptions and maximum byte/chunk limits derived from the selected GCM policy and actual product file-size limits. Do not choose numeric limits until chunk size, maximum file size, per-version key scope, and NIST usage constraints have been reconciled.
