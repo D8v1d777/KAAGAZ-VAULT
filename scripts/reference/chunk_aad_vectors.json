@@ -492,5 +492,103 @@
       },
       "aadHex": "4b56414401000a766430383761365f3331000a6470716d3470765f33313a2a0e18000a6b3178656765625f3331000a696d6167652f7765627001335e2642"
     }
+  ],
+  "invalidMetadata": [
+    {
+      "name": "unsupported_content_type",
+      "metadata": {
+        "vaultId": "v1",
+        "documentId": "d1",
+        "documentVersion": 1,
+        "keyId": "k1",
+        "contentType": "text/html",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 0
+      }
+    },
+    {
+      "name": "unsupported_chunk_format",
+      "metadata": {
+        "vaultId": "v1",
+        "documentId": "d1",
+        "documentVersion": 1,
+        "keyId": "k1",
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v2",
+        "chunkIndex": 0
+      }
+    },
+    {
+      "name": "zero_document_version",
+      "metadata": {
+        "vaultId": "v1",
+        "documentId": "d1",
+        "documentVersion": 0,
+        "keyId": "k1",
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 0
+      }
+    },
+    {
+      "name": "negative_chunk_index",
+      "metadata": {
+        "vaultId": "v1",
+        "documentId": "d1",
+        "documentVersion": 1,
+        "keyId": "k1",
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": -1
+      }
+    },
+    {
+      "name": "fractional_chunk_index",
+      "metadata": {
+        "vaultId": "v1",
+        "documentId": "d1",
+        "documentVersion": 1,
+        "keyId": "k1",
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 1.5
+      }
+    },
+    {
+      "name": "boolean_document_version",
+      "metadata": {
+        "vaultId": "v1",
+        "documentId": "d1",
+        "documentVersion": true,
+        "keyId": "k1",
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 0
+      }
+    },
+    {
+      "name": "missing_key_id",
+      "metadata": {
+        "vaultId": "v1",
+        "documentId": "d1",
+        "documentVersion": 1,
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 0
+      }
+    },
+    {
+      "name": "unexpected_property",
+      "metadata": {
+        "vaultId": "v1",
+        "documentId": "d1",
+        "documentVersion": 1,
+        "keyId": "k1",
+        "contentType": "text/plain",
+        "chunkFormat": "chunked-v1",
+        "chunkIndex": 0,
+        "unexpected": true
+      }
+    }
   ]
 }
