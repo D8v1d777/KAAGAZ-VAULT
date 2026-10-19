@@ -40,17 +40,17 @@ Supported content types are explicitly enumerated in `src/crypto/chunk-aad.mjs`.
 
 ## Verification
 
-- `scripts/chunk-aad.test.mjs` covers a byte-exact manual golden fixture, strict schema rejection, boundary validation, per-field AAD differentiation, accessor/symbol/non-enumerable-property rejection, and AES-GCM failure when bound metadata changes.
-- `scripts/reference/chunk_aad_reference.py` independently encodes the same fixture using Python `struct`/byte operations and verifies the expected 38-byte sequence. Local execution on 2026-10-19 printed the expected vector. This is an independent implementation check, not an independent human security review.
-- Exact-head GitHub Actions is still required. A successful local reference-vector run does not establish that repository CI passes or that the protocol is secure.
+- `scripts/chunk-aad.test.mjs` covers byte-exact vectors, strict schema rejection, boundary validation, per-field AAD differentiation, accessor/symbol/non-enumerable-property rejection, metadata snapshot behavior, and AES-GCM failure when bound metadata changes. It also runs a deterministic 256-case property-style corpus.
+- `scripts/reference/chunk_aad_reference.py` independently encodes shared valid vectors using Python `struct`/byte operations and checks shared invalid metadata cases.
+- GitHub Actions run [#39220430174](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39220430174) passed on exact code commit `51c7c50b894c8d0ebbe618febb36e29be26f6f47`: Python reference checks and the full static/browser/axe suite passed. The fixture contains 35 byte-exact valid vectors (base + 2 hand-authored + 32 deterministic cases), 8 invalid metadata records, and 8 invalid identifier records. This is test evidence, not independent human cryptographic review or protocol approval.
 
 ## Acceptance gate
 
 - [ ] Independent reviewer approves schema, versioning and byte layout.
 - [x] Golden vector reproduced by a second-language reference implementation; human review still pending.
-- [ ] Add adversarial fuzz/property tests and cross-runtime tests.
+- [x] Add deterministic property-style tests and shared cross-runtime golden/invalid-metadata tests; broader fuzzing remains future work.
 - [ ] Define and implement authenticated manifest format.
 - [ ] Approve key hierarchy, Argon2id parameters and recovery model.
 - [ ] Define nonce uniqueness/retry/rotation policy and per-key GCM usage limits.
-- [ ] Run all CI checks on the exact commit.
+- [x] Run all configured CI checks on exact code commit `51c7c50b894c8d0ebbe618febb36e29be26f6f47` (run [#39220430174](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39220430174)).
 - [ ] Do not use real sensitive documents until independent cryptographic review and all release gates pass.
