@@ -57,6 +57,21 @@ test("rejects missing or empty associated data and validates key size/usages", a
   await assert.rejects(decryptBytes({ version: 1, algorithm: "AES-256-GCM", nonce: new Uint8Array(12), ciphertext: new Uint8Array(16) }, encryptOnly, bytes("file:one"), webcrypto), /decrypt usage/);
 });
 
+test("reads envelope values from property descriptors, not ordinary property access", async () => {
+  const key = await generateDocumentKey(webcrypto);
+  const aad = bytes("file:proxy");
+  const original = await encryptBytes(bytes("proxy-safe"), key, aad, webcrypto);
+  let propertyRead = false;
+  const wrapped = new Proxy(original, {
+    get() {
+      propertyRead = true;
+      return null;
+    }
+  });
+  assert.equal(text(await decryptBytes(wrapped, key, aad, webcrypto)), "proxy-safe");
+  assert.equal(propertyRead, false);
+});
+
 test("rejects envelope accessor properties without evaluating them", async () => {
   const key = await generateDocumentKey(webcrypto);
   const aad = bytes("file:schema");
