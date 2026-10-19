@@ -29,5 +29,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Run independent Python AAD reference checks
+        run: python3 scripts/reference/chunk_aad_reference.py
       - name: Run static, browser, and axe checks
         run: npm test
