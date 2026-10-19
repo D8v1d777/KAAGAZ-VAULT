@@ -92,7 +92,26 @@ def main() -> None:
     actual = encode_chunk_aad(fixture).hex()
     assert actual == GOLDEN_HEX, f"golden mismatch: {actual}"
     assert encode_chunk_aad({**fixture, "chunkIndex": 1}) != bytes.fromhex(GOLDEN_HEX)
+
+    # Keep the independent reference grammar aligned with JavaScript's strict ID tests.
+    invalid_ids = [
+        ("vaultId", "v1\\n"),
+        ("vaultId", "v1\\r"),
+        ("documentId", "d1\\u2028"),
+        ("keyId", "k1\\u2029"),
+        ("vaultId", "has space"),
+        ("keyId", "slash/name"),
+        ("documentId", "x" * 129),
+    ]
+    for field, invalid in invalid_ids:
+        try:
+            encode_chunk_aad({**fixture, field: invalid})
+        except (ValueError, UnicodeEncodeError):
+            continue
+        raise AssertionError(f"invalid identifier accepted: {field}={invalid!r}")
+
     print(f"KVAD v1 golden vector verified: {actual} ({len(bytes.fromhex(actual))} bytes)")
+    print(f"invalid identifier cases rejected: {len(invalid_ids)}/{len(invalid_ids)}")
 
 
 if __name__ == "__main__":
