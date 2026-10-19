@@ -1,11 +1,3 @@
-/**
- * Narrow Web Crypto AES-256-GCM primitive wrapper.
- *
- * This is a Phase 3 foundation, NOT a complete E2EE protocol. It deliberately
- * does not implement Argon2id, VEK wrapping, chunked files, recovery, storage,
- * or a production key lifecycle. Do not use with real documents until those
- * pieces and an independent security review are complete.
- */
 const ALGORITHM = "AES-GCM";
 const KEY_LENGTH = 256;
 const NONCE_LENGTH_BYTES = 12;
@@ -13,17 +5,37 @@ const TAG_LENGTH_BITS = 128;
 
 function getCrypto(cryptoProvider) {
   const provider = cryptoProvider ?? globalThis.crypto;
-  if (!provider?.subtle || !provider?.getRandomValues) {
-    throw new Error("Web Crypto API is required; no insecure fallback is available.");
+  if (!provider?.subtle || typeof provider.getRandomValues !== "function") {
+    throw new Error("Web Crypto API is required; refusing insecure fallback.");
   }
   return provider;
 }
 
 function toBytes(value, name) {
   if (!(value instanceof Uint8Array)) {
-    throw new TypeError(name + " must be a Uint8Array.");
+    throw new TypeError(`${name} must be a Uint8Array.`);
   }
   return value;
+}
+
+function validateAssociatedData(value) {
+  const bytes = toBytes(value, "associatedData");
+  if (bytes.byteLength === 0) {
+    throw new TypeError("associatedData must not be empty.");
+  }
+  return bytes;
+}
+
+function validateKey(key, usage) {
+  if (
+    !key ||
+    key.type !== "secret" ||
+    key.algorithm?.name !== ALGORITHM ||
+    key.algorithm?.length !== KEY_LENGTH ||
+    !key.usages?.includes(usage)
+  ) {
+    throw new TypeError(`A valid AES-256-GCM key with ${usage} usage is required.`);
+  }
 }
 
 export async function generateDocumentKey(cryptoProvider) {
@@ -38,20 +50,16 @@ export async function generateDocumentKey(cryptoProvider) {
 export async function encryptBytes(plaintext, key, associatedData, cryptoProvider) {
   const provider = getCrypto(cryptoProvider);
   toBytes(plaintext, "plaintext");
-  if (!key || key.type !== "secret" || key.algorithm?.name !== ALGORITHM) {
-    throw new TypeError("A valid AES-GCM secret key is required.");
-  }
-  if (associatedData !== undefined) toBytes(associatedData, "associatedData");
+  validateKey(key, "encrypt");
+  const aad = validateAssociatedData(associatedData);
 
   const nonce = provider.getRandomValues(new Uint8Array(NONCE_LENGTH_BYTES));
-  const params = {
-    name: ALGORITHM,
-    iv: nonce,
-    tagLength: TAG_LENGTH_BITS
-  };
-  if (associatedData !== undefined) params.additionalData = associatedData;
+  const ciphertext = await provider.subtle.encrypt(
+    { name: ALGORITHM, iv: nonce, additionalData: aad, tagLength: TAG_LENGTH_BITS },
+    key,
+    plaintext
+  );
 
-  const ciphertext = await provider.subtle.encrypt(params, key, plaintext);
   return Object.freeze({
     version: 1,
     algorithm: "AES-256-GCM",
@@ -73,18 +81,13 @@ export async function decryptBytes(envelope, key, associatedData, cryptoProvider
   if (ciphertext.byteLength < TAG_LENGTH_BITS / 8) {
     throw new Error("Ciphertext is too short to contain an authentication tag.");
   }
-  if (!key || key.type !== "secret" || key.algorithm?.name !== ALGORITHM) {
-    throw new TypeError("A valid AES-GCM secret key is required.");
-  }
-  if (associatedData !== undefined) toBytes(associatedData, "associatedData");
+  validateKey(key, "decrypt");
+  const aad = validateAssociatedData(associatedData);
 
-  const params = {
-    name: ALGORITHM,
-    iv: nonce,
-    tagLength: TAG_LENGTH_BITS
-  };
-  if (associatedData !== undefined) params.additionalData = associatedData;
-
-  const plaintext = await provider.subtle.decrypt(params, key, ciphertext);
+  const plaintext = await provider.subtle.decrypt(
+    { name: ALGORITHM, iv: nonce, additionalData: aad, tagLength: TAG_LENGTH_BITS },
+    key,
+    ciphertext
+  );
   return new Uint8Array(plaintext);
 }
