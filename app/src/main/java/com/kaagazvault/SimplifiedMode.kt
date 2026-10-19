@@ -9,23 +9,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kaagazvault.sync.SyncableSettingsStore
 
 object SimplifiedModePreferences {
-    private const val FILE_NAME = "ui_preferences"
-    private const val KEY_SIMPLIFIED_MODE = "simplified_mode"
-
-    fun read(context: Context): Boolean = runCatching {
-        context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
-            .getBoolean(KEY_SIMPLIFIED_MODE, false)
-    }.getOrDefault(false)
+    fun read(context: Context): Boolean = SyncableSettingsStore(context).read().simplifiedModeEnabled
 
     fun write(context: Context, enabled: Boolean) {
-        runCatching {
-            context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
-                .edit()
-                .putBoolean(KEY_SIMPLIFIED_MODE, enabled)
-                .apply()
-        }
+        SyncableSettingsStore(context).update(
+            block = { current -> current.copy(simplifiedModeEnabled = enabled) },
+            nowEpochMillis = System.currentTimeMillis()
+        )
     }
 }
 

@@ -9,6 +9,19 @@
 - This is a design-only slice; no simplified-mode preference, typography overlay, high-contrast scheme, or layout refactor was implemented.
 - The design requires 2.0x font-scale, TalkBack, switch access, keyboard, dynamic-color, high-contrast, reduced-motion, and physical-device evidence before release claims.
 
+## 2026-10-19 — Phase 19 settings-sync protocol implementation
+
+### Implemented
+- Added `sync/SettingsSyncProtocol.kt` with an allowlisted versioned settings model, deterministic codec, AES-GCM authenticated envelope, one-use expiring pairing ticket, idempotent field-level merge policy, safe-off precedence, and explicit review for incoming voice enablement.
+- Added `sync/SyncableSettingsStore.kt` with a dedicated `syncable_accessibility_settings` store, migration from the legacy simplified-mode preference, local-only sync enablement control, reset support, and an offline encrypted export/import boundary that never opens a socket or touches vault data.
+- Routed `SimplifiedModePreferences` through the dedicated store so the current Phase 15 setting no longer lives in a general preference file that could later become an accidental sync contract.
+- Added JVM tests for deterministic serialization, unknown-field handling, duplicate rejection, AES-GCM round trips/tamper/wrong-key failures, pairing expiry and single use, forbidden-field boundaries, and conflict-safe merges.
+
+### Verification boundary
+- `git diff --check` and source-scope audits passed; no network permission, backend, account, document sync, voice data, or vault-key code was added.
+- `:app:testDebugUnitTest` was attempted but stopped before test execution because the active sandbox has no Android SDK configured.
+- Backup/D2D XML rules, settings UI, pairing screens, account transport, and physical two-device evidence remain separate follow-up slices and are not claimed as implemented by this commit.
+
 ## 2026-10-19 — Phase 19 cross-device settings synchronization design
 
 ### Designed
