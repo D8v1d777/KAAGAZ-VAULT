@@ -54,3 +54,11 @@ A mandatory AAD parameter reduces accidental misuse but does not prove correct m
 - Updated the separate manifest/key-lifecycle research memo with the constraint, alternative design questions, nonce implications, and explicit warning not to treat best-effort JS buffer clearing as guaranteed memory erasure.
 - This narrows the design space but does not select a key-wrapping scheme. Keep the existing non-extractable default; do not weaken it globally.
 - NIST SP 800-38D remains the primary source for GCM IV uniqueness/state-loss constraints; RFC 9106 informs Argon2 parameter selection. Parameters must be chosen against actual device/resource constraints and reviewed, not copied blindly.
+
+
+## Shared cross-runtime fixtures — 2026-10-19
+
+- Added `scripts/reference/chunk_aad_vectors.json` as the single source for the valid KVAD v1 metadata/golden bytes and invalid identifier cases.
+- Updated the Node test and Python reference encoder to consume the same fixture file, reducing drift between the two independently written encoders.
+- Local snapshot reconstructed from fetched branch files: Node.js 22 focused AAD suite **7/7 passed**; Python reference verified the 38-byte vector and rejected **7/7** invalid identifier cases. This is local snapshot evidence only. A network attempt to clone the repository failed because the execution environment could not resolve GitHub, so no exact repository checkout was available for local execution.
+- GitHub Actions/status endpoints returned no runs/checks for the latest queried commit. CI remains **unverified**; PR #14 remains draft and unmerged.
