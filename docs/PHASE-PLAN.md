@@ -17,7 +17,14 @@ Progress is reported against defined acceptance criteria, not code volume. Phase
 ## Immediate validation follow-through\n- [x] Add static regression tests for E2EE claims, key lifecycle, research traceability, progress gates, and report content.\n- [x] Extend CI to run the E2EE documentation tests and to trigger for the E2EE branch.\n- [ ] Confirm CI passes on the E2EE branch; connector cannot execute tests locally.
 - [x] Add isolated Web Crypto AES-256-GCM wrapper with input validation and fail-closed behavior.
 - [x] Add tests for round-trip, authenticated metadata, ciphertext tampering, wrong keys and malformed envelopes.
-- [ ] Confirm crypto suite passes in CI and add browser-target coverage.\n\n## E2EE is now a required product constraint
+- [ ] Confirm crypto suite passes in CI and add browser-target coverage.\n\n## Phase 3 protocol design artifact
+- [x] Draft versioned envelope and canonical AAD direction in [E2EE-PROTOCOL-DRAFT.md](E2EE-PROTOCOL-DRAFT.md).
+- [x] Document proposed KEK/VEK/DEK separation, Argon2id evaluation gates, nonce/chunk constraints and adversarial test matrix.
+- [ ] Review canonical byte encoding and key lifecycle with a cryptography specialist before implementation.
+- [ ] Add golden vectors for the canonical AAD encoder after the format is approved.
+- [ ] Verify latest exact-SHA CI, including docs regression tests and Playwright/axe checks.
+
+## E2EE is now a required product constraint
 - [x] Document client-side encryption and server trust boundary.
 - [x] Document key hierarchy, encrypted metadata, recovery and device onboarding options.
 - [x] Document browser-delivery/supply-chain limitations.
