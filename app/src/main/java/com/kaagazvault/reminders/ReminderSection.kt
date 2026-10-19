@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -33,6 +34,7 @@ import androidx.core.content.ContextCompat
 import com.kaagazvault.database.ReminderEntity
 import com.kaagazvault.playVaultClick
 import com.kaagazvault.playVaultSuccess
+import com.kaagazvault.SimplifiedLayout
 import java.text.DateFormat
 import java.util.Calendar
 import java.util.Date
@@ -42,7 +44,8 @@ internal fun ReminderSection(
     context: Context,
     repository: ReminderRepository,
     submitIo: (() -> Unit) -> Unit,
-    mainHandler: Handler
+    mainHandler: Handler,
+    simplified: Boolean = false
 ) {
     val reminders = remember { mutableStateListOf<ReminderEntity>() }
     val title = remember { mutableStateOf("") }
@@ -74,8 +77,8 @@ internal fun ReminderSection(
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(if (simplified) SimplifiedLayout.cardPadding else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(if (simplified) SimplifiedLayout.actionGap else 10.dp)
         ) {
             Text("REMINDERS", style = MaterialTheme.typography.titleMedium)
             Text(
@@ -83,7 +86,7 @@ internal fun ReminderSection(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Button(onClick = { playVaultClick(view); title.value = ""; dueAt.value = 0L; showCreate.value = true }) {
+            Button(modifier = Modifier.fillMaxWidth().heightIn(min = if (simplified) SimplifiedLayout.primaryControlMinHeight else 0.dp), onClick = { playVaultClick(view); title.value = ""; dueAt.value = 0L; showCreate.value = true }) {
                 Text("Add reminder")
             }
             Text(status.value, style = MaterialTheme.typography.bodySmall)
@@ -97,7 +100,7 @@ internal fun ReminderSection(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    TextButton(onClick = {
+                    TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = {
                         playVaultClick(view)
                         busy.value = true
                         submitIo {
@@ -131,7 +134,7 @@ internal fun ReminderSection(
                         label = { Text("Reminder title") },
                         singleLine = true
                     )
-                    OutlinedButton(onClick = {
+                    OutlinedButton(modifier = Modifier.fillMaxWidth().heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = {
                         playVaultClick(view)
                         val now = Calendar.getInstance()
                         DatePickerDialog(
@@ -163,7 +166,7 @@ internal fun ReminderSection(
                 }
             },
             confirmButton = {
-                TextButton(enabled = !busy.value, onClick = {
+                TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), enabled = !busy.value, onClick = {
                     playVaultClick(view)
                     busy.value = true
                     submitIo {
@@ -188,7 +191,7 @@ internal fun ReminderSection(
                     }
                 }) { Text("Save") }
             },
-            dismissButton = { TextButton(onClick = { playVaultClick(view); showCreate.value = false }) { Text("Cancel") }
+            dismissButton = { TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); showCreate.value = false }) { Text("Cancel") }
             }
         )
     }

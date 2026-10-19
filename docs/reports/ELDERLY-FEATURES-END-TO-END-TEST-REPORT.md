@@ -4,7 +4,7 @@
 
 **Branch:** `feat/durable-vault-migration-journal`
 
-**Result:** Static checks completed; end-to-end device validation is blocked and Phase 15/17 features are not yet implemented.
+**Result:** Phase 15 UI slice implemented and source-audited; end-to-end device validation is blocked, and Phase 17 remains design-only.
 
 ## Scope
 
@@ -29,9 +29,9 @@ or by setting the sdk.dir path in local.properties.
 
 `git diff --check` passed. The working tree was clean before this report was added.
 
-The source audit found the implemented dynamic theme path and camera-preview semantics. It did not find implementation symbols for `SimplifiedMode`, `VaultTypography`, `SimplifiedLayout`, `SpeechRecognizer`, `TextToSpeech`, `RECORD_AUDIO`, or 64dp/48sp simplified-mode controls.
+The source audit found the implemented dynamic theme path, camera-preview semantics, `SimplifiedModePreferences`, `SimplifiedLayout`, the simplified typography overlay, and enlarged home/reminder/document controls. It did not find implementation symbols for `SpeechRecognizer`, `TextToSpeech`, or `RECORD_AUDIO`.
 
-This means Phase 15 and Phase 17 are currently documented designs, not integrated features. The absence of `RECORD_AUDIO` is correct for the present design-only state; adding the permission before the voice controller exists would be premature.
+This means Phase 15 has a source-level UI implementation while Phase 17 is still a documented design, not an integrated voice feature. The absence of `RECORD_AUDIO` is correct because the voice controller does not exist; adding the permission before that controller exists would be premature.
 
 ### Unit-test attempt
 
@@ -53,9 +53,11 @@ Result: **Static contrast pass.** Dynamic Android 12+ wallpaper palettes still r
 
 ### Phase 15 simplified mode
 
-**Status: Not integrated; not executable.**
+**Status: Source-level implementation complete; device validation blocked.**
 
-The repository contains the Phase 15 design and acceptance gates, but no simplified-mode preference, typography overlay, high-contrast fallback palette, enlarged control layout, or mode-specific semantics. Therefore the following could not be tested: persistence, reversible enable/disable behavior, 56–64dp controls, 16–48sp typography tiers, 2.0x font reflow, stacked actions, or mode-specific TalkBack traversal.
+The implementation now includes a corruption-safe local `SharedPreferences` flag, a reversible home-screen switch, a simplified Material typography overlay, 24dp screen/card spacing, 56dp standard controls, 64dp primary controls, vertically stacked Import/Scan and Search/Show-all actions, and enlarged reminder/document/OCR controls. The implementation remains UI-only and does not change document, encryption, authentication, or network behavior.
+
+Persistence across activity recreation, 2.0x font reflow, touch-target bounds, stacked layout screenshots, TalkBack traversal, switch access, and dynamic-color device behavior could not be tested because the sandbox has no Android SDK or emulator.
 
 ### Phase 17 voice navigation
 

@@ -1,6 +1,6 @@
 # Phase 15 — Elderly-Friendly Simplified Mode
 
-**Status:** Design proposal; no simplified-mode implementation is claimed by this document.
+**Status:** UI slice implemented; device and instrumentation validation remain pending.
 
 **Target branch:** `feat/durable-vault-migration-journal`
 

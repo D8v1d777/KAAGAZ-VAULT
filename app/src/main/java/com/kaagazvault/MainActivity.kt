@@ -41,6 +41,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -136,6 +137,8 @@ private fun VaultHomeScreen(
     var notices by remember { mutableStateOf("Loading third-party notices…") }
     val context = LocalContext.current
     val view = LocalView.current
+    val simplifiedMode = rememberSimplifiedMode(context)
+    val activeTypography = if (simplifiedMode.value) MaterialTheme.typography.simplified() else MaterialTheme.typography
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
     fun refresh(message: String? = null) {
@@ -167,9 +170,10 @@ private fun VaultHomeScreen(
 
     LaunchedEffect(repository) { refresh() }
 
-    Box(Modifier.fillMaxSize()) {
+    MaterialTheme(typography = activeTypography) {
+        Box(Modifier.fillMaxSize()) {
         AmbientVaultBackdrop()
-        Scaffold(containerColor = Color.Transparent) { padding ->
+            Scaffold(containerColor = Color.Transparent) { padding ->
         if (showCamera) {
             CameraCaptureScreen(
                 lifecycleOwner = lifecycleOwner,
@@ -186,16 +190,24 @@ private fun VaultHomeScreen(
             )
         } else {
             Column(
-                modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 22.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                modifier = Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = if (simplifiedMode.value) SimplifiedLayout.screenHorizontalPadding else 20.dp, vertical = if (simplifiedMode.value) 24.dp else 22.dp),
+                verticalArrangement = Arrangement.spacedBy(if (simplifiedMode.value) SimplifiedLayout.sectionSpacing else 18.dp)
             ) {
-                Header(documentCount = documents.size)
+                Header(documentCount = documents.size, simplified = simplifiedMode.value)
+                SimplifiedModeCard(
+                    enabled = simplifiedMode.value,
+                    onEnabledChange = { enabled ->
+                        playVaultClick(view)
+                        simplifiedMode.value = enabled
+                        SimplifiedModePreferences.write(context, enabled)
+                    }
+                )
                 VaultActionCard(
                     busy = busy,
                     status = status,
-                    onImport = { playVaultClick(view); picker.launch(arrayOf("application/pdf", "image/*")) },
+                    simplified = simplifiedMode.value,
+                    onImport = { picker.launch(arrayOf("application/pdf", "image/*")) },
                     onScan = {
-                        playVaultClick(view)
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) showCamera = true
                         else cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                     }
@@ -204,66 +216,95 @@ private fun VaultHomeScreen(
                     query = query,
                     enabled = !busy,
                     encryptedAvailable = searchAvailable,
+                    simplified = simplifiedMode.value,
                     onQueryChange = { query = it },
                     onSearch = {
-                        playVaultClick(view); busy = true
+                        busy = true
                         submitIo {
                             runCatching { repository.search(query) }.onSuccess { result -> mainHandler.post { documents.clear(); documents.addAll(result); searchAvailable = repository.encryptedSearchAvailable; status = "Found ${result.size} local result(s)."; busy = false } }
                                 .onFailure { mainHandler.post { busy = false; status = "Search failed. Your encrypted documents were left untouched." } }
                         }
                     },
-                    onClear = { playVaultClick(view); query = ""; refresh("Showing all local documents.") }
+                    onClear = { query = ""; refresh("Showing all local documents.") }
                 )
-                ReminderSection(context, reminderRepository, submitIo, mainHandler)
-                SectionTitle("YOUR DOCUMENTS", "${documents.size} private item${if (documents.size == 1) "" else "s"}")
+                ReminderSection(context, reminderRepository, submitIo, mainHandler, simplifiedMode.value)
+                SectionTitle("YOUR DOCUMENTS", "${documents.size} private item${if (documents.size == 1) "" else "s"}", simplifiedMode.value)
                 AnimatedVisibility(visible = documents.isEmpty(), enter = vaultFadeIn(), exit = vaultFadeOut()) {
-                    EmptyVaultCard(onImport = { playVaultClick(view); picker.launch(arrayOf("application/pdf", "image/*")) })
+                    EmptyVaultCard(simplified = simplifiedMode.value, onImport = { playVaultClick(view); picker.launch(arrayOf("application/pdf", "image/*")) })
                 }
                 documents.forEach { document ->
-                    DocumentCard(document, busy, ocrEngine, repository, submitIo, mainHandler) { message -> busy = false; status = message; refresh() }
+                    DocumentCard(document, busy, simplifiedMode.value, ocrEngine, repository, submitIo, mainHandler) { message -> busy = false; status = message; refresh() }
                 }
                 Text("Offline OCR: English, Hindi, and Telugu • review required", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = {
+                TextButton(modifier = Modifier.heightIn(min = if (simplifiedMode.value) SimplifiedLayout.controlMinHeight else 0.dp), onClick = {
                     playVaultClick(view); showLicenses = true
                     submitIo { val result = runCatching { context.assets.open("licenses/THIRD_PARTY_NOTICES.txt").bufferedReader().use { it.readText() } }.getOrDefault("Third-party license notices are packaged with this application."); mainHandler.post { notices = result } }
                 }) { Text("Third-party licenses") }
             }
         }
     }
-    if (showLicenses) AlertDialog(onDismissRequest = { showLicenses = false }, title = { Text("Third-party licenses") }, text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) { Text(notices) } }, confirmButton = { TextButton(onClick = { playVaultClick(view); showLicenses = false }) { Text("Close") } })
+            if (showLicenses) AlertDialog(onDismissRequest = { showLicenses = false }, title = { Text("Third-party licenses") }, text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) { Text(notices) } }, confirmButton = { TextButton(onClick = { playVaultClick(view); showLicenses = false }) { Text("Close") } })
+        }
     }
 }
 
 @Composable
-private fun Header(documentCount: Int) {
+private fun SimplifiedModeCard(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().heightIn(min = SimplifiedLayout.controlMinHeight),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = RoundedCornerShape(SimplifiedLayout.cornerRadius)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Simplified view", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("Larger text, clearer actions, and more space.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(checked = enabled, onCheckedChange = onEnabledChange)
+        }
+    }
+}
+
+@Composable
+private fun Header(documentCount: Int, simplified: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("KAAGAZ", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.secondaryContainer) { Text("ON DEVICE", Modifier.padding(horizontal = 12.dp, vertical = 7.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.SemiBold) }
         }
-        Text("A calmer place\nfor important papers.", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        Text("A calmer place\nfor important papers.", style = if (simplified) MaterialTheme.typography.displaySmall else MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
         Text(if (documentCount == 0) "Private by default. Ready when you are." else "Everything important, close at hand and under your control.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun SectionTitle(title: String, supporting: String? = null) {
+private fun SectionTitle(title: String, supporting: String? = null, simplified: Boolean = false) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(title, style = if (simplified) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         supporting?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
 @Composable
-private fun VaultActionCard(busy: Boolean, status: String, onImport: () -> Unit, onScan: () -> Unit) {
+private fun VaultActionCard(busy: Boolean, status: String, simplified: Boolean, onImport: () -> Unit, onScan: () -> Unit) {
+    val view = LocalView.current
     Card(Modifier.fillMaxWidth().vaultAnimateContentSize(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(28.dp)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        Column(Modifier.padding(if (simplified) SimplifiedLayout.cardPadding else 20.dp), verticalArrangement = Arrangement.spacedBy(if (simplified) SimplifiedLayout.actionGap else 13.dp)) {
             Text("YOUR PRIVATE SHELF", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
             Text("Bring a paper in. We’ll keep it close.", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.SemiBold)
             Text("Files, names, and extracted text stay encrypted on this device.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = onImport, enabled = !busy, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) { Text("Import") }
-                OutlinedButton(onClick = onScan, enabled = !busy, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp)) { Text("Scan") }
+            if (simplified) {
+                VaultPrimaryButton(onClick = onImport, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = SimplifiedLayout.primaryControlMinHeight), content = { Text("Import a document") })
+                VaultOutlinedButton(onClick = onScan, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = SimplifiedLayout.primaryControlMinHeight), content = { Text("Scan a document") })
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(onClick = { playVaultClick(view); onImport() }, enabled = !busy, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)) { Text("Import") }
+                    OutlinedButton(onClick = { playVaultClick(view); onScan() }, enabled = !busy, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp)) { Text("Scan") }
+                }
             }
             AnimatedVisibility(visible = busy, enter = vaultFadeIn(), exit = vaultFadeOut()) { LinearProgressIndicator(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary) }
             Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
@@ -272,14 +313,20 @@ private fun VaultActionCard(busy: Boolean, status: String, onImport: () -> Unit,
 }
 
 @Composable
-private fun SearchCard(query: String, enabled: Boolean, encryptedAvailable: Boolean, onQueryChange: (String) -> Unit, onSearch: () -> Unit, onClear: () -> Unit) {
+private fun SearchCard(query: String, enabled: Boolean, encryptedAvailable: Boolean, simplified: Boolean, onQueryChange: (String) -> Unit, onSearch: () -> Unit, onClear: () -> Unit) {
+    val view = LocalView.current
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), shape = RoundedCornerShape(24.dp)) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SectionTitle("FIND SOMETHING", if (encryptedAvailable) "encrypted search" else "local fallback")
-            OutlinedTextField(query, onQueryChange, Modifier.fillMaxWidth(), label = { Text("Search names or text") }, placeholder = { Text("Search names or text") }, singleLine = true, enabled = enabled, shape = RoundedCornerShape(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FilledTonalButton(onClick = onSearch, enabled = enabled, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Search") }
-                OutlinedButton(onClick = onClear, enabled = enabled, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Show all") }
+        Column(Modifier.padding(if (simplified) SimplifiedLayout.cardPadding else 18.dp), verticalArrangement = Arrangement.spacedBy(if (simplified) SimplifiedLayout.actionGap else 12.dp)) {
+            SectionTitle("FIND SOMETHING", if (encryptedAvailable) "encrypted search" else "local fallback", simplified)
+            OutlinedTextField(query, onQueryChange, Modifier.fillMaxWidth().heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), label = { Text("Search names or text") }, placeholder = { Text("Search names or text") }, singleLine = true, enabled = enabled, shape = RoundedCornerShape(16.dp))
+            if (simplified) {
+                VaultTonalButton(onClick = onSearch, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = SimplifiedLayout.controlMinHeight), content = { Text("Search") })
+                VaultOutlinedButton(onClick = onClear, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = SimplifiedLayout.controlMinHeight), content = { Text("Show all documents") })
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FilledTonalButton(onClick = { playVaultClick(view); onSearch() }, enabled = enabled, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Search") }
+                    OutlinedButton(onClick = { playVaultClick(view); onClear() }, enabled = enabled, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Show all") }
+                }
             }
             if (!encryptedAvailable) Text("Encrypted search is unavailable; this search scans locally in memory.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
         }
@@ -287,24 +334,24 @@ private fun SearchCard(query: String, enabled: Boolean, encryptedAvailable: Bool
 }
 
 @Composable
-private fun EmptyVaultCard(onImport: () -> Unit) {
+private fun EmptyVaultCard(simplified: Boolean, onImport: () -> Unit) {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer), shape = RoundedCornerShape(24.dp)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(if (simplified) SimplifiedLayout.cardPadding else 20.dp), verticalArrangement = Arrangement.spacedBy(if (simplified) SimplifiedLayout.actionGap else 10.dp)) {
             Text("Nothing here yet", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onTertiaryContainer, fontWeight = FontWeight.SemiBold)
             Text("Start with one document. You can always add more later.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
-            FilledTonalButton(onClick = onImport, shape = RoundedCornerShape(16.dp)) { Text("Add first document") }
+            FilledTonalButton(onClick = onImport, modifier = Modifier.fillMaxWidth().heightIn(min = if (simplified) SimplifiedLayout.primaryControlMinHeight else 0.dp), shape = RoundedCornerShape(16.dp)) { Text(if (simplified) "Add your first document" else "Add first document") }
         }
     }
 }
 
 @Composable
-private fun DocumentCard(document: ImportedDocument, busy: Boolean, ocrEngine: OfflineOcrEngine, repository: DocumentRepository, submitIo: (() -> Unit) -> Unit, mainHandler: Handler, onDone: (String) -> Unit) {
+private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: Boolean, ocrEngine: OfflineOcrEngine, repository: DocumentRepository, submitIo: (() -> Unit) -> Unit, mainHandler: Handler, onDone: (String) -> Unit) {
     var editedOcr by remember(document.id, document.ocrText) { mutableStateOf(document.ocrText.orEmpty()) }
     var showReview by remember(document.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember(document.id) { mutableStateOf(false) }
     val view = LocalView.current
     Card(Modifier.fillMaxWidth().vaultAnimateContentSize(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(if (simplified) SimplifiedLayout.cardPadding else 18.dp), verticalArrangement = Arrangement.spacedBy(if (simplified) SimplifiedLayout.actionGap else 10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { Text(document.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold); Text("${document.mimeType} • ${formatBytes(document.byteSize)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 Text("SAFE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -314,16 +361,16 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, ocrEngine: O
                 Text("Text extraction • ${if (document.ocrReviewed) "reviewed" else "needs review"}", style = MaterialTheme.typography.labelMedium, color = if (document.ocrReviewed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
                 if (showReview) {
                     OutlinedTextField(editedOcr, { editedOcr = it }, Modifier.fillMaxWidth(), label = { Text("Review extracted text") }, minLines = 3, maxLines = 8, enabled = !busy, shape = RoundedCornerShape(16.dp))
-                    SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { mainHandler.post { onDone("Could not save OCR corrections. Existing data was left untouched.") } } } }, enabled = !busy, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
-                    TextButton(onClick = { playVaultClick(view); showReview = false }, enabled = !busy) { Text("Hide extracted text") }
+                    SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { mainHandler.post { onDone("Could not save OCR corrections. Existing data was left untouched.") } } } }, enabled = !busy, simplified = simplified, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
+                    TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); showReview = false }, enabled = !busy) { Text("Hide extracted text") }
                 } else {
                     Text("Extracted text is hidden until you choose to review it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    SoftButton(onClick = { showReview = true }, enabled = !busy, label = "Review extracted text")
+                    SoftButton(onClick = { showReview = true }, enabled = !busy, simplified = simplified, label = "Review extracted text")
                 }
             } else if (document.mimeType.startsWith("image/") || document.mimeType == "application/pdf") {
-                SoftButton(onClick = { submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { mainHandler.post { onDone("Offline text extraction failed. The original remains stored.") } } } }, enabled = !busy, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
+                SoftButton(onClick = { submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { mainHandler.post { onDone("Offline text extraction failed. The original remains stored.") } } } }, enabled = !busy, simplified = simplified, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
             }
-            TextButton(onClick = { playVaultClick(view); showDeleteConfirm = true }, enabled = !busy) { Text("Remove document") }
+            TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); showDeleteConfirm = true }, enabled = !busy) { Text("Remove document") }
         }
     }
     if (showDeleteConfirm) {
@@ -332,19 +379,19 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, ocrEngine: O
             title = { Text("Remove this document?") },
             text = { Text("This removes the encrypted copy from the vault. This action cannot be undone.") },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = {
                     playVaultClick(view)
                     showDeleteConfirm = false
                     submitIo { runCatching { repository.delete(document.id) }.onSuccess { mainHandler.post { onDone("Document removed from the vault.") } }.onFailure { mainHandler.post { onDone("Could not remove the document.") } } }
                 }) { Text("Remove") }
             },
-            dismissButton = { TextButton(onClick = { playVaultClick(view); showDeleteConfirm = false }) { Text("Keep it") } }
+            dismissButton = { TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); showDeleteConfirm = false }) { Text("Keep it") } }
         )
     }
 }
 
 @Composable
-private fun SoftButton(onClick: () -> Unit, enabled: Boolean, label: String) { VaultTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth()) { Text(label) } }
+private fun SoftButton(onClick: () -> Unit, enabled: Boolean, simplified: Boolean = false, label: String) { VaultTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp)) { Text(label) } }
 
 private fun safeMessage(error: Exception): String = when (error) {
     is com.kaagazvault.documents.DocumentTooLargeException -> "This file exceeds the 31 MiB limit. Nothing was saved."

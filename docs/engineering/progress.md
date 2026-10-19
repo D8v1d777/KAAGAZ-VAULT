@@ -9,6 +9,19 @@
 - This is a design-only slice; no simplified-mode preference, typography overlay, high-contrast scheme, or layout refactor was implemented.
 - The design requires 2.0x font-scale, TalkBack, switch access, keyboard, dynamic-color, high-contrast, reduced-motion, and physical-device evidence before release claims.
 
+## 2026-10-19 — Phase 15 simplified-mode UI implementation
+
+### Implemented
+- Added `SimplifiedMode.kt` with a local, corruption-safe `SharedPreferences` flag, reusable simplified typography minimums, and 24dp/56dp/64dp layout tokens.
+- Added an always-visible, user-controlled “Simplified view” switch to the home screen. It is reversible, does not infer age or ability, and does not touch vault data, encryption, authentication, or network behavior.
+- Added enlarged typography and spacing to the home hierarchy, vertically stacked Import/Scan and Search/Show-all actions, larger empty-state and document/OCR controls, and enlarged reminder actions.
+- Kept standard mode behavior and visual density when the preference is disabled; simplified mode preserves system font scaling rather than overriding it.
+
+### Verification boundary
+- `git diff --check` and source-scope audits passed.
+- `:app:compileDebugKotlin` was attempted but stopped before compilation because the active sandbox has no Android SDK configured.
+- Physical low-end device, TalkBack, switch-access, 2.0x font-scale, and instrumentation validation remain pending.
+
 ## 2026-10-19 — elderly-feature integration and accessibility test pass
 
 ### Executed
