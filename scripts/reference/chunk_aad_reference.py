@@ -7,19 +7,13 @@ cryptography implementation or a substitute for human protocol review.
 """
 from __future__ import annotations
 
+import json
 import re
 import struct
+from pathlib import Path
 
-GOLDEN_HEX = (
-    "4b56414401"
-    "00027631"
-    "00026431"
-    "00000001"
-    "00026b31"
-    "000a746578742f706c61696e"
-    "01"
-    "00000000"
-)
+VECTORS = json.loads(Path(__file__).with_name("chunk_aad_vectors.json").read_text(encoding="utf-8"))
+GOLDEN_HEX = VECTORS["valid"]["aadHex"]
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 CONTENT_TYPES = {
     "application/octet-stream",
@@ -80,30 +74,15 @@ def encode_chunk_aad(metadata: dict[str, object]) -> bytes:
 
 
 def main() -> None:
-    fixture = {
-        "vaultId": "v1",
-        "documentId": "d1",
-        "documentVersion": 1,
-        "keyId": "k1",
-        "contentType": "text/plain",
-        "chunkFormat": "chunked-v1",
-        "chunkIndex": 0,
-    }
+    fixture = VECTORS["valid"]["metadata"]
     actual = encode_chunk_aad(fixture).hex()
     assert actual == GOLDEN_HEX, f"golden mismatch: {actual}"
     assert encode_chunk_aad({**fixture, "chunkIndex": 1}) != bytes.fromhex(GOLDEN_HEX)
 
     # Keep the independent reference grammar aligned with JavaScript's strict ID tests.
-    invalid_ids = [
-        ("vaultId", "v1\n"),
-        ("vaultId", "v1\r"),
-        ("documentId", "d1\u2028"),
-        ("keyId", "k1\u2029"),
-        ("vaultId", "has space"),
-        ("keyId", "slash/name"),
-        ("documentId", "x" * 129),
-    ]
-    for field, invalid in invalid_ids:
+    invalid_ids = VECTORS["invalidIdentifiers"]
+    for case in invalid_ids:
+        field, invalid = case["field"], case["value"]
         try:
             encode_chunk_aad({**fixture, field: invalid})
         except (ValueError, UnicodeEncodeError):
