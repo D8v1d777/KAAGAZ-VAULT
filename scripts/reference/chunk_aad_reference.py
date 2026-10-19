@@ -93,6 +93,13 @@ def main() -> None:
             f"property vector mismatch for {case['name']}: expected {case['aadHex']}, got {encoded}"
         )
 
+    for case in VECTORS.get("invalidMetadata", []):
+        try:
+            encode_chunk_aad(case["metadata"])
+        except (ValueError, TypeError, OverflowError):
+            continue
+        raise AssertionError(f"invalid metadata accepted: {case['name']}")
+
     # Keep the independent reference grammar aligned with JavaScript's strict ID tests.
     # The documented 128-byte boundary must be accepted for each opaque ID field.
     for field in ("vaultId", "documentId", "keyId"):
