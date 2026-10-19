@@ -13,6 +13,16 @@ test("matches byte-exact AAD golden bytes from the shared cross-runtime fixture"
   assert.equal(hex(encodeChunkAAD(metadata())), vectors.valid.aadHex);
 });
 
+test("matches every shared cross-runtime golden vector", () => {
+  for (const vector of vectors.additionalValidVectors ?? []) {
+    assert.equal(
+      hex(encodeChunkAAD(vector.metadata)),
+      vector.aadHex,
+      `golden vector mismatch: ${vector.name}`
+    );
+  }
+});
+
 test("supported authenticated metadata changes produce different AAD", () => {
   const baseline = hex(encodeChunkAAD(metadata()));
   const changes = [
