@@ -32,9 +32,21 @@ function assertRecord(record) {
   if (prototype !== Object.prototype && prototype !== null) {
     throw new TypeError("AAD metadata must be a plain record.");
   }
-  const keys = Object.keys(record);
-  if (keys.length !== FIELDS.length || keys.some((key) => !FIELDS.includes(key))) {
+
+  // Object.keys() omits symbol and non-enumerable properties. Reflect.ownKeys()
+  // makes the exact-schema check cover every own property, not only enumerable strings.
+  const keys = Reflect.ownKeys(record);
+  if (keys.length !== FIELDS.length || keys.some((key) => typeof key !== "string" || !FIELDS.includes(key))) {
     throw new TypeError("AAD metadata must contain exactly the documented fields.");
+  }
+
+  // Reject getters/setters so validation and serialization cannot invoke caller code
+  // or observe values that change between reads.
+  for (const key of FIELDS) {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor || !descriptor.enumerable || !("value" in descriptor)) {
+      throw new TypeError("AAD metadata fields must be enumerable data properties.");
+    }
   }
 }
 
