@@ -44,3 +44,22 @@ test("visual report exposes the E2EE decision and human-centered release blocker
     assert.ok(report.includes(phrase), "Missing report content: " + phrase);
   }
 });
+
+const protocol = read("../docs/E2EE-PROTOCOL-DRAFT.md");
+
+test("protocol draft defines canonical AAD, key separation, and explicit release gates", () => {
+  for (const phrase of [
+    "Canonical AAD encoding",
+    "fixed-order binary encoding",
+    "KEK",
+    "VEK",
+    "DEK",
+    "RFC 9106",
+    "Nonce and chunk constraints",
+    "independent cryptographic review"
+  ]) {
+    assert.ok(protocol.includes(phrase), "Missing protocol design criterion: " + phrase);
+  }
+  assert.match(protocol, /Proposal only; not approved for production/i);
+  assert.match(protocol, /must not claim production E2EE/i);
+});
