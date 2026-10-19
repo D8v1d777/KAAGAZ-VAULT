@@ -4,7 +4,7 @@ on:
   push:
     branches: [feat/accessible-vault-foundation, feat/e2ee-and-human-centered-design]
   pull_request:
-    branches: [main]
+    branches: [main, feat/accessible-vault-foundation]
 
 concurrency:
   group: phase1-ui-${{ github.head_ref || github.ref_name }}
