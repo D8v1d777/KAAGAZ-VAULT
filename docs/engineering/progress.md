@@ -9,6 +9,17 @@
 - This is a design-only slice; no simplified-mode preference, typography overlay, high-contrast scheme, or layout refactor was implemented.
 - The design requires 2.0x font-scale, TalkBack, switch access, keyboard, dynamic-color, high-contrast, reduced-motion, and physical-device evidence before release claims.
 
+## 2026-10-19 — Phase 18 voice-navigation haptic synchronization design
+
+### Designed
+- Added `docs/PHASE-18-VOICE-HAPTIC-SYNCHRONIZATION-DESIGN.md` with a semantic haptic event model synchronized to Phase 17 voice states, a maximum two-cue normal-command budget, explicit suppression rules, device-default/on/off preference behavior, elderly-friendly settings requirements, lifecycle/session deduplication, privacy boundaries, low-end hardware policy, and acceptance gates.
+- Kept haptics as optional confirmation only: no repeating listening pulses, no document-content encoding, no voice unlock or destructive confirmation, and no replacement for visible text, TalkBack, switch access, keyboard navigation, or TTS.
+- Based the design on Android guidance favoring restrained action-oriented haptics and predefined/fallback effects over long buzzy or legacy one-shot vibration patterns.
+
+### Verification boundary
+- This is a design-only slice; no new haptic event model, preference, voice controller, or vibration API call was implemented.
+- The design requires API 24/API 29+/API 31+, low-end hardware, no-actuator, system-haptics-off, TalkBack, switch-access, 2.0x font-scale, reduced-motion, lock, background, and biometric-prompt evidence before release claims.
+
 ## 2026-10-19 — Phase 15 simplified-mode UI implementation
 
 ### Implemented
