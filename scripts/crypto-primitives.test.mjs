@@ -95,6 +95,35 @@ test("rejects unknown envelope fields and symbol keys", async () => {
   await assert.rejects(decryptBytes(withSymbol, key, aad, webcrypto), /unexpected schema/);
 });
 
+test("proves AES-KW can restore a non-extractable content key", async () => {
+  const wrappingKey = await webcrypto.subtle.generateKey(
+    { name: "AES-KW", length: 256 },
+    false,
+    ["wrapKey", "unwrapKey"]
+  );
+  let temporaryKey = await webcrypto.subtle.generateKey(
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
+  const wrapped = await webcrypto.subtle.wrapKey("raw", temporaryKey, wrappingKey, "AES-KW");
+  temporaryKey = null;
+  const restored = await webcrypto.subtle.unwrapKey(
+    "raw",
+    wrapped,
+    wrappingKey,
+    "AES-KW",
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+
+  assert.equal(restored.extractable, false);
+  const aad = new TextEncoder().encode("feasibility-test");
+  const envelope = await encryptBytes(new TextEncoder().encode("round-trip"), restored, aad, webcrypto);
+  assert.equal(new TextDecoder().decode(await decryptBytes(envelope, restored, aad, webcrypto)), "round-trip");
+});
+
 test("documents the Web Crypto wrapping limitation for non-extractable document keys", async () => {
   const documentKey = await generateDocumentKey(webcrypto);
   const wrappingKey = await webcrypto.subtle.generateKey(
