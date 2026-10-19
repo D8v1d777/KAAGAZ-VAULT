@@ -13,6 +13,17 @@
 
 These sources establish constraints; they do not validate this application's proposed design.
 
+## Current NIST revision status — checked 2026-10-19
+
+NIST's publication page now lists **SP 800-38D Rev. 1 (2nd Preliminary Draft)** as published on 2026-06-01, superseding the January 2025 initial preliminary draft. It is still a draft, not a finalized replacement for the 2007 SP 800-38D publication. The draft's current public summary reiterates that random-nonce GCM has an invocation bound of (2^{32}) under the described construction and that nonce repetition can compromise the authentication subkey. Treat this as an important current research signal, not a finalized normative requirement for this application.
+
+Implications:
+- Re-check NIST's current publication status before protocol freeze; do not cite only the 2007 final as if revision work were inactive.
+- Do not interpret (2^{32}) as a sensible product target. Set a much more conservative, explicit per-key limit from the approved construction, maximum file/chunk sizes, and failure/retry model.
+- The application must enforce its chosen cap and rotate to a fresh key/version before reaching it; logging or monitoring alone is not enforcement.
+
+Source: NIST CSRC, [SP 800-38D Rev. 1 (2nd Preliminary Draft)](https://csrc.nist.gov/pubs/sp/800/38/d/r1/iprd), publication history and GCM invocation discussion. The earlier final remains at [SP 800-38D](https://csrc.nist.gov/pubs/sp/800/38/d/final).
+
 ## Recommended design direction (not approved)
 
 ### 1. Key roles and separation
