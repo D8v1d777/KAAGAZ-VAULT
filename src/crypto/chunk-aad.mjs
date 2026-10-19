@@ -2,7 +2,7 @@ const MAGIC = [0x4b, 0x56, 0x41, 0x44]; // ASCII "KVAD" — domain separation.
 const PROTOCOL_VERSION = 1;
 const MAX_U32 = 0xffff_ffff;
 // Use an absolute-end assertion: JavaScript's $ can match before a final line terminator.
-const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}(?![\\s\\S])/;
+const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}(?![\s\S])/;
 const ALLOWED_CONTENT_TYPES = new Set([
   "application/octet-stream",
   "application/pdf",
