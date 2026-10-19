@@ -95,6 +95,18 @@ test("rejects unknown envelope fields and symbol keys", async () => {
   await assert.rejects(decryptBytes(withSymbol, key, aad, webcrypto), /unexpected schema/);
 });
 
+test("documents the Web Crypto wrapping limitation for non-extractable document keys", async () => {
+  const documentKey = await generateDocumentKey(webcrypto);
+  const wrappingKey = await webcrypto.subtle.generateKey(
+    { name: "AES-KW", length: 256 },
+    false,
+    ["wrapKey", "unwrapKey"]
+  );
+  await assert.rejects(
+    webcrypto.subtle.wrapKey("raw", documentKey, wrappingKey, "AES-KW")
+  );
+});
+
 test("validates input types and has no insecure crypto fallback", async () => {
   const key = await generateDocumentKey(webcrypto);
   await assert.rejects(encryptBytes("not bytes", key, bytes("file:one"), webcrypto), TypeError);
