@@ -10,7 +10,7 @@ const architecture = read("../docs/ARCHITECTURE.md");
 const report = read("../docs/phase-2-report.html");
 
 test("E2EE documentation states the security boundary and does not claim implementation", () => {
-  assert.match(e2ee, /implementation has not begun/i);
+  assert.match(e2ee, /not a complete E2EE implementation/i);
   assert.match(e2ee, /service must not possess a decryption key/i);
   assert.match(e2ee, /Do not call the application end-to-end encrypted until/i);
   assert.match(e2ee, /malicious application update/i);
