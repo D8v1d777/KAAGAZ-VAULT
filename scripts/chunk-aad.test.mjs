@@ -85,8 +85,12 @@ test("rejects invalid identifiers, content types, formats and numeric boundaries
   for (const patch of [
     { vaultId: "" },
     { vaultId: "has space" },
+    { vaultId: "v1\\n" },
+    { vaultId: "v1\\r" },
+    { documentId: "d1\\u2028" },
     { documentId: "x".repeat(129) },
     { keyId: "slash/name" },
+    { keyId: "k1\\u2029" },
     { contentType: "Text/Plain" },
     { contentType: "text/html" },
     { chunkFormat: "unknown" },
