@@ -15,7 +15,7 @@ import java.security.GeneralSecurityException
  * Names, MIME metadata, and OCR output are stored inside the encrypted payload.
  */
 internal class DocumentRepository(
-    private val resolver: ContentResolver,
+    private val resolver: ContentResolver?,
     private val store: EncryptedDocumentStore,
     private val metadataIndexProvider: EncryptedMetadataIndexProvider? = null
 ) {
@@ -34,12 +34,13 @@ internal class DocumentRepository(
     }
     @Throws(IOException::class, GeneralSecurityException::class)
     fun import(uri: Uri): ImportedDocument {
-        val mimeType = resolver.getType(uri)?.lowercase()
+        val contentResolver = resolver ?: throw IOException("Document import is unavailable")
+        val mimeType = contentResolver.getType(uri)?.lowercase()
             ?: throw IOException("Could not determine the selected file type")
         if (mimeType != PDF_MIME && !mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
 
-        val displayName = queryDisplayName(uri)
-        val content = resolver.openInputStream(uri)?.use { input ->
+        val displayName = queryDisplayName(uri, contentResolver)
+        val content = contentResolver.openInputStream(uri)?.use { input ->
             val output = ByteArrayOutputStream()
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
             var total = 0
@@ -166,9 +167,9 @@ internal class DocumentRepository(
         ocrLanguages = payload.ocrLanguages
     )
 
-    private fun queryDisplayName(uri: Uri): String {
+    private fun queryDisplayName(uri: Uri, contentResolver: ContentResolver): String {
         val candidate = runCatching {
-            resolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
                 ?.use { cursor ->
                     val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                     if (cursor.moveToFirst() && index >= 0) cursor.getString(index) else null
