@@ -1,6 +1,6 @@
 # CO-01 — AndroidX Biometric dependency approval
 
-**Status:** Approval requested; no dependency declaration changed.  
+**Status:** Owner approved option 1 (stable 1.1.0); dependency implementation is tracked separately.  
 **Decision authority:** Project owner.  
 **Related:** Accepted ADR-0003; CO-01/CO-02; repository gate E6/G3.
 
@@ -43,6 +43,6 @@ The stable line is old relative to the current Android toolchain while 1.4 remai
 2. **Do not add AndroidX Biometric**: use platform APIs only, with an explicit implementation proposal for API 24–27 compatibility and API 28+ prompt handling. This increases custom platform-specific code and testing burden.
 3. **Use 1.4.0-alpha07**: not recommended for a security-critical release path unless the owner explicitly accepts alpha dependency risk.
 
-## Owner decision requested
+## Owner decision recorded
 
-Approve option 1, reject the dependency and choose option 2, or explicitly authorize option 3. Until the owner chooses, Gradle files remain unchanged.
+The owner explicitly approved **option 1 — stable 1.1.0** on 2026-10-20. The dependency declaration is being implemented in a separate code PR against `feat/durable-vault-migration-journal`; this decision PR remains documentation-only. This approval selects the artifact/version, not a specific authenticator fallback, not a claim that auth-per-use operations work across every API, and not permission to merge without review.
