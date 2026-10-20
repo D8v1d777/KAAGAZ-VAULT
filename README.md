@@ -1,102 +1,90 @@
 <div align="center">
 
+<img src="docs/images/gojo-portrait.jpg" alt="CC BY-SA Satoru Gojo cosplay portrait" width="260" style="border-radius: 18px;" />
+
 # KAAGAZ-VAULT
 
-### Privacy-first • Offline-first • Android Document Vault
+### The private document vault with a little limitless energy.
 
-<br>
+**Privacy-first · offline-first · Android · encrypted local storage · human-reviewed OCR**
 
-<img src="docs/images/gojo-portrait.jpg" alt="The Strongest" width="320" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);"/>
+<br />
 
-<br><br>
+[![Android](https://img.shields.io/badge/Android-API%2024%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.3.10-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Offline](https://img.shields.io/badge/Core-offline--first-111827?style=for-the-badge&logo=android&logoColor=93C5FD)](#privacy-stays-on-device)
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-4B8BBE?style=for-the-badge&logo=apache&logoColor=white)](LICENSE)
-[![Platform](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
-[![Status](https://img.shields.io/badge/Status-Active%20Development-orange?style=for-the-badge)](https://github.com/D8v1d777/KAAGAZ-VAULT)
+</div>
 
-<br>
+<p align="center">
+  <img src="docs/images/gojo-wide.jpg" alt="CC BY-SA Satoru Gojo themed vehicle photograph at Comic Con Chile" width="100%" />
+</p>
 
-*Your documents. Your device. No cloud.*
+<div align="center">
+
+**Your documents. Your device. No cloud document pipeline.**
+
+[Product overview](docs/overview.md) · [Document import notes](docs/engineering/document-import.md) · [Quality gates](docs/engineering/quality-gates.md) · [Asset attribution](docs/images/ATTRIBUTION.md)
 
 </div>
 
 ---
 
-<br>
+## A quiet place for sensitive documents
 
-### A quiet place for sensitive documents
+Kaagaz means **paper**. Kaagaz Vault is being built for IDs, prescriptions, bank statements, certificates, receipts, and the other papers that should stay useful without becoming somebody else’s dataset.
 
-KAAGAZ-VAULT is being built for people who want to keep IDs, prescriptions, bank statements and personal papers **entirely on their phone** — encrypted, searchable, and offline.
+Import or scan a document. Keep the encrypted copy on the device. Use local OCR when it helps. Review the extracted text yourself. Search your shelf without turning your private papers into a remote service.
 
-No analytics.  
-No hidden network calls.  
-No document content leaving the device in the FOSS build.
+| **CAPTURE** | **UNDERSTAND** | **KEEP CONTROL** |
+| --- | --- | --- |
+| Android document picker, CameraX capture, bounded input. | Offline OCR in English, Hindi, and Telugu with explicit review. | Encrypted local payload and metadata paths, no cloud OCR, no analytics. |
 
-This repository is still in active development. The core is taking shape, but it is not yet a finished product.
+## What the active source contains
 
-<br>
+- Android Kotlin + Jetpack Compose application shell with Material 3 theming.
+- Android Keystore-backed AES-256 keys and versioned AES-GCM payload encryption.
+- App-private encrypted files with opaque IDs, bounded input, atomic pending-file writes, and interrupted-update recovery.
+- User-selected PDF/image import without broad storage permission.
+- Offline Tesseract OCR for English, Hindi, and Telugu with pinned model integrity checks.
+- Human-editable OCR text and review state stored with the encrypted payload.
+- SQLCipher-backed metadata search with a local in-memory fallback path.
+- User-initiated CameraX capture with in-memory JPEG handling and direct encrypted import.
+- Calm motion, restrained haptics, simplified mode, and privacy-safe recent-app surfaces.
+- Local encrypted transfer of allowlisted accessibility settings only. Documents, OCR text, reminders, and recordings are not in that transfer surface.
 
-<p align="center">
-  <img src="docs/images/gojo-wide.jpg" alt="Limitless" width="680" style="border-radius: 10px;"/>
-</p>
-
-<br>
-
----
-
-### Where the real code lives
-
-The `main` branch is intentionally kept as a calm landing page.
-
-**The complete Android project is here:**
-
-<p align="center">
-  <a href="https://github.com/D8v1d777/KAAGAZ-VAULT/tree/feat/durable-vault-migration-journal">
-    <img src="https://img.shields.io/badge/Review%20Source-feat%2Fdurable--vault--migration--journal-4B8BBE?style=for-the-badge" alt="Review Source Branch"/>
-  </a>
-</p>
+The complete Android implementation lives on the review branch:
 
 ```bash
 git clone --branch feat/durable-vault-migration-journal https://github.com/D8v1d777/KAAGAZ-VAULT.git
 cd KAAGAZ-VAULT
 ```
 
-<br>
+## Privacy stays on device
 
----
+The FOSS core must not add `INTERNET`, analytics, advertising, cloud OCR, hidden network calls, or cloud AI dependencies. Document images, OCR text, filenames derived from OCR, and sensitive metadata must not leave the device in the FOSS build.
 
-### Current Progress
+OCR is untrusted evidence. It remains editable and reviewable. The app must never turn uncertain medical text into automatic instructions or actions.
 
-| Area                        | Status              |
-|----------------------------|---------------------|
-| Encryption foundation      | Ready               |
-| Offline OCR (EN / HI / TE) | Ready               |
-| Document import & camera   | Ready               |
-| Local encrypted search     | Ready               |
-| Auth-bound vault lock      | In progress         |
-| Recovery policy            | Decision pending    |
-| Device-level validation    | Not yet             |
-| Public release             | Not yet             |
+This is active development, not a release-ready security product. Auth-bound vault lock, recovery and rotation evidence, physical-device leakage review, secure deletion expectations, and final licensing still have explicit gates.
 
-<br>
+## Current progress
 
----
+| Area | State |
+| --- | --- |
+| Encryption foundation | Implemented paths and exact-SHA CI evidence |
+| Offline OCR | English / Hindi / Telugu path implemented |
+| Document import and camera | Implemented path; physical-device evidence still needed |
+| Local encrypted search | Implemented path with fallback behavior |
+| Auth-bound vault lock | In progress |
+| Recovery and rotation | Policy and implementation gates remain |
+| Device-level validation | Not yet complete |
+| Public release | Not yet |
 
-### Privacy Stance
+## Run the checks
 
-- No `INTERNET` permission in the FOSS build
-- No analytics or advertising SDKs
-- Document images and OCR text stay on device
-- Government IDs and medical documents treated as sensitive by default
-- You can audit the manifest and dependencies yourself
-
-<br>
-
----
-
-### For Reviewers & Developers
-
-**Requirements:** JDK 21 • Android SDK Platform 36
+**Requirements:** JDK 21 and Android SDK Platform 36.
 
 ```bash
 python3 -m unittest discover -s scripts -p 'test_*.py'
@@ -104,29 +92,18 @@ python3 -m unittest discover -s scripts -p 'test_*.py'
 python3 scripts/check_offline_manifest.py
 ```
 
-Full engineering contract and invariants live in [`AGENTS.md`](https://github.com/D8v1d777/KAAGAZ-VAULT/blob/feat/durable-vault-migration-journal/AGENTS.md).
+Read [AGENTS.md](AGENTS.md) before changing code. The repository contract owns the offline, privacy, accessibility, and evidence boundaries.
 
-<br>
+## Visual attribution
 
----
+The Gojo visuals in this landing page are real photographs sourced from Wikimedia Commons under **CC BY-SA 4.0**. The banner is a 5,947 × 3,813 original by [Rjcastillo](https://commons.wikimedia.org/wiki/User:Rjcastillo). The portrait and 4,352 × 3,264 source photograph are by [Solomon203](https://commons.wikimedia.org/wiki/User:Solomon203). Full source URLs, license links, dimensions, and file notes are in [docs/images/ATTRIBUTION.md](docs/images/ATTRIBUTION.md).
 
-<div align="center">
-
-**Built with the belief that some things should never leave your pocket.**
-
-<br>
-
-<sub>Apache License 2.0 • Active development • Not release-ready</sub>
-
-</div>
-
----
+The photographs are open-licensed works, but *Jujutsu Kaisen*, Satoru Gojo, associated logos, and underlying character rights remain with their respective rights holders. Kaagaz Vault is not an official or affiliated project.
 
 <div align="center">
 
-### Maintained with intent
+**Visual refresh by Tommy.**
 
-**Raven** — autonomous collaborator on this vault.  
-Dark theme. Sharp edges. Soft only when it matters.
+<sub>Built with the belief that some things should never leave your pocket.</sub>
 
 </div>
