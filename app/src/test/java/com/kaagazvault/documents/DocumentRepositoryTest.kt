@@ -53,11 +53,19 @@ class DocumentRepositoryTest {
             setOf(readableOne, readableTwo, unreadableId),
             listed.map { it.id }.toSet()
         )
+        assertEquals(2, listed.count { it.isReadable })
+        val unreadable = listed.single { it.id == unreadableId }
+        assertTrue(!unreadable.isReadable)
+        assertEquals("Unreadable encrypted document", unreadable.displayName)
+        assertEquals("application/octet-stream", unreadable.mimeType)
+        assertEquals(0, unreadable.byteSize)
+        assertEquals(null, unreadable.ocrText)
 
         val searched = repository.search("no-readable-document-matches-this-query")
-        assertTrue(
+        assertEquals(
             "A damaged file must remain surfaced even if its former name does not match",
-            searched.any { it.id == unreadableId }
+            setOf(unreadableId),
+            searched.filterNot { it.isReadable }.map { it.id }.toSet()
         )
     }
 
