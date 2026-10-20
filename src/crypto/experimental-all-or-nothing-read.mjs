@@ -164,7 +164,7 @@ export async function readAllOrNothing({
       const nonce = chunk.nonce.slice();
       const plaintext = await decryptChunk(
         Object.freeze({ index, nonce, ciphertext }),
-        manifest
+        decryptContext
       );
       if (!(plaintext instanceof Uint8Array) ||
           plaintext.byteLength !== expected.plaintextLength) fail();
