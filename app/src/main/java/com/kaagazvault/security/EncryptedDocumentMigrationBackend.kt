@@ -1,8 +1,11 @@
 package com.kaagazvault.security
 
+import android.os.Build
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.channels.FileChannel
+import java.nio.file.StandardOpenOption
 import java.nio.channels.OverlappingFileLockException
 import java.security.GeneralSecurityException
 import java.util.UUID
@@ -251,6 +254,7 @@ internal class EncryptedDocumentMigrationBackend(
             if (!pending.renameTo(destination)) {
                 throw IOException("Could not atomically publish migrated ciphertext")
             }
+            syncDirectoryBestEffort(directory)
         } finally {
             if (pending.exists() && !pending.delete()) {
                 // Keep the primary result if already published; a stale file contains ciphertext only.
@@ -271,6 +275,19 @@ internal class EncryptedDocumentMigrationBackend(
             } finally {
                 lock.release()
             }
+        }
+    }
+
+    private fun syncDirectoryBestEffort(directory: File) {
+        // Directory channels are not available on every supported Android API/filesystem.
+        // Match the migration journal's documented fallback on API 24–25 and unsupported filesystems.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        try {
+            FileChannel.open(directory.toPath(), StandardOpenOption.READ).use { channel ->
+                channel.force(true)
+            }
+        } catch (_: Exception) {
+            // The encrypted file contents were synced before rename; directory metadata is best-effort.
         }
     }
 
