@@ -3,41 +3,48 @@
 <handoff schema="1">
 updated: 2026-10-20
 author: GPT-6 via connected GitHub tools
-branch: agent/CO-00-settings-sync-review-gate
-head_sha: e6db4d368ccb44499c285888fc2cdadb71bace65
+branch: agent/CO-03-uuid-canonicalization-verified
+head_sha: 79aa3a717d7825e536bba484b95e57486b535671
 ci:
-  last_recorded_green_sha: e6db4d368ccb44499c285888fc2cdadb71bace65
-  last_recorded_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39362435654
-  code_test_green_sha: c2a783385ade3f59144eb282a2983ebf1eab3720
-  code_test_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39361833253
-  previous_failed_baseline_sha: 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489
-  previous_failed_baseline_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191
+  last_recorded_green_sha: 79aa3a717d7825e536bba484b95e57486b535671
+  last_recorded_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39375095096
+  reproduction_failed_sha: 0f94c179f450c74fb08f5bc855ccf2f74f54ab2c
+  reproduction_failed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39374096890
+  current_docs_head_before_checkpoint: c9ecffba81bcf93f8d336e363d09cc6f36d4ba8e
+  docs_head_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39375988883
+  docs_head_run_status_at_checkpoint: PENDING
 environment:
   android_sdk: MISSING in active tool container
   java: OpenJDK 21.0.12.1
   gh_cli: MISSING
   sdkmanager: MISSING
+  repository_checkout: MISSING
   sub_agents: NOT_AVAILABLE
-task: CO-00 exact-head Android CI gate
+task: CO-03 canonical UUID identity
 state: DONE
+changed_files:
+  - app/src/main/java/com/kaagazvault/security/EncryptedDocumentStore.kt
+  - app/src/test/java/com/kaagazvault/security/EncryptedDocumentStoreTest.kt
+  - docs/agent/plans/CO-03-uuid-canonicalization.md
+  - docs/engineering/progress.md
 verified:
-  - Baseline test reproduced: SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview failed on SHA 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489 in run #323.
-  - Production fix commit: d6083c0c428cc5f2423462bc4c1089cb0c7eee32.
-  - Positive-path regression test commit: 356b4d76ba0ad45f57aedce5b25c60e05d14f548.
-  - Android CI run #324 passed all workflow steps on SHA c2a783385ade3f59144eb282a2983ebf1eab3720, including Python policy tests, debug/release builds, JVM tests, lint, and merged-manifest policy.
-  - Documentation-only follow-up SHA e6db4d368ccb44499c285888fc2cdadb71bace65 passed the same full gate in run #325.
-  - README now distinguishes the failed baseline from the exact-SHA green run; PR #18 remains draft and unmerged.
+  - Test-first repro failed in run #341 at EncryptedDocumentStoreTest.kt:123: uppercase alias raised IOException instead of IllegalArgumentException; that canonical-base run also had the known CO-00 baseline failure.
+  - Production fix in commit e022640e1ff35ce543346731eb3fcd21bb609df1 changes only UUID canonicality comparison to exact equality.
+  - Final code/test SHA 79aa3a717d7825e536bba484b95e57486b535671 passed full configured Android CI run #344: Python policy tests, debug/release build, JVM tests, lint, and offline merged-manifest gate.
+  - The other UUID.fromString sites in VaultMigrationState and VaultMigrationJournal already enforce exact canonical spelling.
+  - Test plaintext and decrypted read buffers are wiped in finally; no persisted format, AAD encoding, key policy, or stored file names changed.
 unverified:
-  - No physical-device, biometric prompt, camera/OCR, or database leakage tests are claimed by CO-00.
+  - No local Gradle build was run because the active container has no Android SDK, checkout, sdkmanager, or gh CLI.
+  - No independent reviewer sub-agent is available. A separate manual full review was performed; no unrelated findings were asserted.
 decisions:
-  - Unreviewed incoming voice-navigation enablement keeps spoken guidance off. Explicit USE_INCOMING preserves it only when local and incoming spoken guidance are both enabled; existing safe-off precedence remains.
+  - Stack CO-03 verification on agent/CO-00-settings-sync-review-gate at a5bf1a8157ca91f142579003079c0a32f51f6a91 to avoid hiding the known canonical-base CO-00 failure.
+  - SEC-3 was touched; SEC-12 independent review is unavailable, so this handoff explicitly records that limitation.
 conflicts:
-  - Uploaded handoff initially said no current CI result; live GitHub showed the baseline run #323 failed, followed by candidate green runs #324 and #325.
+  - Initial PR #24 was closed after preserving its baseline-reproduction evidence; active PR #25 has only the CO-03 diff and remains draft/unmerged.
 open_questions_for_human:
-  - Q2: choose authenticator, lock, and recovery policy after reviewing CO-01/CO-02 decision material.
+  - Q2: choose authenticator, lock lifecycle, and independent recovery policy after reviewing CO-01/CO-02 decision packets.
 next_actions:
-  - A1: finish CO-01 Proposed session/authenticator decision memo and explicit SPIKE labels; no runtime wiring until owner decision.
-  - A2: finish separate CO-02 key-invalidation/recovery memo and ask once for both P0 decisions.
-  - A3: then proceed to CO-03 UUID identity correction and CO-04 unreadable-document visibility on separate branches/PRs.
-independent_review: NOT_REQUIRED_FOR_CO-00_SYNC-MERGE-SCOPE
+  - A1: execute CO-04 on a separate branch based on this verified work chain; reproduce first, report unreadable document IDs/count, classify failure swallowing, and run exact-head CI.
+  - A2: keep CO-01/CO-02 runtime wiring blocked until the owner decision is explicit.
+independent_review: NOT_AVAILABLE
 </handoff>
