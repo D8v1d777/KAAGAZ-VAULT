@@ -97,7 +97,8 @@ function validateManifest(input, limits) {
  * Experimental all-or-nothing coordinator.
  * authenticateManifest(envelope) MUST authenticate before returning the manifest.
  * fetchChunk(index) returns { index, nonce: Uint8Array, ciphertext: Uint8Array }.
- * decryptChunk(chunk, manifest) MUST perform AEAD verification using reviewed AAD.
+ * decryptChunk(chunk, context) MUST perform AEAD verification using reviewed AAD.
+ * The context contains immutable scalar document metadata, never mutable manifest buffers.
  * No plaintext is returned until every chunk has verified and all lengths match.
  */
 export async function readAllOrNothing({
@@ -130,6 +131,20 @@ export async function readAllOrNothing({
     // Allocate one bounded publication buffer. Staging every chunk and then
     // concatenating it would duplicate document-sized plaintext in memory.
     output = new Uint8Array(manifest.totalPlaintextLength);
+    // Do not expose the internal manifest: its typed-array nonce fields are mutable
+    // even when their containing objects are frozen. The adapter only needs scalar
+    // document context for AAD; chunk-specific fields arrive in the chunk argument.
+    const decryptContext = Object.freeze({
+      version: manifest.version,
+      vaultId: manifest.vaultId,
+      documentId: manifest.documentId,
+      documentVersion: manifest.documentVersion,
+      keyId: manifest.keyId,
+      contentType: manifest.contentType,
+      chunkFormat: manifest.chunkFormat,
+      chunkCount: manifest.chunkCount,
+      totalPlaintextLength: manifest.totalPlaintextLength
+    });
     let actualTotal = 0;
 
     for (let index = 0; index < manifest.chunkCount; index++) {
