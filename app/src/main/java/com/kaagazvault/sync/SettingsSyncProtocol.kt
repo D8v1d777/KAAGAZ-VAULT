@@ -258,8 +258,15 @@ object SettingsSyncMerger {
             decision == SettingsMergeDecision.USE_INCOMING -> true
             else -> false
         }
-        val spokenGuidance = if (!local.spokenGuidanceEnabled || !incoming.spokenGuidanceEnabled) false
-        else decision == SettingsMergeDecision.USE_INCOMING || local.spokenGuidanceEnabled
+        val spokenGuidance = when {
+            // Do not activate spoken output from a bundle whose voice-navigation enablement
+            // has not been explicitly reviewed. This is deliberately fail-closed for remote
+            // settings; selecting USE_INCOMING satisfies the review boundary above.
+            incomingVoiceEnablementNeedsReview && !voiceEnabled -> false
+            !local.spokenGuidanceEnabled || !incoming.spokenGuidanceEnabled -> false
+            decision == SettingsMergeDecision.USE_INCOMING -> true
+            else -> local.spokenGuidanceEnabled
+        }
         val haptics = if (local.voiceHapticPreference == SyncHapticPreference.OFF || incoming.voiceHapticPreference == SyncHapticPreference.OFF) {
             SyncHapticPreference.OFF
         } else if (decision == SettingsMergeDecision.USE_INCOMING) incoming.voiceHapticPreference else local.voiceHapticPreference
