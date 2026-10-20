@@ -10,7 +10,9 @@ data class ImportedDocument(
     val ocrReviewed: Boolean = false,
     val ocrTruncated: Boolean = false,
     val ocrSource: String? = null,
-    val ocrLanguages: String? = null
+    val ocrLanguages: String? = null,
+    /** False means the ciphertext exists, but its name and contents could not be authenticated/decoded. */
+    val isReadable: Boolean = true
 )
 
 internal data class ImportedPayload(
