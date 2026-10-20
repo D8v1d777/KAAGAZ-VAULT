@@ -46,5 +46,5 @@ next_actions:
   - Resolve or explicitly gate CO-06 dependency verification before treating the dependency as merge-ready.
   - Continue CO-01/CO-02 test-first: migration backend crash-point tests, session integration design, supported API/authenticator matrix, instrumented CryptoObject tests, recovery persistence and one-time setup/restore flow.
   - Do not wire production data access/UI to incomplete primitives; keep legacy ciphertext/key material until authenticated read-back, SQLCipher integrity and durable journal completion.
-independent_review: NOT_AVAILABLE — repository review protocol file was not found at docs/agent/REVIEW.md on the canonical ref; perform a cold review from the available contract, then require independent human review.
+independent_review: SUBAGENT_NOT_AVAILABLE — cold manual review performed against root AGENTS.md, Android engineering and implementation-quality skills, and the current diff; no blocking finding after removing an unused test import. Independent human review remains mandatory.
 </handoff>
