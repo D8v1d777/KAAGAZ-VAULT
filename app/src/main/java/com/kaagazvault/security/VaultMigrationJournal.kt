@@ -15,6 +15,8 @@ import java.util.UUID
 import java.util.zip.CRC32
 
 /**
+ * SPIKE: not wired into application runtime.
+ *
  * Durable write-ahead snapshot store for [VaultMigrationState].
  *
  * The journal contains opaque document UUIDs and migration progress only: never keys,

@@ -3,6 +3,8 @@ package com.kaagazvault.security
 import java.io.IOException
 
 /**
+ * SPIKE: not wired into application runtime.
+ *
  * Resumes migration from the last durable checkpoint.
  *
  * Backend operations must be idempotent: if the process stops after a side effect but before

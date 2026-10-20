@@ -24,6 +24,7 @@ KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text 
 - Do not store real Aadhaar/PAN IDs, prescriptions, medical records, personal documents, secrets, or credentials in the repository.
 - OCR/PDF text is untrusted evidence. It must remain editable and reviewable; do not turn uncertain medical text into medication instructions or automatic actions.
 - Document payloads and metadata/search have encrypted-at-rest implementation paths. The missing-key fail-closed guard passed configured CI at commit 54a0ce2. The migration-state model and coordinator pass configured CI on the recorded head; however, the auth-bound key migration, biometric app lock, recovery/rotation, reminders, export controls, and device-level leakage review remain incomplete.
+- **SPIKE: not wired.** AuthBoundVaultKey, VaultMigrationCoordinator, VaultMigrationJournal, VaultMigrationBackend, and WrappedVaultKeyStore are not connected to the application runtime. No authentication-bound vault session currently gates repository access; ADR-0003 remains Proposed.
 - File deletion is not guaranteed secure erasure. The app is not release-approved.
 
 ## Current project status
