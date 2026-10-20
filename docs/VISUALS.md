@@ -1,11 +1,11 @@
-# Visuals
+# Visuals (Gojo pass)
 
-Presentation assets for README and docs visitors. **Not** product UI.
+Assets under `docs/images/` for README presentation.
 
-| File | Role |
-|------|------|
-| `images/gojo-portrait.jpg` | Hero / strongest |
-| `images/gojo-wide.jpg` | Mid-page cinematic |
-| `images/gojo-purple.jpg` | Energy / accent strip |
+| Asset | Use |
+|-------|-----|
+| gojo-portrait.jpg | Hero |
+| gojo-wide.jpg | Mid-page |
+| gojo-purple.jpg | Accent |
 
-Maintained by **Raven**.
+**Raven** maintains this strip. Not product chrome.
