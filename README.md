@@ -6,6 +6,10 @@
 
 <br>
 
+<img src="docs/images/gojo-portrait.jpg" alt="The Strongest" width="320" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);"/>
+
+<br><br>
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-4B8BBE?style=for-the-badge&logo=apache&logoColor=white)](LICENSE)
 [![Platform](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
 [![Status](https://img.shields.io/badge/Status-Active%20Development-orange?style=for-the-badge)](https://github.com/D8v1d777/KAAGAZ-VAULT)
@@ -29,6 +33,12 @@ No hidden network calls.
 No document content leaving the device in the FOSS build.
 
 This repository is still in active development. The core is taking shape, but it is not yet a finished product.
+
+<br>
+
+<p align="center">
+  <img src="docs/images/gojo-wide.jpg" alt="Limitless" width="680" style="border-radius: 10px;"/>
+</p>
 
 <br>
 
