@@ -1,3 +1,19 @@
+## 2026-10-20 — CO-00 canonical-head evidence corrected
+
+### Result
+- Updated README lines 19 and 35 to identify the current canonical head SHA `b71606370a7a63965a7e1c280d721cb2c5fc75f2` and exact green workflow [run #364](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39383558020).
+- Preserved the historical pre-fix failure on SHA `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489` in [run #323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191); it is explicitly labeled as pre-fix evidence.
+- The exact canonical-head workflow passed Python policy tests, debug/release builds, JVM unit tests, lint, and the merged-manifest policy gate.
+
+### Verification boundary
+- Exact SHA `b71606370a7a63965a7e1c280d721cb2c5fc75f2` passed [run #364](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39383558020).
+- This README/plan/progress follow-up is a new documentation change; its own exact-head CI remains pending until the draft PR workflow completes.
+- No local Gradle build ran: Android SDK, repository checkout, `sdkmanager`, and `gh` CLI are unavailable in the active container.
+
+### Next
+- Finish the CO-00 documentation evidence PR, then continue CO-03 and CO-04 on independent branches and exact-SHA CI.
+- CO-01/CO-02 remain owner decisions; no authentication/session or recovery wiring is authorized.
+
 ## 2026-10-20 — CO-00 exact-head Android CI gate passed
 
 ### Corrected
