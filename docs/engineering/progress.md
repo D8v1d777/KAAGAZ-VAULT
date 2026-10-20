@@ -1,3 +1,21 @@
+## 2026-10-20 — CO-00 exact-head Android CI gate passed
+
+### Corrected
+- Repaired `SettingsSyncMerger` so spoken guidance remains disabled while incoming voice-navigation enablement is awaiting an explicit user decision; preserved safe-off precedence.
+- Added `confirmedIncomingVoiceEnablementCanPreserveLocallyEnabledSpokenGuidance` to cover the explicit-acceptance path.
+- Corrected README evidence so the historical green run is not misrepresented as the current code head.
+
+### Verification
+- Reproduction: Android CI run [#323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) on baseline SHA `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489` failed `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview` at assertion line 105 (65 tests completed, one failed).
+- Fix commit: `d6083c0c428cc5f2423462bc4c1089cb0c7eee32`. Positive-path regression test commit: `356b4d76ba0ad45f57aedce5b25c60e05d14f548`.
+- Full configured workflow passed on code/test SHA `c2a783385ade3f59144eb282a2983ebf1eab3720` in [run #324](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39361833253).
+- Full configured workflow also passed on documentation-follow-up SHA `e6db4d368ccb44499c285888fc2cdadb71bace65` in [run #325](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39362435654). Build/release, JVM tests, lint, Python manifest-policy tests, and merged-manifest policy steps all report success.
+- PR #18 remains open, draft and unmerged. No physical-device or release-readiness claim is made.
+
+### Next
+- CO-00 gate is closed for the verified SHA above. Continue P0 CO-01/CO-02 as separate Proposed decision work; do not wire or accept an authentication/recovery policy without the owner.
+- Environment limitation remains: no local Android SDK, repository checkout, `sdkmanager`, or `gh` CLI in the active tool container.
+
 ## 2026-10-20 — CO-00 candidate repair: settings merge fails closed pending voice review
 
 ### Reproduced
