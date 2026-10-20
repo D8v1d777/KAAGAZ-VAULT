@@ -61,12 +61,18 @@ test("publishes concatenated plaintext only after all chunks verify", async () =
   assert.deepEqual(f.seen, [0, 1]);
 });
 
-test("rejects missing, duplicate, extra, reordered, and cross-version chunk indexes", async () => {
-  for (const index of [undefined, 0, 2, 1]) {
+test("rejects missing, duplicate, and out-of-range chunk indexes", async () => {
+  for (const index of [undefined, 0, 2]) {
     const f = fixture();
     f.chunks[1] = { ...f.chunks[1], index };
     await assert.rejects(f.run(), /Unable to read encrypted document/);
   }
+});
+
+test("rejects chunks returned in the wrong order", async () => {
+  const f = fixture();
+  f.chunks.reverse();
+  await assert.rejects(f.run(), /Unable to read encrypted document/);
 });
 
 test("rejects a chunk nonce or ciphertext length that disagrees with authenticated manifest", async () => {
@@ -118,10 +124,10 @@ test("rejects oversized limits and never calls decrypt before manifest validatio
 
 test("snapshots ciphertext and nonce before the asynchronous decrypt adapter", async () => {
   const f = fixture();
-  let captured;
+  const captured = [];
   const promise = f.run({
     decryptChunk: async (chunk) => {
-      captured = chunk;
+      captured.push(chunk);
       f.chunks[0].ciphertext.fill(99);
       f.chunks[0].nonce.fill(99);
       return chunk.index === 0 ? plainA : plainB;
@@ -129,5 +135,6 @@ test("snapshots ciphertext and nonce before the asynchronous decrypt adapter", a
   });
   const result = await promise;
   assert.deepEqual([...result], [1, 2, 3, 4, 5]);
-  assert.equal(captured.ciphertext[0], 11);
+  assert.equal(captured[0].ciphertext[0], 10);
+  assert.equal(captured[0].nonce[0], 1);
 });
