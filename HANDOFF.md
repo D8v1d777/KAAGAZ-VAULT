@@ -4,40 +4,39 @@
 updated: 2026-10-20
 author: GPT-6 via connected GitHub tools
 branch: agent/CO-00-settings-sync-review-gate
-head_sha: e6db4d368ccb44499c285888fc2cdadb71bace65
+head_sha: a5bf1a8157ca91f142579003079c0a32f51f6a91
 ci:
-  last_recorded_green_sha: e6db4d368ccb44499c285888fc2cdadb71bace65
-  last_recorded_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39362435654
-  code_test_green_sha: c2a783385ade3f59144eb282a2983ebf1eab3720
-  code_test_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39361833253
-  previous_failed_baseline_sha: 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489
-  previous_failed_baseline_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191
+  last_verified_green_sha: a5bf1a8157ca91f142579003079c0a32f51f6a91
+  last_verified_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39373886567
+  handoff_update_result: PENDING
 environment:
   android_sdk: MISSING in active tool container
   java: OpenJDK 21.0.12.1
   gh_cli: MISSING
   sdkmanager: MISSING
   sub_agents: NOT_AVAILABLE
-task: CO-00 exact-head Android CI gate
-state: DONE
+task: CO-00 exact-head CI gate and durable handoff
+state: PARTIAL
 verified:
-  - Baseline test reproduced: SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview failed on SHA 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489 in run #323.
-  - Production fix commit: d6083c0c428cc5f2423462bc4c1089cb0c7eee32.
-  - Positive-path regression test commit: 356b4d76ba0ad45f57aedce5b25c60e05d14f548.
-  - Android CI run #324 passed all workflow steps on SHA c2a783385ade3f59144eb282a2983ebf1eab3720, including Python policy tests, debug/release builds, JVM tests, lint, and merged-manifest policy.
-  - Documentation-only follow-up SHA e6db4d368ccb44499c285888fc2cdadb71bace65 passed the same full gate in run #325.
-  - README now distinguishes the failed baseline from the exact-SHA green run; PR #18 remains draft and unmerged.
+  - Baseline test failed on SHA 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489 in run #323; the named settings-sync regression was reproduced.
+  - CO-00 implementation and positive-path regression tests passed full CI on SHA c2a783385ade3f59144eb282a2983ebf1eab3720 in run #324.
+  - Documentation SHA e6db4d368ccb44499c285888fc2cdadb71bace65 passed run #325.
+  - Latest branch head a5bf1a8157ca91f142579003079c0a32f51f6a91 passed run #340; Python policy tests, debug/release builds, JVM tests, lint and offline merged-manifest gate succeeded.
+  - PR #18 targets canonical branch feat/durable-vault-migration-journal and remains draft/unmerged.
+  - CO-03 PR #25 is separate; its head e50312e60386726df68447842e05774166dbc9e6 passed run #347.
+  - CO-04 PR #26 is separate; its head 6dcb7c5012128be377401b24808a138f37e00bdc passed run #362.
 unverified:
-  - No physical-device, biometric prompt, camera/OCR, or database leakage tests are claimed by CO-00.
+  - This HANDOFF edit commit still needs its own exact-SHA CI result.
+  - No physical-device, biometric prompt, camera/OCR, or database leakage tests are claimed.
 decisions:
-  - Unreviewed incoming voice-navigation enablement keeps spoken guidance off. Explicit USE_INCOMING preserves it only when local and incoming spoken guidance are both enabled; existing safe-off precedence remains.
+  - Unreviewed incoming voice-navigation enablement keeps spoken guidance off; no key policy, crypto format, dependency, manifest permission or Room schema changes were made for CO-00.
 conflicts:
-  - Uploaded handoff initially said no current CI result; live GitHub showed the baseline run #323 failed, followed by candidate green runs #324 and #325.
+  - The audit ZIP contains HANDOFF/PLANS/CORRECTION-ORDERS files not present in the GitHub tree at the canonical base; this tracked HANDOFF restores the required durable checkpoint.
 open_questions_for_human:
   - Q2: choose authenticator, lock, and recovery policy after reviewing CO-01/CO-02 decision material.
 next_actions:
-  - A1: finish CO-01 Proposed session/authenticator decision memo and explicit SPIKE labels; no runtime wiring until owner decision.
-  - A2: finish separate CO-02 key-invalidation/recovery memo and ask once for both P0 decisions.
-  - A3: then proceed to CO-03 UUID identity correction and CO-04 unreadable-document visibility on separate branches/PRs.
-independent_review: NOT_REQUIRED_FOR_CO-00_SYNC-MERGE-SCOPE
+  - A1: obtain CI for this handoff-update SHA and record its result.
+  - A2: continue CO-03 then CO-04 as separate branches/PRs; keep both draft pending independent review and owner approval.
+  - A3: follow the ZIP END format at session end; do not claim device-level verification.
+independent_review: NOT_RUN
 </handoff>
