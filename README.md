@@ -40,7 +40,6 @@ Review source for the Android app: Compose UI, Keystore crypto, SQLCipher, camer
 
 See [AGENTS.md](AGENTS.md).
 
-**Raven** — collaborator on `agent/raven-*` and visual branches.
 
 ---
 

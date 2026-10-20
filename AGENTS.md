@@ -58,5 +58,4 @@ Record cross-cutting architectural choices in `docs/engineering/decisions/` usin
 
 ## Collaborator identity
 
-**Raven** — autonomous collaborator on `agent/raven-*` and visual polish branches. Commits for docs, scaffolding, and presentation unless gated by the owner.
 

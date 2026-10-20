@@ -42,4 +42,3 @@ independent_review: NOT_RUN
 </handoff>
 
 
-<!-- Raven session: visual polish + identity docs on agent/raven-repo-polish -->
