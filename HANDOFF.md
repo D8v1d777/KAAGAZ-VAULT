@@ -1,3 +1,19 @@
+## Current agent handoff — 2026-10-20 — PR #42 document migration backend
+
+- Active branch: `agent/CO-01-document-migration-backend`.
+- Canonical base: `feat/durable-vault-migration-journal` at `789816fece4b90bb981b9e9cb3a5954f1eebd514`.
+- Draft PR: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/42.
+- Test-first commit: `11e7a8adbc9bc78bff048d22f67dcd989d944126`; adapter implementation and review cleanup through `7e3bbd4852da2b0e38c4ffd8676fbf9405bebcb5`.
+- Tests cover authenticated same-ID staging, source preservation, idempotent stage/publish, tampering, separate storage roots, and coordinator replay after failures injected after stage, verify checkpoint #1, verify checkpoint #2, publish, database-key rewrap, and database integrity.
+- Adapter keeps legacy, staging and published roots separate. It retains both legacy and staged ciphertext, and uses the pre-existing AES-GCM v1 envelope and document-ID AAD.
+- `VaultDatabaseMigrationActions` is an interface only; no actual SQLCipher rewrap/reopen/integrity implementation is claimed.
+- No production call site, repository/session gating, active-root cutover, key rotation, deletion, manifest, dependency, envelope/journal format, or Room schema change.
+- Environment cannot run local Gradle/Android tests; wait for exact-head GitHub Actions CI on the latest PR head. Current branch documentation update means older heads do not count.
+- Must not merge without independent human security review. Do not retire legacy ciphertext or wrappers until end-to-end authenticated read-back, SQLCipher reopen/integrity checks and durable journal COMPLETE are verified.
+- Next: verify final-head PR #42 CI, investigate only reproduced failures, then review the backend's file-lock/write recovery. Actual SQLCipher integration is a separate bounded gate and must preserve the current key hierarchy until its contract is accepted.
+
+---
+
 # HANDOFF.md
 
 <handoff schema="1">
