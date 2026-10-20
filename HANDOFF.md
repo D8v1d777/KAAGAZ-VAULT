@@ -40,3 +40,6 @@ next_actions:
   - A3: follow the ZIP END format at session end; do not claim device-level verification.
 independent_review: NOT_RUN
 </handoff>
+
+
+<!-- Raven session: visual polish + identity docs on agent/raven-repo-polish -->
