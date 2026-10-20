@@ -3,46 +3,39 @@
 <handoff schema="1">
 updated: 2026-10-20
 author: GPT-6 via connected GitHub tools
-branch: agent/CO-01-auth-bound-session-options-v2
-head_sha: pending exact-head CI after handoff write
+branch: agent/CO-02-key-invalidation-recovery-v2
+head_sha: 7df62c8350185d8018aa96434e173386a755ae2a
 ci:
-  last_recorded_green_sha: 255424c96e3ee1ab88eb6c41b3aec955605f7c3a
-  last_recorded_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166
-  code_and_tests_green_sha: c2a783385ade3f59144eb282a2983ebf1eab3720
-  code_and_tests_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39361833253
-  failed_baseline_sha: 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489
-  failed_baseline_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191
+  prior_green_sha: 255424c96e3ee1ab88eb6c41b3aec955605f7c3a
+  prior_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166
+  current_candidate_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39365663867
+  current_candidate_has_result: false
 environment:
   android_sdk: MISSING in active tool container
   java: OpenJDK 21.0.12.1
   gh_cli: MISSING
   sdkmanager: MISSING
   sub_agents: NOT_AVAILABLE
-task: CO-01 Proposed auth/session options; no runtime wiring
+task: CO-02 Proposed key invalidation/recovery decision packet
 state: PARTIAL
 verified:
-  - CO-00 baseline failure reproduced on SHA 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489: SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview failed; 65 tests completed, one failed.
-  - CO-00 fix and positive-path test passed all Android CI steps at SHA c2a783385ade3f59144eb282a2983ebf1eab3720 in run #324.
-  - Documentation follow-up SHA e6db4d368ccb44499c285888fc2cdadb71bace65 passed run #325.
-  - Latest CO-00 handoff/progress SHA 255424c96e3ee1ab88eb6c41b3aec955605f7c3a passed run #326, including Python offline-policy tests, debug/release builds, JVM tests, lint, and merged-manifest gate.
-  - CO-01 adds a Proposed-only authenticator/session decision section to ADR-0003. ADR remains Proposed.
-  - AuthBoundVaultKey, VaultMigrationCoordinator, VaultMigrationJournal, VaultMigrationBackend, and WrappedVaultKeyStore are marked SPIKE: not wired. README explicitly says there is no active repository/session lock.
-  - Cold comparison confirms these edits change KDoc only; all five runtime class/function bodies are unchanged.
-  - Cold review found AuthBoundVaultKey setup uses doFinal without updateAAD and unlock initializes GCM without AAD. A versioned/context-bound envelope is a separate G2 gate before this spike may be wired; no runtime fix attempted.
+  - CO-00 exact-head gate passed run #326 on SHA 255424c96e3ee1ab88eb6c41b3aec955605f7c3a.
+  - CO-01 packet is isolated in draft PR #20; its exact-head CI run #328 is still in progress as of last lookup.
+  - CO-02 memo contains recovery alternatives, a failure matrix, proposed user-facing disclosures, instrumented-test acceptance and an owner checklist.
+  - CO-02 is documentation only: no key alias, envelope format, KDF, dependency, backup rule, or runtime behavior changes.
 unverified:
-  - CO-01 exact-head CI result after the current memo/KDoc change is pending.
-  - No Android Keystore, biometric prompt, migration crash, or physical-device instrumented tests were run.
+  - CO-02 candidate exact-head CI run #329 is still in progress on SHA 7df62c8350185d8018aa96434e173386a755ae2.
+  - No Android Keystore/biometric/migration instrumentation test ran; no auth/recovery policy has been selected.
 decisions:
-  - Keep ADR-0003 Proposed; no authenticator, lock, envelope, KDF, or recovery policy has been accepted.
-  - Do not wire these primitives before owner approval and a reviewed AAD/context-binding contract.
+  - Keep ADR-0003 Proposed. Device credential is not treated as an independent recovery envelope.
+  - Recommend verified independent recovery before enabling lock; no old key or ciphertext may be discarded on recovery failure.
 conflicts:
-  - Earlier handoff claimed no current workflow result, but live CI showed failed run #323 followed by passing exact-SHA runs #324, #325, and #326.
+  - Work branches are stacked (CO-02 on CO-01, CO-01 on CO-00) to avoid reintroducing the known failing baseline; this differs from the root preference for targeting canonical_branch directly because CO-00 is still unmerged behind G1. No merge or canonical push was performed.
 open_questions_for_human:
-  - Q2: choose authenticator, lock lifecycle, independent recovery, and API 24–29 behavior only after reviewing both CO-01 and CO-02 decision packets.
+  - Q2 blocking: choose authenticator, lock lifecycle, recovery method, and API 24–29 policy after reading both decision packets.
 next_actions:
-  - A1: finish cold review, update progress, open stacked draft PR for CO-01, and verify exact-head CI.
-  - A2: create separate CO-02 branch/PR with key invalidation recovery memo; keep it documentation-only.
-  - A3: formalize no-AAD/context-binding concern as CO-16 G2 before any security wiring.
-  - A4: after P0 decision packets, proceed to CO-03 UUID canonicalization and CO-04 unreadable-document visibility on separate branches.
-independent_review: NOT_AVAILABLE — no sub-agent capability; manual cold review and source comparison performed.
+  - A1: verify full CI for final CO-01 and CO-02 heads after handoff/progress commits.
+  - A2: ask the owner once for the joint CO-01/CO-02 decision; do not implement gated key/session changes until approved.
+  - A3: formalize CO-16 context-bound VEK envelope as its own G2 order before any wiring.
+independent_review: NOT_AVAILABLE — no sub-agent capability; manual cold source review only.
 </handoff>
