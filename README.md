@@ -60,7 +60,6 @@ python3 scripts/check_offline_manifest.py
 
 See [AGENTS.md](AGENTS.md) for invariants, definition of done, and workflow.
 
-**Raven** operates on gap-closure and visual polish branches (`agent/raven-*`): autonomous commits for docs, scaffolding, and non-crypto presentation work unless the owner gates otherwise.
 
 ---
 
@@ -68,6 +67,5 @@ See [AGENTS.md](AGENTS.md) for invariants, definition of done, and workflow.
 
 *Strongest when verified. Soft only where it helps you read.*
 
-<sub>Maintainer identity note: Raven · collaborator on agent/* branches</sub>
 
 </div>
