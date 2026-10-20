@@ -1,3 +1,23 @@
+## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
+
+### Decision recorded
+- The project owner approved **A2 + B2 + C1**: strong biometric OR device credential only where supported with auth-per-use cryptographic enforcement; independent random 256-bit recovery key with a separate authenticated VEK envelope; immediate lock on explicit lock, foreground loss, screen-off and process restart.
+- Updated ADR-0003 to Accepted for this policy direction. This is architecture-policy acceptance, not feature completion or security certification.
+- Recorded the API constraint from AndroidX primary documentation: `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` via `setAllowedAuthenticators` is unsupported on API 28–29; device-credential-only is unsupported before API 30. Keep the compatibility path explicit and test it; never substitute an unauthenticated or time-window key.
+
+### Verification boundary
+- Exact-head Android CI passed on prior decision-doc head `05dfbe9ba0fc53548d345c9d8de327b35543649c` in [run #382](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39399533594). The owner-acceptance updates after that SHA require the new head’s CI run.
+- No production authentication, key-management, recovery-envelope, or migration code has been changed in this policy update.
+- AndroidX Biometric is not currently in the version catalog. The repository’s separate dependency-approval rule still applies; the next gate is a concrete dependency justification and owner approval before Gradle dependency changes.
+- Android Keystore instrumentation, API matrix verification, migration crash tests, independent security review and physical-device acceptance remain required.
+
+### Next
+- Obtain approval for the necessary AndroidX Biometric dependency after showing exact version, maintenance, license and privacy/network rationale.
+- Begin test-first work in separate CO-01 and CO-02 implementation PRs after dependency/API compatibility is cleared.
+- Rebase/port CO-04 changes onto current canonical and rerun full CI on that new exact head before considering merge.
+
+---
+
 ## 2026-10-20 — CO-03 canonical UUID identity corrected
 
 ### Reproduced and fixed
