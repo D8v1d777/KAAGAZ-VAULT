@@ -83,6 +83,7 @@ This section is a decision packet only. ADR-0003 remains **Proposed**. No runtim
 **Option B — strong biometric OR device credential, plus a one-time recovery key envelope (recommended for owner consideration)**
 - Advantages: better accessibility and resilience when biometric enrollment changes; Android's current documentation shows auth-per-use keys configured with AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL and describes device credential as a supported authenticator for such keys.
 - Costs: the app's minSdk is 24, while the current implementation uses setUserAuthenticationParameters on API 30+. The API 24–29 compatibility path and OEM behavior must be specified and tested before implementation; do not claim the same behavior across the entire supported range yet.
+- Important implementation constraint: the current AuthBoundVaultKey explicitly calls setInvalidatedByBiometricEnrollment(true). Adding AUTH_DEVICE_CREDENTIAL alone must not be assumed to override that explicit invalidation setting. The exact setting must be deliberately reviewed and instrumented-tested; changing it is gated by root G2.
 - Recovery key: generate a high-entropy key locally, show it once, require a confirmation step, and use it only to unwrap the VEK envelope if the primary Keystore path is unavailable. No server-side recovery.
 - Failure boundary: disabling/resetting the device secure lock screen can still invalidate an auth-bound key; if that happens and the recovery key is lost, the vault is unrecoverable.
 
