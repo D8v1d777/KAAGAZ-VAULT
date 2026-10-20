@@ -5,8 +5,8 @@
 - README now states that no unlocked-session gate protects repository access.
 - Cold review found that the inactive VEK wrapping spike does not bind authenticated additional data to the wrapped-key context during setup/unlock. Record as future CO-16 / G2 pre-wiring gate; do not wire until reviewed envelope/context contract and substitution/tamper tests exist.
 - CO-00 CI evidence: exact code/test SHA c2a783385ade3f59144eb282a2983ebf1eab3720 passed run #324 (https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39361833253); README follow-up e6db4d368ccb44499c285888fc2cdadb71bace65 passed #325; handoff/progress follow-up 255424c96e3ee1ab88eb6c41b3aec955605f7c3a passed #326 (https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166).
-- CO-01 candidate exact-head CI remains pending. No physical-device, Keystore, biometric, or migration instrumentation test is claimed. No sub-agent capability is available; manual cold review was performed.
-- Next: open stacked draft PR for CO-01 and verify exact-head CI; complete CO-02 memo as a separate stacked PR; ask once for the joint P0 decision. No runtime wiring or ADR acceptance before approval.
+- CO-01 exact-head Android CI passed all configured steps on SHA `0035befa33bd736d6f0c31d561f13eade5f63625` in [run #328](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39365463380): offline-policy helper, debug/release build, JVM unit tests, lint and merged-manifest gate. The later HANDOFF/progress-only commits still require exact-head CI. No physical-device, Keystore, biometric, or migration instrumentation test is claimed. No sub-agent capability is available; manual cold review was performed.
+- Next: verify exact-head CI after this documentation update and on CO-02's final head; then ask once for the joint P0 decision. No runtime wiring or ADR acceptance before approval.
 
 ## 2026-10-20 — CO-00 exact-head Android CI gate passed
 
