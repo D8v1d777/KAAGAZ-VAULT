@@ -69,6 +69,7 @@ import com.kaagazvault.reminders.ReminderRepository
 import com.kaagazvault.reminders.ReminderSection
 import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
 import com.kaagazvault.security.EncryptedDocumentStore
+import com.kaagazvault.security.MissingEncryptionKeyException
 import com.kaagazvault.sync.SettingsMergeDecision
 import com.kaagazvault.sync.SettingsPairingTicket
 import com.kaagazvault.sync.SettingsSyncCrypto
@@ -165,9 +166,24 @@ private fun VaultHomeScreen(
                 mainHandler.post {
                     documents.clear(); documents.addAll(result)
                     searchAvailable = repository.encryptedSearchAvailable
-                    status = message ?: if (result.isEmpty()) "Your private shelf is ready for its first document." else "${result.size} document(s) safely stored on this device."
+                    val unreadableCount = result.count { !it.isReadable }
+                    status = if (unreadableCount > 0) {
+                        unreadableDocumentNotice(unreadableCount)
+                    } else {
+                        message ?: if (result.isEmpty()) "Your private shelf is ready for its first document." else "${result.size} document(s) safely stored on this device."
+                    }
                 }
-            }.onFailure { mainHandler.post { status = "Could not unlock stored documents. Existing data was left untouched." } }
+            }.onFailure { error ->
+                mainHandler.post {
+                    documents.clear()
+                    searchAvailable = false
+                    status = if (error is MissingEncryptionKeyException) {
+                        "Vault encryption key unavailable. Existing encrypted files were left unchanged; no replacement key was created."
+                    } else {
+                        "Could not read the vault. Existing encrypted files were left untouched."
+                    }
+                }
+            }
         }
     }
 
@@ -292,14 +308,44 @@ private fun VaultHomeScreen(
                     onSearch = {
                         busy = true
                         submitIo {
-                            runCatching { repository.search(query) }.onSuccess { result -> mainHandler.post { documents.clear(); documents.addAll(result); searchAvailable = repository.encryptedSearchAvailable; status = "Found ${result.size} local result(s)."; busy = false } }
-                                .onFailure { mainHandler.post { busy = false; status = "Search failed. Your encrypted documents were left untouched." } }
+                            runCatching { repository.search(query) }.onSuccess { result ->
+                                mainHandler.post {
+                                    documents.clear()
+                                    documents.addAll(result)
+                                    searchAvailable = repository.encryptedSearchAvailable
+                                    val unreadableCount = result.count { !it.isReadable }
+                                    status = if (unreadableCount > 0) {
+                                        unreadableDocumentNotice(unreadableCount)
+                                    } else {
+                                        "Found ${result.count { it.isReadable }} local result(s)."
+                                    }
+                                    busy = false
+                                }
+                            }.onFailure { error ->
+                                mainHandler.post {
+                                    busy = false
+                                    documents.clear()
+                                    searchAvailable = false
+                                    status = if (error is MissingEncryptionKeyException) {
+                                        "Vault encryption key unavailable. Existing encrypted files were left unchanged; no replacement key was created."
+                                    } else {
+                                        "Search failed. Your encrypted documents were left untouched."
+                                    }
+                                }
+                            }
                         }
                     },
                     onClear = { query = ""; refresh("Showing all local documents.") }
                 )
                 ReminderSection(context, reminderRepository, submitIo, mainHandler, simplifiedMode.value)
-                SectionTitle("YOUR DOCUMENTS", "${documents.size} private item${if (documents.size == 1) "" else "s"}", simplifiedMode.value)
+                val readableDocumentCount = documents.count { it.isReadable }
+                val unreadableDocumentCount = documents.size - readableDocumentCount
+                val documentSummary = if (unreadableDocumentCount > 0) {
+                    "$readableDocumentCount readable • $unreadableDocumentCount cannot open"
+                } else {
+                    "$readableDocumentCount private item${if (readableDocumentCount == 1) "" else "s"}"
+                }
+                SectionTitle("YOUR DOCUMENTS", documentSummary, simplifiedMode.value)
                 AnimatedVisibility(visible = documents.isEmpty(), enter = vaultFadeIn(), exit = vaultFadeOut()) {
                     EmptyVaultCard(simplified = simplifiedMode.value, onImport = { playVaultClick(view); picker.launch(arrayOf("application/pdf", "image/*")) })
                 }
@@ -458,8 +504,41 @@ private fun EmptyVaultCard(simplified: Boolean, onImport: () -> Unit) {
     }
 }
 
+private fun unreadableDocumentNotice(count: Int): String =
+    "$count encrypted document(s) cannot be opened. Their names and contents are hidden; stored files were left unchanged."
+
+@Composable
+private fun UnreadableDocumentCard(simplified: Boolean) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+    ) {
+        Column(
+            Modifier.padding(if (simplified) SimplifiedLayout.cardPadding else 18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "Unreadable encrypted document",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Text(
+                "This item cannot be opened. Its name and contents are hidden, and the encrypted file has not been changed.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+        }
+    }
+}
+
 @Composable
 private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: Boolean, ocrEngine: OfflineOcrEngine, repository: DocumentRepository, submitIo: (() -> Unit) -> Unit, mainHandler: Handler, onDone: (String) -> Unit) {
+    if (!document.isReadable) {
+        UnreadableDocumentCard(simplified)
+        return
+    }
     var editedOcr by remember(document.id, document.ocrText) { mutableStateOf(document.ocrText.orEmpty()) }
     var showReview by remember(document.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember(document.id) { mutableStateOf(false) }
