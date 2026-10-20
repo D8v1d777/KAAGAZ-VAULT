@@ -79,7 +79,7 @@ class DocumentRepositoryTest {
             directory,
             DocumentKeyProvider { throw MissingEncryptionKeyException() }
         )
-        val repository = DocumentRepository(MockContentResolver(), missingKeyStore)
+        val repository = DocumentRepository(object : ContentResolver(null) {}, missingKeyStore)
         assertThrows(MissingEncryptionKeyException::class.java) { repository.list() }
     }
 }
