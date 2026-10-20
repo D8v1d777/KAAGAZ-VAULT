@@ -3,48 +3,40 @@
 <handoff schema="1">
 updated: 2026-10-20
 author: GPT-6 via connected GitHub tools
-branch: agent/CO-03-uuid-canonicalization-verified
-head_sha: 79aa3a717d7825e536bba484b95e57486b535671
-ci:
-  last_recorded_green_sha: 79aa3a717d7825e536bba484b95e57486b535671
-  last_recorded_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39375095096
-  reproduction_failed_sha: 0f94c179f450c74fb08f5bc855ccf2f74f54ab2c
-  reproduction_failed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39374096890
-  current_docs_head_before_checkpoint: c9ecffba81bcf93f8d336e363d09cc6f36d4ba8e
-  docs_head_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39375988883
-  docs_head_run_status_at_checkpoint: PENDING
-environment:
-  android_sdk: MISSING in active tool container
-  java: OpenJDK 21.0.12.1
-  gh_cli: MISSING
-  sdkmanager: MISSING
-  repository_checkout: MISSING
-  sub_agents: NOT_AVAILABLE
-task: CO-03 canonical UUID identity
-state: DONE
-changed_files:
-  - app/src/main/java/com/kaagazvault/security/EncryptedDocumentStore.kt
-  - app/src/test/java/com/kaagazvault/security/EncryptedDocumentStoreTest.kt
-  - docs/agent/plans/CO-03-uuid-canonicalization.md
-  - docs/engineering/progress.md
+branch: agent/CO-04-unreadable-documents
+task: CO-04 unreadable encrypted document reporting
+state: IMPLEMENTATION_VERIFIED — documentation-head CI rerun pending
+implementation_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/26
+verification:
+  implementation_sha: 6dcb7c5012128be377401b24808a138f37e00bdc
+  implementation_ci_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39381593750
+  implementation_ci_result: SUCCESS — full configured Android CI passed on exact implementation SHA
+  original_test_first_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39379612362
+  original_test_first_result: 69 tests, two intended CO-04 behavioral regressions failed before production changes
+  duplicate_repro_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39396874418
+  duplicate_repro_result: FAILURE — expected on the test-only reproduction branch; two CO-04 behavioral assertions fail because production implementation is absent. PR #32 closed as superseded; evidence retained.
+scope_guard: No new dependencies, permissions, schema, ciphertext format, key lifecycle, recovery policy or unrelated refactors.
+implemented:
+  - Preserve opaque unreadable placeholders in repository listing/search; do not silently drop damaged encrypted entries.
+  - Let MissingEncryptionKeyException propagate instead of converting a missing vault key into an empty document list.
+  - Display unreadable count and safe, non-destructive key-loss messaging without exposing unreadable names/content.
+  - Add regression tests for damaged ciphertext and missing-key propagation.
+  - Inventory error-swallowing sites across 35 tracked Kotlin/Java files under app/src/main; classifications are recorded in docs/agent/plans/CO-04.md.
 verified:
-  - Test-first repro failed in run #341 at EncryptedDocumentStoreTest.kt:123: uppercase alias raised IOException instead of IllegalArgumentException; that canonical-base run also had the known CO-00 baseline failure.
-  - Production fix in commit e022640e1ff35ce543346731eb3fcd21bb609df1 changes only UUID canonicality comparison to exact equality.
-  - Final code/test SHA 79aa3a717d7825e536bba484b95e57486b535671 passed full configured Android CI run #344: Python policy tests, debug/release build, JVM tests, lint, and offline merged-manifest gate.
-  - The other UUID.fromString sites in VaultMigrationState and VaultMigrationJournal already enforce exact canonical spelling.
-  - Test plaintext and decrypted read buffers are wiped in finally; no persisted format, AAD encoding, key policy, or stored file names changed.
+  - Full Android CI passed on implementation SHA 6dcb7c5012128be377401b24808a138f37e00bdc (run #362): debug/release builds, JVM tests, lint and offline merged-manifest policy gate.
+  - No dependency, manifest permission, Room schema, ciphertext format or key policy changed.
+  - Exact-head test-first reproduction had the intended two behavioral failures before the implementation; separate test-only branch remains closed and unmerged.
 unverified:
-  - No local Gradle build was run because the active container has no Android SDK, checkout, sdkmanager, or gh CLI.
-  - No independent reviewer sub-agent is available. A separate manual full review was performed; no unrelated findings were asserted.
+  - Documentation changes made after implementation CI require a fresh full CI run on the final documentation-complete SHA.
+  - No local Android build was run because the active container lacks Android SDK and repository checkout.
+  - Independent human review is still required; no independent reviewer is available through this workflow.
 decisions:
-  - Stack CO-03 verification on agent/CO-00-settings-sync-review-gate at a5bf1a8157ca91f142579003079c0a32f51f6a91 to avoid hiding the known canonical-base CO-00 failure.
-  - SEC-3 was touched; SEC-12 independent review is unavailable, so this handoff explicitly records that limitation.
-conflicts:
-  - Initial PR #24 was closed after preserving its baseline-reproduction evidence; active PR #25 has only the CO-03 diff and remains draft/unmerged.
-open_questions_for_human:
-  - Q2: choose authenticator, lock lifecycle, and independent recovery policy after reviewing CO-01/CO-02 decision packets.
+  - Retain List<ImportedDocument> API and add isReadable flag for unreadable placeholders.
+  - Keep unreadable IDs opaque internally; UI shows count and safe message only.
+  - Keep CO-01/CO-02 runtime wiring blocked until owner approves authenticator, lock lifecycle and independent recovery decisions.
 next_actions:
-  - A1: execute CO-04 on a separate branch based on this verified work chain; reproduce first, report unreadable document IDs/count, classify failure swallowing, and run exact-head CI.
-  - A2: keep CO-01/CO-02 runtime wiring blocked until the owner decision is explicit.
-independent_review: NOT_AVAILABLE
+  - Run full Android CI against the final documentation-complete commit.
+  - Update this handoff and progress log with the exact final SHA and workflow result.
+  - Mark PR #26 ready for independent review, but do not merge until review and required owner/security gates are satisfied.
+independent_review: REQUIRED — NOT YET RECORDED
 </handoff>
