@@ -1,20 +1,20 @@
-## 2026-10-20 — CO-01 / CO-02 owner security decision memo prepared
+## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
-### Prepared
-- Added `docs/engineering/decisions/CO-01-02-owner-security-decision-memo.md` with explicit options and recommendations for authentication, lock lifecycle, and independent recovery.
-- Recorded a failure matrix covering cancelled authentication, unavailable biometrics, biometric enrollment change, missing/invalidated Keystore alias, wrong recovery material, malformed envelopes, interrupted migration, and SQLCipher integrity failure.
-- Recommendation for owner review: biometric OR device credential only where the supported Android/API path proves auth-per-use cryptographic enforcement; an independent one-time random recovery key; immediate lock on explicit lock, screen-off, process restart and foreground loss; no unapproved inactivity timer.
-- Primary Android documentation was checked for `BiometricPrompt.CryptoObject`, auth-per-use keys, `setUserAuthenticationParameters` (API 30), and biometric enrollment invalidation.
+### Decision recorded
+- The project owner approved **A2 + B2 + C1**: strong biometric OR device credential only where supported with auth-per-use cryptographic enforcement; independent random 256-bit recovery key with a separate authenticated VEK envelope; immediate lock on explicit lock, foreground loss, screen-off and process restart.
+- Updated ADR-0003 to Accepted for this policy direction. This is architecture-policy acceptance, not feature completion or security certification.
+- Recorded the API constraint from AndroidX primary documentation: `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` via `setAllowedAuthenticators` is unsupported on API 28–29; device-credential-only is unsupported before API 30. Keep the compatibility path explicit and test it; never substitute an unauthenticated or time-window key.
 
 ### Verification boundary
-- Decision/documentation only. No production authentication, key lifecycle, recovery envelope, ciphertext format, manifest, dependency, or database schema was changed.
-- ADR-0003 remains Proposed. Production wiring is not authorized until the owner selects policy and compatibility/testing gates are defined.
-- The decision branch has no local Android SDK or repository checkout, so no local build is claimed. See HANDOFF.md and the PR head for exact state.
-- CO-04 final documentation-head CI is a separate gate; as of the initial check, run #381 was in progress on SHA `141b1bdd1e828500861672a9020c8b3edf81a128`: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39397935999.
+- Exact-head Android CI passed on prior decision-doc head `05dfbe9ba0fc53548d345c9d8de327b35543649c` in [run #382](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39399533594). The owner-acceptance updates after that SHA require the new head’s CI run.
+- No production authentication, key-management, recovery-envelope, or migration code has been changed in this policy update.
+- AndroidX Biometric is not currently in the version catalog. The repository’s separate dependency-approval rule still applies; the next gate is a concrete dependency justification and owner approval before Gradle dependency changes.
+- Android Keystore instrumentation, API matrix verification, migration crash tests, independent security review and physical-device acceptance remain required.
 
 ### Next
-- Ask once for the owner’s explicit authenticator, recovery, and lock policy choices.
-- After approval, keep CO-01 and CO-02 implementation in separate, bounded branches/PRs; verify each exact head and obtain independent review before release claims.
+- Obtain approval for the necessary AndroidX Biometric dependency after showing exact version, maintenance, license and privacy/network rationale.
+- Begin test-first work in separate CO-01 and CO-02 implementation PRs after dependency/API compatibility is cleared.
+- Rebase/port CO-04 changes onto current canonical and rerun full CI on that new exact head before considering merge.
 
 ---
 
