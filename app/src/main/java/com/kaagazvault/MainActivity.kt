@@ -247,7 +247,7 @@ private fun VaultHomeScreen(
                     submitIo {
                         runCatching { repository.importBytes("Scan_${System.currentTimeMillis()}.jpg", "image/jpeg", bytes) }
                             .onSuccess { imported -> mainHandler.post { playVaultSuccess(view); busy = false; status = "Captured privately: ${imported.displayName}"; refresh() } }
-                            .onFailure { mainHandler.post { busy = false; status = "Capture could not be encrypted. No document was added." } }
+                            .onFailure { error -> mainHandler.post { busy = false; status = documentFailureMessage(error, "Capture could not be encrypted. No document was added.") } }
                     }
                 }
             )
@@ -554,14 +554,14 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: 
                 Text("Text extraction • ${if (document.ocrReviewed) "reviewed" else "needs review"}", style = MaterialTheme.typography.labelMedium, color = if (document.ocrReviewed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
                 if (showReview) {
                     OutlinedTextField(editedOcr, { editedOcr = it }, Modifier.fillMaxWidth(), label = { Text("Review extracted text") }, minLines = 3, maxLines = 8, enabled = !busy, shape = RoundedCornerShape(16.dp))
-                    SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { mainHandler.post { onDone("Could not save OCR corrections. Existing data was left untouched.") } } } }, enabled = !busy, simplified = simplified, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
+                    SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { error -> mainHandler.post { onDone(documentFailureMessage(error, "Could not save OCR corrections. Existing data was left untouched.")) } } } }, enabled = !busy, simplified = simplified, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
                     TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); showReview = false }, enabled = !busy) { Text("Hide extracted text") }
                 } else {
                     Text("Extracted text is hidden until you choose to review it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SoftButton(onClick = { showReview = true }, enabled = !busy, simplified = simplified, label = "Review extracted text")
                 }
             } else if (document.mimeType.startsWith("image/") || document.mimeType == "application/pdf") {
-                SoftButton(onClick = { submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { mainHandler.post { onDone("Offline text extraction failed. The original remains stored.") } } } }, enabled = !busy, simplified = simplified, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
+                SoftButton(onClick = { submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { error -> mainHandler.post { onDone(documentFailureMessage(error, "Offline text extraction failed. The original remains stored.")) } } } }, enabled = !busy, simplified = simplified, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
             }
             TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); showDeleteConfirm = true }, enabled = !busy) { Text("Remove document") }
         }
@@ -586,7 +586,14 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: 
 @Composable
 private fun SoftButton(onClick: () -> Unit, enabled: Boolean, simplified: Boolean = false, label: String) { VaultTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp)) { Text(label) } }
 
+private fun vaultKeyUnavailableMessage(): String =
+    "Vault encryption key unavailable. Existing encrypted files were left unchanged; no replacement key was created."
+
+private fun documentFailureMessage(error: Throwable, fallback: String): String =
+    if (error is MissingEncryptionKeyException) vaultKeyUnavailableMessage() else fallback
+
 private fun safeMessage(error: Exception): String = when (error) {
+    is MissingEncryptionKeyException -> vaultKeyUnavailableMessage()
     is com.kaagazvault.documents.DocumentTooLargeException -> "This file exceeds the 31 MiB limit. Nothing was saved."
     is com.kaagazvault.documents.UnsupportedDocumentTypeException -> "Choose a supported PDF or image file. Nothing was saved."
     is IOException -> "Import failed. No document was added."
