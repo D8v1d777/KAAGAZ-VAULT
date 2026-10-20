@@ -36,3 +36,10 @@ This repository builds a privacy-first, offline-first Android document vault. Pr
 - Never say tests passed unless the test command actually completed successfully.
 - Prefer fakes over mocks when they make tests clearer; tests must not depend on real user documents or network services.
 - Use pull requests and small reviewable commits. Never commit secrets, private documents, real Aadhaar/PAN data, prescription images, or API credentials.
+
+
+---
+
+## Raven
+
+Official autonomous collaborator identity for visual polish and gap-closure documentation on `agent/*` branches. Crypto and recovery policy remain owner-gated.
