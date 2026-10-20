@@ -32,7 +32,8 @@ class DocumentRepositoryTest {
     @Test
     fun listRetainsUnreadableDocumentAndSearchSurfacesItEvenWhenItDoesNotMatch() {
         val directory = temporaryFolder.newFolder()
-        val store = EncryptedDocumentStore(directory, DocumentKeyProvider { newKey() })
+        val key = newKey()
+        val store = EncryptedDocumentStore(directory, DocumentKeyProvider { key })
         val readableOne = saveSyntheticDocument(store, "alpha.png")
         val readableTwo = saveSyntheticDocument(store, "beta.png")
         val unreadableId = saveSyntheticDocument(store, "gamma.png")
