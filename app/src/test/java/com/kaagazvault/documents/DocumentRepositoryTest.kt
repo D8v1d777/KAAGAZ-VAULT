@@ -1,5 +1,6 @@
 package com.kaagazvault.documents
 
+import android.test.mock.MockContentResolver
 import com.kaagazvault.security.DocumentKeyProvider
 import com.kaagazvault.security.EncryptedDocumentStore
 import com.kaagazvault.security.MissingEncryptionKeyException
@@ -46,7 +47,7 @@ class DocumentRepositoryTest {
             ciphertext.fill(0)
         }
 
-        val repository = DocumentRepository(null, store)
+        val repository = DocumentRepository(MockContentResolver(), store)
         val listed = repository.list()
         assertEquals(
             "Unreadable encrypted files must remain represented in the vault listing",
@@ -78,7 +79,7 @@ class DocumentRepositoryTest {
             directory,
             DocumentKeyProvider { throw MissingEncryptionKeyException() }
         )
-        val repository = DocumentRepository(null, missingKeyStore)
+        val repository = DocumentRepository(MockContentResolver(), missingKeyStore)
         assertThrows(MissingEncryptionKeyException::class.java) { repository.list() }
     }
 }
