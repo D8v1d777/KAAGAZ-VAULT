@@ -5,6 +5,8 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 /**
+ * SPIKE: not wired into application runtime.
+ *
  * Persists only the AES-GCM-wrapped VEK envelope in app-private no-backup storage.
  *
  * This is create-once storage, not a rotation API. It never replaces existing wrapped key

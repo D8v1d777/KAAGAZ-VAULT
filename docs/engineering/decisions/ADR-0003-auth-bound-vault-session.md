@@ -69,6 +69,75 @@ The migration must be resumable and idempotent:
 - OWASP, [Key Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Key_Management_Cheat_Sheet.html)
 - OWASP, [Cryptographic Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html)
 
+## Proposed decision memo — owner decision required (2026-10-20)
+
+This section is a decision packet only. ADR-0003 remains **Proposed**. No runtime wiring, key-policy change, alias change, envelope-format change, migration, or dependency change is authorized by this memo.
+
+### Decision 1: authenticator and recovery policy
+
+**Option A — strong biometric only, plus a one-time recovery key envelope**
+- Advantages: narrow primary authenticator; auth-per-use CryptoObject path.
+- Costs: no strong biometric means setup cannot proceed; biometric enrollment changes can invalidate a biometric-only key; the recovery key becomes essential for those cases.
+- Failure boundary: if the Keystore key is invalidated and the recovery key is lost, the vault is unrecoverable.
+
+**Option B — strong biometric OR device credential, plus a one-time recovery key envelope (recommended for owner consideration)**
+- Advantages: better accessibility and resilience when biometric enrollment changes; Android's current documentation shows auth-per-use keys configured with AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL and describes device credential as a supported authenticator for such keys.
+- Costs: the app's minSdk is 24, while the current implementation uses setUserAuthenticationParameters on API 30+. The API 24–29 compatibility path and OEM behavior must be specified and tested before implementation; do not claim the same behavior across the entire supported range yet.
+- Important implementation constraint: the current AuthBoundVaultKey explicitly calls setInvalidatedByBiometricEnrollment(true). Adding AUTH_DEVICE_CREDENTIAL alone must not be assumed to override that explicit invalidation setting. The exact setting must be deliberately reviewed and instrumented-tested; changing it is gated by root G2.
+- Recovery key: generate a high-entropy key locally, show it once, require a confirmation step, and use it only to unwrap the VEK envelope if the primary Keystore path is unavailable. No server-side recovery.
+- Failure boundary: disabling/resetting the device secure lock screen can still invalidate an auth-bound key; if that happens and the recovery key is lost, the vault is unrecoverable.
+
+**Option C — passphrase-wrapped second VEK envelope**
+- Advantages: independent of biometric enrollment and device credential; usable where no strong biometric is enrolled.
+- Costs: requires a separately reviewed password KDF, salt/parameters, offline brute-force threat model, retry UX, and forgotten-passphrase policy. This adds a cryptographic policy/format decision and must remain gated; no KDF or dependency is introduced in this PR.
+- Failure boundary: a forgotten passphrase with no other valid envelope leaves the VEK unavailable.
+
+**Recommendation:** choose Option B only if the API 24–29 compatibility matrix can provide a tested, fail-closed path; otherwise do not enable the new lock on unsupported combinations until the owner chooses a compatible fallback. Pair the primary path with the one-time recovery-key envelope so a biometric or secure-lock-screen change does not become silent permanent data loss. This is a recommendation, not an accepted policy.
+
+### Decision 2: lock lifecycle
+
+Recommended default:
+- Start every process in the locked state.
+- Lock immediately when the app enters the background, on explicit user lock, and after five minutes of foreground inactivity.
+- On lock, stop new repository work, cancel or drain in-flight work, close database handles, clear sensitive UI state and search results, and zero mutable in-memory VEK buffers.
+- A cancelled/failed prompt, lockout, missing key, invalidated alias, or failed recovery keeps the vault locked. Never create a replacement VEK when protected data already exists.
+- Use FLAG_SECURE for sensitive surfaces as defense in depth, not as a substitute for the cryptographic session gate.
+- Test the document picker, camera, process death, background/foreground, and in-flight OCR/search so lifecycle transitions cannot return plaintext after lock.
+
+### Failure matrix
+
+| Condition | Required behavior | Data-loss boundary |
+|---|---|---|
+| Strong biometric available; authentication succeeds | Unwrap VEK through auth-per-use CryptoObject; enter unlocked session | None expected; verify on supported API/device matrix |
+| No strong biometric, device credential available | Use device-credential path only where the tested API combination supports it; otherwise offer the approved recovery path | Do not silently downgrade to an unauthenticated key |
+| Biometric enrollment changes | Option A may invalidate the primary key; Option B is intended to avoid that invalidation when device credential is configured, but must be instrumented-tested | Recovery envelope required if primary alias is invalidated |
+| Device lock screen disabled or forcibly reset | Treat Keystore invalidation as a locked/recovery state | If primary alias and recovery key are both unavailable, data is unrecoverable |
+| User cancels, fails, or is locked out | Remain locked; expose no document/OCR/metadata plaintext | No data loss |
+| Process dies or app backgrounds | Start/return locked; clear visible sensitive state and close database handles | No data loss |
+| Key alias missing/invalidated while ciphertext exists | Fail closed; offer only approved recovery; never generate a replacement key | No recovery envelope means permanent unreadability |
+| Recovery key/passphrase is lost and primary key is invalid | Do not bypass protection or manufacture a new VEK | Permanent unreadability is explicit and user-visible |
+| Journal, ciphertext, or migration read-back is invalid | Stop migration; preserve every last authenticated readable copy; show actionable failure | Never delete the only readable copy |
+
+### User-facing copy (draft)
+
+**Before enabling vault lock**
+“Your vault will require device authentication to open. Save the recovery key somewhere private and separate from this device. We cannot reset it or recover your documents from a server. If both device access and the recovery key are lost, your vault may be permanently unreadable.”
+
+**Recovery**
+“Your vault could not be opened with this device’s authentication key. No documents were replaced or deleted. Use your saved recovery key to restore access. Do not uninstall the app or clear its data while recovery is unresolved.”
+
+**No supported authenticator**
+“This device does not currently provide a supported unlock method for vault lock. Your existing encrypted files have not been changed. Set up a supported device credential or use the approved recovery method; the app will not create a replacement vault key.”
+
+### Owner decision required
+
+Please choose:
+1. **Authenticator:** A (strong biometric only), B (strong biometric + device credential), or C (passphrase-wrapped second envelope).
+2. **Recovery:** one-time high-entropy recovery key, device-credential-capable primary key only, or passphrase-wrapped second envelope.
+3. **Lock lifecycle:** accept the recommended immediate-background + explicit-lock + five-minute foreground-inactivity policy, or specify a different policy.
+
+Do not change ADR status to Accepted until these choices and the API compatibility matrix are reviewed.
+
 ## Acceptance
 
 This ADR remains Proposed until the migration journal/state design, fallback policy, and API compatibility matrix are reviewed. It becomes Accepted only after the project owner agrees to the recovery and biometric/device-credential behavior. A CI pass alone does not prove the lock is secure.

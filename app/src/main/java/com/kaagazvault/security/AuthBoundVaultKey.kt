@@ -13,6 +13,8 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
+ * SPIKE: not wired into application runtime.
+ *
  * Auth-per-use Android Keystore wrapping primitive for a random 256-bit Vault Encryption Key.
  *
  * The returned Cipher must be passed to BiometricPrompt.CryptoObject. Android Keystore enforces
