@@ -84,16 +84,16 @@ Lock completion requires:
 - Migration tests for corrupted payload, missing key, insufficient storage, interrupted writes, WAL/sidecars and crash/restart. Validate authenticated read-back and SQLCipher integrity before durable completion.
 - Independent security review; exact-head CI results; no release/security certification claim from static review alone.
 
-## Owner decision requested
+## Owner decision recorded
 
-Please choose one option per row. You may approve the recommendations as a bundle.
+The owner explicitly approved the recommended bundle on 2026-10-20: A2 + B2 + C1. The ADR now records the approved policy. This memo remains a policy record and not implementation evidence.
 
 1. **Authentication:** A1 strong biometric only; A2 strong biometric OR device credential; A3 include a separate passphrase-wrapped VEK envelope.
 2. **Recovery:** B1 no recovery; B2 one-time random recovery key; B3 passphrase-wrapped second envelope; B4 both B2 and B3.
 3. **Locking:** C1 immediate on foreground loss, screen-off and process restart (recommended); C2 approve a specified foreground-loss grace period. Explicit lock and screen-off always lock.
-4. **Approval rule:** Keep ADR-0003 Proposed until the API compatibility matrix, failure tests and migration plan are reviewed. I recommend this rule regardless of the above choices.
+4. **Implementation gate:** ADR-0003 is Accepted for policy direction. Production wiring remains gated by the API compatibility matrix, failure tests, reviewed migration plan, exact-head CI, device tests and independent security review.
 
-No production authentication, key lifecycle, recovery format, envelope format or migration behavior is implemented by this memo. Any change to key/ciphertext format, manifest/dependencies or database schema remains subject to the repository’s gated approval rules.
+No production authentication, key lifecycle, recovery format, envelope format or migration behavior is implemented by this memo. The owner policy decision is accepted; implementation and verification gates remain open. Any change to key/ciphertext format, manifest/dependencies or database schema remains subject to the repository’s gated approval rules.
 
 ## Research references
 
