@@ -116,3 +116,7 @@ Android's current primary docs distinguish auth-per-use keys from time-based aut
 - Lock: [ ] immediate background lock; [ ] explicit short inactivity grace (duration): ______.
 - API 24–29 behavior: [ ] do not enable vault lock until recovery is available; [ ] other approved and tested policy: ______.
 - Accept ADR-0003 only after the recovery semantics, failure matrix, and supported API/device test plan are agreed. This proposal does **not** accept the ADR.
+
+### Cold-review finding — envelope context is not yet bound (future CO-16; not fixed here)
+
+A review of the inactive spike found that `AuthBoundVaultKey.kt:59` encrypts the VEK with `Cipher.doFinal(vek)` without calling `updateAAD`, and `AuthBoundVaultKey.kt:93` initializes the decrypt cipher without supplying AAD. AES-GCM still authenticates the ciphertext and tag, but this envelope currently does not cryptographically bind a vault identifier, envelope version, key role, or key identifier. Before this code is wired, define a versioned wrapping-envelope contract and bind the same reviewed context on setup and unlock; test wrong-context substitution, envelope/version mismatch, bit flips, and interrupted writes. This requires a separate G2 key-envelope decision and review. No runtime code was changed under CO-01; the spike remains explicitly unwired.
