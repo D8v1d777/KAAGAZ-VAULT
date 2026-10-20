@@ -138,6 +138,61 @@ Please choose:
 
 Do not change ADR status to Accepted until these choices and the API compatibility matrix are reviewed.
 
+## CO-02 recovery design proposal — not accepted
+
+This section extends the CO-01 decision packet. It is design only. The recovery envelope, key lifecycle, and instrumented test infrastructure remain unimplemented and G2-gated. ADR-0003 remains Proposed.
+
+### Recovery-key envelope candidate
+
+If the owner selects a one-time recovery key:
+1. Generate 256 bits of random recovery material locally using a cryptographically secure random source. Treat it as a high-entropy key, not a user-chosen password; do not derive it from a PIN or phrase.
+2. Create a second, versioned AES-GCM envelope for the VEK using a fresh 12-byte IV and authenticated context that binds the envelope to this vault. Reuse only the project's reviewed AES-GCM envelope implementation; any envelope schema or key hierarchy change requires explicit G2 approval before code.
+3. Store the recovery envelope only in app-private no-backup storage. It contains wrapped VEK bytes only, never the recovery key itself, document names, OCR text, or plaintext.
+4. Display the recovery key once during setup, with copy/export only on explicit user intent, no logs or analytics, and a confirmation step that proves the user saved it. Do not persist the recovery key inside the app.
+5. Recovery requires the user to enter/provide the recovery key, authenticate the envelope, unwrap the existing VEK, and only then establish a replacement Keystore wrapper. Never generate a replacement VEK or re-encrypt documents merely because the primary alias is missing.
+6. Preserve the existing ciphertext and legacy recovery material until the recovered VEK can open representative documents and the SQLCipher database integrity check succeeds. Recovery failure must leave stored bytes unchanged.
+
+The exact textual encoding, checksum, copy/export UX, envelope version, AAD label, and post-recovery key-wrapper rotation remain Proposed details; do not implement them before the owner accepts the design.
+
+### Required failure behavior
+
+| Condition | Required behavior | Recovery/data-loss boundary |
+|---|---|---|
+| No strong biometric enrolled | Option B may use device credential only on API combinations validated by the compatibility matrix; otherwise setup must stop safely or use an owner-approved alternate path | Never silently downgrade to an unauthenticated key |
+| Biometric added/removed | Test the accepted key policy; if the primary alias is invalidated, enter recovery state and preserve ciphertext | Recovery envelope is required if primary alias is unavailable |
+| Secure lock screen disabled/reset | Treat key invalidation as recovery-required; do not regenerate alias while protected data exists | If primary and recovery credentials are both lost, data is unrecoverable |
+| Primary alias missing, ciphertext present | Keep vault locked and show recovery instructions; do not create a new VEK | Recovery only succeeds if an approved second envelope is available |
+| Wrong recovery key or corrupted recovery envelope | Authentication fails; remain locked; do not overwrite envelope or ciphertext | No plaintext is released |
+| Recovery key lost, primary key still works | Keep primary unlock working; warn that recovery coverage is absent and require user to re-establish a recovery method before claiming setup complete | Future alias loss could become permanent |
+| Recovery key and primary key both lost | Explain that no valid decryption path remains; preserve ciphertext; do not promise recovery | Permanent unreadability |
+| Process restart during recovery | Start locked; resume only from validated envelope state; do not infer success from file presence | Preserve the last authenticated readable copy |
+| Disk-full, partial write, or failed read-back | Abort and preserve previous valid envelopes/ciphertext; report failure | Never delete the only readable copy |
+
+### User-facing recovery copy
+
+**Recovery key setup**
+“Save this recovery key somewhere private and separate from this device. It will be shown only once. We do not upload it or keep a copy. If you lose it and this device's unlock key becomes unavailable, your vault may be permanently unreadable.”
+
+**Recovery required**
+“This device can no longer use its vault unlock key. Your encrypted documents have not been replaced or deleted. Use the recovery key you saved during setup. Do not uninstall the app or clear its data while recovery is unresolved.”
+
+**Recovery failed**
+“The recovery key could not unlock this vault. No documents were changed. Check the key and try again. The app will not create a replacement vault key or erase existing files.”
+
+### Instrumented verification gate after owner acceptance
+
+Add an androidTest source set and emulator CI job only after the policy is accepted. Pin every third-party workflow action to a full commit SHA. On the exact tested SHA, cover:
+- Auth-per-use Keystore wrapping-key creation and BiometricPrompt CryptoObject unlock.
+- Strong-biometric and device-credential combinations for every supported API bucket, including minSdk 24–29 compatibility.
+- Biometric enrollment-change behavior where the emulator supports it; report unsupported capability explicitly instead of counting a skipped test as a pass.
+- Missing/invalidated alias with existing ciphertext; verify no replacement key is generated and the vault remains locked.
+- Wrong recovery key, corrupted/truncated recovery envelope, and failed recovery read-back.
+- Process restart and interrupted recovery; verify that the last good ciphertext/envelope remains readable.
+- Recovery success followed by authenticated document read and SQLCipher integrity verification.
+- No document/OCR plaintext returned while locked, and no sensitive values in logs.
+
+A JVM fake is not evidence of Android Keystore or BiometricPrompt behavior. Label each platform claim UNVERIFIED until the instrumented CI job passes on the exact SHA.
+
 ## Acceptance
 
 This ADR remains Proposed until the migration journal/state design, fallback policy, and API compatibility matrix are reviewed. It becomes Accepted only after the project owner agrees to the recovery and biometric/device-credential behavior. A CI pass alone does not prove the lock is secure.

@@ -1,3 +1,19 @@
+## 2026-10-20 — CO-02 recovery design proposed
+
+### Proposed, not implemented
+- Extended ADR-0003 with a recovery-key envelope candidate, biometric-enrollment/no-biometric/device-lock-reset failure cases, explicit data-loss boundaries, user-facing recovery copy, and an instrumented verification matrix.
+- Recovery candidate: locally generated high-entropy 256-bit key, shown once, never persisted in-app or uploaded, used to unwrap the existing VEK only after authenticated envelope validation. Exact encoding, envelope version, AAD, and rotation remain Proposed and G2-gated.
+- Added test requirements for auth-per-use Keystore keys, API compatibility, biometric enrollment changes where emulator support exists, missing/invalidated alias with existing ciphertext, wrong recovery key, interrupted recovery, process restart, document read-back, and SQLCipher integrity.
+- ADR-0003 remains Proposed; no androidTest source set, workflow, key policy, KDF, cipher, alias, persisted format, dependency, manifest permission, or Room schema was changed.
+
+### Verification boundary
+- Primary sources reviewed: [Android auth-per-use BiometricPrompt](https://developer.android.com/identity/sign-in/biometric-auth) and [KeyGenParameterSpec invalidation behavior](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder).
+- Manual full review found no documentation-scope findings. Fresh-context reviewer sub-agent unavailable; HANDOFF records NOT_AVAILABLE.
+- Exact-head CI for the final decision-packet commit is pending. No local Android build ran because the Android SDK and repository checkout are unavailable.
+
+### Next
+- Finish CO-02 exact-head CI and keep this decision packet separate from CO-01.
+- Ask the owner once for the combined authenticator, recovery, and lock-lifecycle decision. Do not implement until the decision is explicit.
 ## 2026-10-20 — CO-01/CO-02 auth and recovery decision packet prepared
 
 ### Proposed, not accepted
