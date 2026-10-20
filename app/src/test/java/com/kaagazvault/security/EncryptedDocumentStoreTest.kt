@@ -1,6 +1,7 @@
 package com.kaagazvault.security
 
 import java.io.File
+import java.util.Locale
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import org.junit.Assert.assertArrayEquals
@@ -103,6 +104,47 @@ class EncryptedDocumentStoreTest {
         File(directory, "not-a-uuid.kgv").writeText("not encrypted")
         File(directory, ".pending.pending").writeText("partial")
         assertEquals(setOf(first, second), store.listIds().toSet())
+    }
+
+    @Test
+    fun rejectsUpperCaseUuidAliasForReadReplaceAndDelete() {
+        val directory = temporaryFolder.newFolder()
+        val key = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
+        val store = newStore(key, directory)
+        val payload = "case-sensitive identifier test".toByteArray()
+        val expectedPayload = payload.copyOf()
+        val replacement = "replacement".toByteArray()
+        try {
+            var id: String
+            do {
+                id = store.save(payload)
+            } while (id.uppercase(Locale.ROOT) == id)
+            val uppercaseId = id.uppercase(Locale.ROOT)
+
+            assertEquals(id, id.lowercase(Locale.ROOT))
+            assertTrue(uppercaseId != id)
+            val before = store.read(id)
+            try {
+                assertArrayEquals(expectedPayload, before)
+            } finally {
+                before.fill(0)
+            }
+            assertThrows(IllegalArgumentException::class.java) { store.read(uppercaseId) }
+            assertThrows(IllegalArgumentException::class.java) {
+                store.replace(uppercaseId, replacement)
+            }
+            assertThrows(IllegalArgumentException::class.java) { store.delete(uppercaseId) }
+            val after = store.read(id)
+            try {
+                assertArrayEquals(expectedPayload, after)
+            } finally {
+                after.fill(0)
+            }
+        } finally {
+            payload.fill(0)
+            expectedPayload.fill(0)
+            replacement.fill(0)
+        }
     }
 
     @Test
