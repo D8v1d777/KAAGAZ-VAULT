@@ -649,7 +649,9 @@ This log records repository work and evidence. It distinguishes documentation ch
 - Test-first CI run #357: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39379612362 — pre-fix SHA `ee7b4aac0d7d81e0558cd01520e44adbff0ab4f9`; 69 tests, with the two intended regressions failing (unreadable item dropped and missing key swallowed).
 - Implementation CI run #358: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39380066674 — SHA `03bb8b5de1cd64376253e3cd1cde81c25559a445`; debug/release builds, JVM tests, lint and offline merged-manifest policy passed.
 - Static failure-site inventory covers all 35 tracked Kotlin/Java files under `app/src/main` from a non-truncated Git tree; classifications and scope notes are in `docs/agent/plans/CO-04.md`.
-- Current documentation-complete head: `51ef680ee609909e83e4ef5e0987724dce18f176`. Exact-head CI is still required before marking CO-04 complete.
+- Full exact-head CI run #362 passed on implementation SHA `6dcb7c5012128be377401b24808a138f37e00bdc`: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39381593750. It includes debug/release builds, JVM tests, lint and the offline merged-manifest policy gate.
+- A separate test-only reproduction branch failed run #376 on the two intended behavioral assertions because production implementation was deliberately absent; that branch/PR #32 is closed as superseded and retained only as reproduction evidence.
+- Handoff and plan documentation have since been synchronized. A new exact-head CI run on the final documentation commit is required before marking the correction order fully complete.
 
 ### Verification limitations
 - No local Android build was run: this execution environment lacks Android SDK and a repository checkout. CI is the executable build/test evidence.
