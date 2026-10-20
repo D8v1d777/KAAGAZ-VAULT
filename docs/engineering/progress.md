@@ -1,3 +1,23 @@
+## 2026-10-20 — CO-01 Proposed auth/session decision packet
+
+### Prepared
+- Added proposed-only authenticator, recovery, session/lock options and owner checklist to `docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md`; ADR status remains **Proposed**.
+- Marked `AuthBoundVaultKey`, `VaultMigrationCoordinator`, `VaultMigrationJournal`, `VaultMigrationBackend`, and `WrappedVaultKeyStore` as `SPIKE: not wired`. Source-body comparison against canonical baseline confirms only KDoc changes in these files.
+- README explicitly states no active repository/session lock protects the application today.
+- Cold review found the inactive wrapping primitive does not bind authenticated additional data to vault/envelope context on setup or unlock. Track this as CO-16 / G2 before any wiring; no runtime change was made.
+
+### Verification
+- Canonical base: `feat/durable-vault-migration-journal` at `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489`.
+- The preceding stacked CO-01 branch passed Android CI run [#328](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39365463380) on `0035befa33bd736d6f0c31d561f13eade5f63625`; this is **not** verification of the canonical-based branch.
+- Canonical baseline has known failing CI run [#323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) for `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview`; CO-00 fix is on separate PR #18 and must not be merged without owner approval.
+- Local Android build unavailable: no repository checkout, Android SDK, `sdkmanager`, or `gh` CLI. No local tests claimed. No sub-agent available; manual cold review done, independent review still required.
+
+### Next
+- Open a draft PR targeting canonical and record its exact-head workflow result.
+- Prepare CO-02 on a separate canonical-based branch/PR.
+- Ask once for the combined P0 owner decision after both packets are reviewable. Do not wire authentication/recovery or accept ADR-0003 without that decision.
+- Progress percentages remain unchanged until implementation gates, tests and reviews—not documentation work alone—close.
+ 
 ## 2026-10-19 — Phase 15 elderly-friendly simplified mode design
 
 ### Designed
