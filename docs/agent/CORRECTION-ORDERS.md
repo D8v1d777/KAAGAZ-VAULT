@@ -45,6 +45,7 @@ done_when: head SHA has a recorded green gate and README cites exactly that SHA 
 </order>
 
 <order id="CO-01" sev="P0" needs_human="yes">
+status: IN_PROGRESS — file-backed document migration adapter is implemented and exact-head CI passed; session gate, production repository wiring, prompt integration, and CO-02 instrumented recovery gates remain open.
 claim: The auth-bound key, migration coordinator, journal, and wrapped-key store are not connected to the app, so no authentication protects any data. ADR-0003 forbids implementation until accepted, yet the code exists.
 evidence:
   - AuthBoundVaultKey, VaultMigrationCoordinator, VaultMigrationJournal, VaultMigrationBackend, WrappedVaultKeyStore appear only in their own files under security/ (grep over app/src/main).
