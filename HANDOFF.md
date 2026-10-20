@@ -3,40 +3,48 @@
 <handoff schema="1">
 updated: 2026-10-20
 author: GPT-6 via connected GitHub tools
-branch: agent/CO-00-settings-sync-review-gate
-head_sha: a5bf1a8157ca91f142579003079c0a32f51f6a91
+branch: agent/CO-03-uuid-canonicalization-rebased
+head_sha: e6ffd2eb571496a8817d45a6c1b31afefa652c5b
 ci:
-  last_verified_green_sha: a5bf1a8157ca91f142579003079c0a32f51f6a91
-  last_verified_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39373886567
-  handoff_update_result: PENDING
+  last_verified_green_sha: e6ffd2eb571496a8817d45a6c1b31afefa652c5b
+  last_verified_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39385455774
+  documentation_checkpoint_ci: PENDING
 environment:
-  android_sdk: MISSING in active tool container
+  android_sdk: MISSING
   java: OpenJDK 21.0.12.1
   gh_cli: MISSING
   sdkmanager: MISSING
+  repository_checkout: MISSING
   sub_agents: NOT_AVAILABLE
-task: CO-00 exact-head CI gate and durable handoff
+task: CO-03 canonical UUID identity
 state: PARTIAL
+changed_files:
+  - app/src/main/java/com/kaagazvault/security/EncryptedDocumentStore.kt
+  - app/src/test/java/com/kaagazvault/security/EncryptedDocumentStoreTest.kt
+  - docs/agent/plans/CO-03-uuid-canonicalization.md
+  - docs/engineering/progress.md
+  - HANDOFF.md
 verified:
-  - Baseline test failed on SHA 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489 in run #323; the named settings-sync regression was reproduced.
-  - CO-00 implementation and positive-path regression tests passed full CI on SHA c2a783385ade3f59144eb282a2983ebf1eab3720 in run #324.
-  - Documentation SHA e6db4d368ccb44499c285888fc2cdadb71bace65 passed run #325.
-  - Latest branch head a5bf1a8157ca91f142579003079c0a32f51f6a91 passed run #340; Python policy tests, debug/release builds, JVM tests, lint and offline merged-manifest gate succeeded.
-  - PR #18 targets canonical branch feat/durable-vault-migration-journal and remains draft/unmerged.
-  - CO-03 PR #25 is separate; its head e50312e60386726df68447842e05774166dbc9e6 passed run #347.
-  - CO-04 PR #26 is separate; its head 6dcb7c5012128be377401b24808a138f37e00bdc passed run #362.
+  - Test-first reproduction failed on SHA 27aa8be8942800ea122a9fa764ee6e5ad9d24951 in run #367 at EncryptedDocumentStoreTest.kt:132; uppercase alias read raised IOException instead of IllegalArgumentException.
+  - Minimal production fix commit e6ffd2eb571496a8817d45a6c1b31afefa652c5b passed the full configured gate in run #369.
+  - Other UUID parse sites in VaultMigrationState and VaultMigrationJournal already require exact canonical spelling.
+  - Java SE 21 UUID API documentation was consulted: https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/UUID.html.
+  - Manual full review of the three-file CO-03 diff found no issues; checklist recorded in docs/agent/plans/CO-03-uuid-canonicalization.md.
 unverified:
-  - This HANDOFF edit commit still needs its own exact-SHA CI result.
-  - No physical-device, biometric prompt, camera/OCR, or database leakage tests are claimed.
+  - Documentation-complete branch head needs its own exact-SHA CI result.
+  - No local Gradle build ran because Android SDK, sdkmanager, repository checkout, and gh CLI are unavailable.
+  - No fresh-context reviewer sub-agent is available; independent_review is NOT_AVAILABLE.
 decisions:
-  - Unreviewed incoming voice-navigation enablement keeps spoken guidance off; no key policy, crypto format, dependency, manifest permission or Room schema changes were made for CO-00.
+  - Use exact UUID string equality; do not normalize identifiers or rename stored files.
+  - Do not alter key policy, crypto formats, dependencies, manifest permissions, or Room schema in CO-03.
 conflicts:
-  - The audit ZIP contains HANDOFF/PLANS/CORRECTION-ORDERS files not present in the GitHub tree at the canonical base; this tracked HANDOFF restores the required durable checkpoint.
+  - HANDOFF.md next_actions lists CO-03/CO-04 before the P0 decision memo; root AGENTS.md <priority> says "1 open P0 orders ... 2 open P1 orders". After completing CO-03, prepare CO-01/CO-02 decision material before CO-04 production implementation.
+  - The uploaded ZIP's root contract and correction orders are represented by separate draft PRs and are not yet merged into canonical_branch.
 open_questions_for_human:
-  - Q2: choose authenticator, lock, and recovery policy after reviewing CO-01/CO-02 decision material.
+  - Q2: choose authenticator, lock lifecycle, and recovery policy after reviewing the CO-01/CO-02 decision memo.
 next_actions:
-  - A1: obtain CI for this handoff-update SHA and record its result.
-  - A2: continue CO-03 then CO-04 as separate branches/PRs; keep both draft pending independent review and owner approval.
-  - A3: follow the ZIP END format at session end; do not claim device-level verification.
-independent_review: NOT_RUN
+  - Check exact-head CI for the documentation-complete CO-03 commit.
+  - Prepare the Proposed CO-01/CO-02 decision memo and ask once for the required human decision; do not wire runtime authentication or recovery.
+  - Resume CO-04 only after the P0 decision work is handled; keep its branch separate and preserve its test-first evidence.
+independent_review: NOT_AVAILABLE
 </handoff>

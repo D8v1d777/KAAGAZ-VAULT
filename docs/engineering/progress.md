@@ -1,3 +1,20 @@
+## 2026-10-20 — CO-03 canonical UUID identity corrected
+
+### Reproduced and fixed
+- Added `EncryptedDocumentStoreTest.rejectsUpperCaseUuidAliasForReadReplaceAndDelete` before changing production code.
+- Test-only SHA `27aa8be8942800ea122a9fa764ee6e5ad9d24951` failed in [run #367](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39384857603): the uppercase alias read raised `IOException` rather than `IllegalArgumentException` at `EncryptedDocumentStoreTest.kt:132`; 67 tests completed, one failed.
+- Changed only `EncryptedDocumentStore.fileFor` to require exact equality between `UUID.fromString(id).toString()` and the supplied ID. No file rename/migration, AAD/envelope change, key policy, dependency, manifest, or Room schema change.
+- Reviewed the other UUID parse sites: `VaultMigrationState` and `VaultMigrationJournal` already enforce exact canonical spelling.
+- Primary API reference checked: [Java SE 21 UUID](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/UUID.html).
+
+### Verification
+- Exact code/test SHA `e6ffd2eb571496a8817d45a6c1b31afefa652c5b` passed the full configured Android CI gate in [run #369](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39385455774): Python policy tests, debug/release builds, JVM tests, lint, and merged-manifest policy gate.
+- Full manual review was completed against `docs/agent/REVIEW.md`; no findings. A fresh-context reviewer sub-agent was unavailable, so HANDOFF records `independent_review: NOT_AVAILABLE`.
+- The final documentation-complete commit still requires exact-head CI. No local Gradle build ran because the active container has no Android SDK or repository checkout.
+
+### Next
+- Complete the CO-03 handoff/progress update and verify the resulting exact SHA.
+- Root `AGENTS.md` priority ranks open P0 orders ahead of P1 orders; prepare the CO-01/CO-02 decision memo before starting CO-04 production changes.
 ## 2026-10-20 — CO-00 exact-head Android CI gate passed
 
 ### Corrected
