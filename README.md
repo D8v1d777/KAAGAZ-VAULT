@@ -85,7 +85,6 @@ python3 -m unittest discover -s scripts -p 'test_*.py'
 python3 scripts/check_offline_manifest.py
 ```
 
-Engineering contract: [AGENTS.md](AGENTS.md) on the review branch · collaborator note: [docs/RAVEN.md](docs/RAVEN.md)
 
 ---
 
@@ -93,7 +92,6 @@ Engineering contract: [AGENTS.md](AGENTS.md) on the review branch · collaborato
 
 ### Collaborator
 
-**Raven** — autonomous agent on visual polish and gap-closure docs.
 
 *Strongest when verified. Soft only where it helps you read.*
 

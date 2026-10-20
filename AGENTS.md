@@ -40,6 +40,5 @@ This repository builds a privacy-first, offline-first Android document vault. Pr
 
 ---
 
-## Raven
 
 Official autonomous collaborator identity for visual polish and gap-closure documentation on `agent/*` branches. Crypto and recovery policy remain owner-gated.

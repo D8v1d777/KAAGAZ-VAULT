@@ -8,4 +8,4 @@ Assets under `docs/images/` for README presentation.
 | gojo-wide.jpg | Mid-page |
 | gojo-purple.jpg | Accent |
 
-**Raven** maintains this strip. Not product chrome.
+**** maintains this strip. Not product chrome.
