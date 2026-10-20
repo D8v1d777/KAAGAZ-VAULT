@@ -1,3 +1,11 @@
+## 2026-10-20 — CO-02 key invalidation/recovery packet prepared; no policy selected
+
+- Added `docs/engineering/decisions/CO-02-key-invalidation-recovery.md` with alternatives (random recovery key, passphrase-wrapped second envelope, device credential as an authenticator, or deferred lock activation), failure matrix, proposed user copy, instrumentation/migration tests, and explicit owner checklist.
+- CO-02 is documentation-only. No key alias/policy, envelope, KDF, dependency, backup rule, or runtime code changed.
+- CO-00 exact-head Android CI passed on SHA `255424c96e3ee1ab88eb6c41b3aec955605f7c3a` in run [#326](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166). CO-01 run [#328](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39365463380) was still running on SHA `0035befa33bd736d6f0c31d561f13eade5f63625`; CO-02 run [#329](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39365663867) was still running on SHA `7df62c8350185d8018aa96434e173386a755ae2a`. These are not green-result claims.
+- No Android Keystore/biometric or migration instrumentation test is claimed. No owner decision has been received, so ADR-0003 stays Proposed.
+- Next: verify exact-head CI after this handoff/progress update; then ask once for the joint CO-01/CO-02 decision. Keep runtime key/session work gated. Formalize the separate CO-16 AAD/context-binding concern before any security wiring.
+
 ## 2026-10-20 — CO-01 decision packet and security-spike boundary
 
 - Added proposed authenticator/lock options to ADR-0003; it remains Proposed and no runtime authentication/key policy was selected.
