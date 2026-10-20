@@ -37,6 +37,20 @@ class OfflineManifestPolicyTest(unittest.TestCase):
         )
         self.assertTrue(any("INTERNET permission is present" in item for item in failures))
 
+    def test_rejects_internet_permission_in_sdk_specific_tags(self) -> None:
+        for tag in ("uses-permission-sdk-23", "uses-permission-sdk-m"):
+            with self.subTest(tag=tag):
+                xml = (
+                    f'<manifest xmlns:android="{ANDROID_NS}">'
+                    f'<{tag} android:name="android.permission.INTERNET" />'
+                    "<application />"
+                    "</manifest>"
+                )
+                failures = audit_manifest_text(xml, "sample")
+                self.assertTrue(
+                    any("INTERNET permission is present" in item for item in failures)
+                )
+
     def test_rejects_explicit_cleartext_enablement(self) -> None:
         failures = audit_manifest_text(manifest(cleartext="true"), "sample")
         self.assertTrue(any("cleartext traffic is explicitly enabled" in item for item in failures))
