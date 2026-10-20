@@ -112,6 +112,45 @@ test("rejects malformed manifest schema, count, and total length", async () => {
   }
 });
 
+test("rejects an oversized content type before fetching any chunk", async () => {
+  const f = fixture();
+  f.manifest.contentType = "x".repeat(257);
+  let fetchCalls = 0;
+  await assert.rejects(f.run({
+    fetchChunk: async () => { fetchCalls++; return f.chunks[0]; }
+  }), /Unable to read encrypted document/);
+  assert.equal(fetchCalls, 0);
+});
+
+test("copies each verified chunk into private output before awaiting the next chunk", async () => {
+  const f = fixture();
+  const firstPlaintext = new Uint8Array([1, 2, 3]);
+  const result = await f.run({
+    decryptChunk: async (chunk) => {
+      if (chunk.index === 0) return firstPlaintext;
+      firstPlaintext.fill(99);
+      return plainB;
+    }
+  });
+  assert.deepEqual([...result], [1, 2, 3, 4, 5]);
+});
+
+test("normalizes chunk-fetch failures and never returns partial plaintext", async () => {
+  const f = fixture();
+  let calls = 0;
+  await assert.rejects(f.run({
+    fetchChunk: async (index) => {
+      calls++;
+      if (index === 1) throw new Error("storage backend detail");
+      return f.chunks[index];
+    }
+  }), (error) => {
+    assert.equal(error.message, "Unable to read encrypted document.");
+    return true;
+  });
+  assert.equal(calls, 2);
+});
+
 test("rejects oversized limits and never calls decrypt before manifest validation", async () => {
   const f = fixture();
   let decryptCalls = 0;
