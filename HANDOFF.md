@@ -3,40 +3,52 @@
 <handoff schema="1">
 updated: 2026-10-20
 author: GPT-6 via connected GitHub tools
-branch: agent/CO-00-settings-sync-review-gate
-head_sha: a5bf1a8157ca91f142579003079c0a32f51f6a91
+branch: agent/CO-01-auth-session-decision
+head_sha: 6ee8c39bf207d8e6e13865eae6343a6715197c6a
 ci:
-  last_verified_green_sha: a5bf1a8157ca91f142579003079c0a32f51f6a91
-  last_verified_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39373886567
-  handoff_update_result: PENDING
+  last_verified_green_sha: b71606370a7a63965a7e1c280d721cb2c5fc75f2
+  last_verified_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39383558020
+  current_branch_ci: PENDING
 environment:
-  android_sdk: MISSING in active tool container
+  android_sdk: MISSING
   java: OpenJDK 21.0.12.1
   gh_cli: MISSING
   sdkmanager: MISSING
+  repository_checkout: MISSING
   sub_agents: NOT_AVAILABLE
-task: CO-00 exact-head CI gate and durable handoff
+task: prepare CO-01 and CO-02 owner decision memo
 state: PARTIAL
+changed_files:
+  - docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md
+  - docs/agent/plans/CO-01-auth-session-decision.md
+  - app/src/main/java/com/kaagazvault/security/AuthBoundVaultKey.kt
+  - app/src/main/java/com/kaagazvault/security/VaultMigrationCoordinator.kt
+  - app/src/main/java/com/kaagazvault/security/VaultMigrationJournal.kt
+  - app/src/main/java/com/kaagazvault/security/VaultMigrationBackend.kt
+  - app/src/main/java/com/kaagazvault/security/WrappedVaultKeyStore.kt
+  - README.md
+  - docs/engineering/progress.md
+  - HANDOFF.md
 verified:
-  - Baseline test failed on SHA 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489 in run #323; the named settings-sync regression was reproduced.
-  - CO-00 implementation and positive-path regression tests passed full CI on SHA c2a783385ade3f59144eb282a2983ebf1eab3720 in run #324.
-  - Documentation SHA e6db4d368ccb44499c285888fc2cdadb71bace65 passed run #325.
-  - Latest branch head a5bf1a8157ca91f142579003079c0a32f51f6a91 passed run #340; Python policy tests, debug/release builds, JVM tests, lint and offline merged-manifest gate succeeded.
-  - PR #18 targets canonical branch feat/durable-vault-migration-journal and remains draft/unmerged.
-  - CO-03 PR #25 is separate; its head e50312e60386726df68447842e05774166dbc9e6 passed run #347.
-  - CO-04 PR #26 is separate; its head 6dcb7c5012128be377401b24808a138f37e00bdc passed run #362.
+  - ADR-0003 remains Proposed; the memo records options, recommendation, lock policy, failure matrix, and user-facing copy.
+  - Five unwired security classes are labeled SPIKE: not wired in KDoc, and README discloses that no authentication-bound session gates repositories.
+  - Android primary documentation supports auth-per-use biometric/device-credential keys in documented API configurations; API 24–29 compatibility and OEM behavior remain an explicit gate.
 unverified:
-  - This HANDOFF edit commit still needs its own exact-SHA CI result.
-  - No physical-device, biometric prompt, camera/OCR, or database leakage tests are claimed.
+  - Current branch exact-head CI is pending.
+  - No local Android build ran because Android SDK, sdkmanager, repository checkout, and gh CLI are unavailable.
+  - No fresh-context reviewer sub-agent is available; manual full review is recorded in docs/agent/plans/CO-01-auth-session-decision.md.
 decisions:
-  - Unreviewed incoming voice-navigation enablement keeps spoken guidance off; no key policy, crypto format, dependency, manifest permission or Room schema changes were made for CO-00.
+  - Keep ADR-0003 Proposed; no key policy or runtime behavior is accepted by this change.
+  - Recommend strong biometric OR device credential with a one-time recovery-key envelope only if the supported API matrix is verified.
+  - Security-scope change touches SEC-12 review requirements; no cryptographic behavior rule was changed.
 conflicts:
-  - The audit ZIP contains HANDOFF/PLANS/CORRECTION-ORDERS files not present in the GitHub tree at the canonical base; this tracked HANDOFF restores the required durable checkpoint.
+  - Root AGENTS.md priority requires open P0 orders before P1 orders; prepare the CO-01/CO-02 decision memo before CO-04 production implementation.
+  - The uploaded ZIP's root contract and correction orders are represented by separate draft PRs and are not yet merged into canonical_branch.
 open_questions_for_human:
-  - Q2: choose authenticator, lock, and recovery policy after reviewing CO-01/CO-02 decision material.
+  - Q2: choose authenticator, recovery path, and lock lifecycle after reviewing the combined CO-01/CO-02 decision memo.
 next_actions:
-  - A1: obtain CI for this handoff-update SHA and record its result.
-  - A2: continue CO-03 then CO-04 as separate branches/PRs; keep both draft pending independent review and owner approval.
-  - A3: follow the ZIP END format at session end; do not claim device-level verification.
-independent_review: NOT_RUN
+  - Finish CO-01 exact-head CI and open its draft PR.
+  - Prepare the separate CO-02 recovery extension on its own branch/PR.
+  - Ask the owner once for the combined decision; do not wire runtime auth/session or recovery before approval.
+independent_review: NOT_AVAILABLE
 </handoff>

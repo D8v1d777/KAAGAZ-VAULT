@@ -1,3 +1,20 @@
+## 2026-10-20 — CO-01/CO-02 auth and recovery decision packet prepared
+
+### Proposed, not accepted
+- Updated ADR-0003 with three authenticator/recovery options, a recommendation, lock lifecycle, failure matrix, and user-facing copy. ADR status remains Proposed.
+- Recommendation for owner consideration: strong biometric OR device credential on a tested API matrix, plus a one-time high-entropy recovery key envelope; do not implement until the owner accepts the policy and API 24–29 compatibility is resolved.
+- Explicitly recorded that AuthBoundVaultKey currently calls setInvalidatedByBiometricEnrollment(true); adding AUTH_DEVICE_CREDENTIAL alone must not be assumed to override that setting.
+- Added “SPIKE: not wired” to the KDoc for AuthBoundVaultKey, VaultMigrationCoordinator, VaultMigrationJournal, VaultMigrationBackend, and WrappedVaultKeyStore, and disclosed in README that no authentication-bound session currently gates repositories.
+- Primary sources reviewed: [BiometricPrompt auth-per-use keys](https://developer.android.com/identity/sign-in/biometric-auth), [KeyGenParameterSpec.Builder](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder), and [Android Keystore](https://developer.android.com/privacy-and-security/keystore).
+
+### Verification boundary
+- This is documentation/KDoc-only. No key policy, alias, cipher, envelope, migration, dependency, manifest permission, Room schema, or runtime session changed.
+- Manual full review found no documentation-scope findings; fresh-context reviewer sub-agent is unavailable and HANDOFF records NOT_AVAILABLE.
+- Exact-head CI for the final PR commit is pending. No local Gradle build ran because Android SDK and repository checkout are unavailable.
+
+### Next
+- Prepare the separate CO-02 recovery decision extension, then ask the owner once for the combined authenticator/recovery/lifecycle choice.
+- Do not implement session gating, key rotation, recovery envelopes, or accept ADR-0003 before explicit owner approval.
 ## 2026-10-20 — CO-00 exact-head Android CI gate passed
 
 ### Corrected

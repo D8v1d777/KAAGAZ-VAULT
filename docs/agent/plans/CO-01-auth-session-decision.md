@@ -11,8 +11,8 @@ acceptance:
     expect: Ask once for the authenticator and recovery choice; leave ADR status Proposed until explicit acceptance.
 steps:
   - id: 1 status: DONE what: Read root contract, nested security rules, current ADR-0003, AuthBoundVaultKey, WrappedVaultKeyStore, and key provider files: [app/src/main/java/com/kaagazvault/security/AGENTS.md, docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md] verify: static source read at canonical head b71606370a7a63965a7e1c280d721cb2c5fc75f2
-  - id: 2 status: DOING what: Document options, recommendation, lock policy, failure matrix, and user-facing copy files: [docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md] verify: cold review of decision completeness and no status change
-  - id: 3 status: TODO what: Run documentation-complete CI and ask owner once files: [.github/workflows/android-ci.yml] verify: exact-head workflow result and explicit human decision
+  - id: 2 status: DONE what: Document options, recommendation, lock policy, failure matrix, and user-facing copy files: [docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md] verify: Proposed memo includes three options, lock lifecycle, failure matrix, user copy, and explicit API compatibility gate; ADR status remains Proposed
+  - id: 3 status: DOING what: Run documentation-complete CI and prepare the CO-02 recovery extension before asking once files: [.github/workflows/android-ci.yml, docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md] verify: exact-head workflow result; do not change ADR status or runtime policy before owner decision
 risks:
   - risk: A recommendation may promise an unsupported authenticator combination on API 24–29; detect: compare current Android primary docs and minSdk 24; mitigate: gate implementation on an API-level compatibility matrix and instrumented tests.
   - risk: Key invalidation can make existing ciphertext unreadable; detect: failure matrix; mitigate: preserve one-time recovery-key option and fail closed if all authorized recovery paths are lost.
@@ -26,3 +26,21 @@ evidence:
   - source: Android KeyGenParameterSpec invalidation behavior, https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder
   - source: Android Keystore system, https://developer.android.com/privacy-and-security/keystore
 </plan>
+
+## Manual full review (root REVIEW.md full; D5 fallback)
+
+Reviewer mode: cold pass of the documentation/KDoc-only diff; fresh-context reviewer sub-agent unavailable. No findings were identified.
+
+| Item | Result | Evidence |
+|---|---|---|
+| F1 Diff map | PASS | ADR proposal, five KDoc markers, README disclosure, and plan/handoff/progress only; no runtime behavior changed. |
+| F2 Storage | PASS | No storage writes or data paths changed. |
+| F3 Cryptography | PASS | No cryptographic implementation, key alias, key policy, or persisted format changed. |
+| F4 Authentication | PASS | No repository/session runtime gate implemented; the current absence is disclosed rather than hidden. |
+| F5 Platform | PASS | No platform components, intents, or notifications changed. |
+| F6 Network/privacy | PASS | No dependency, permission, network, or manifest change. |
+| F7 Crash durability | PASS | No migration protocol behavior changed. |
+| F8 Failure behavior | NOT_CHECKED | No runtime failure-path code changed; proposed failure matrix is a design requirement only. |
+| F9 Performance | PASS | No runtime operation changed. |
+| F10 Tests | NOT_CHECKED | No new behavior is claimed; Keystore/BiometricPrompt claims remain unverified until instrumented tests. |
+| Q1–Q9 quick review | PASS | Scope limited to decision documentation and explicit SPIKE labels; no new behavior or claims of verified lock support. |
