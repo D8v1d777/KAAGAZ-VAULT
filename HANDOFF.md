@@ -4,13 +4,14 @@
 updated: 2026-10-20
 author: GPT-6 via connected GitHub tools
 branch: agent/CO-01-auth-session-options-v3
-head_sha: pending PR creation; fetch exact final head after these checkpoint writes
+head_sha: b33731e2418c4a814ed571aadb304c2e1824062b
 ci:
-  prior_green_sha: 0035befa33bd736d6f0c31d561f13eade5f63625
-  prior_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39365463380
-  prior_green_scope: stacked CO-01 candidate branch, not canonical-based PR head
   canonical_base_sha: 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489
-  known_failed_base_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191
+  exact_head_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39367265745
+  exact_head_result: FAILED at SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview; 65 tests completed, 1 failed
+  baseline_failure_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191
+  CO00_fix_sha: 255424c96e3ee1ab88eb6c41b3aec955605f7c3a
+  CO00_fix_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166
 environment:
   repository_checkout: MISSING in active tool container
   java: OpenJDK 21.0.12.1
@@ -21,28 +22,25 @@ environment:
 task: CO-01 owner decision memo and explicit unwired boundary
 state: PARTIAL
 verified:
-  - Uploaded archive passed unzip integrity test and contains eight agent files; root, security, review, handoff, plan template, correction orders, and implementation-quality skill were read.
-  - Canonical baseline source SHA is 7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489.
-  - Five security class bodies were compared against the CO-01 candidate source. Only KDoc labels changed; runtime bodies are unchanged.
-  - ADR-0003 remains Proposed; memo includes auth/lock options, owner checklist, failure matrix, and warns about missing GCM AAD context in the unwired VEK envelope.
-  - README states the absence of an active repository/session lock.
-  - The stacked candidate PR #20 CI run #328 passed on SHA 0035befa33bd736d6f0c31d561f13eade5f63625; this is not CI evidence for this canonical-based branch.
-  - CO-00 CI run #326 passed on its exact SHA 255424c96e3ee1ab88eb6c41b3aec955605f7c3a. Canonical base still has the known prior red settings-sync test unless CO-00 is merged through the owner-approved gate.
+  - Uploaded agent archive passed zip integrity; eight files unpacked and read, including root/security rules, review checklist, correction orders, and implementation-quality skill.
+  - Five security class bodies match canonical runtime implementations; only KDoc labels changed.
+  - ADR-0003 remains Proposed and contains unlock/lock alternatives, failure matrix, user-facing copy, and owner checklist.
+  - README explicitly states repository access is not protected by an unlocked vault session.
+  - Source review identified missing GCM authenticated-context binding in the inactive VEK wrapping spike; CO-16 recorded in the working correction-order pack. Do not wire before G2 owner approval.
+  - Canonical-target PR #22 is open/draft; exact-head run #334 failed on the pre-existing CO-00 settings-sync test.
 unverified:
-  - Exact-head CI for this canonical-based CO-01 branch is pending.
-  - No Android Keystore, BiometricPrompt, migration-crash, or device instrumentation tests ran in this environment.
+  - This branch's current post-checkpoint commit needs a fresh exact-head CI result; source changes remain docs/KDoc only.
+  - No Android Keystore, BiometricPrompt, migration-crash, or physical-device instrumentation ran here.
 decisions:
   - No authenticator/recovery policy selected; ADR remains Proposed.
-  - No production authentication/session wiring before explicit owner decision and separate G2/G4 gates.
-  - Track missing authenticated context on VEK wrapping as prospective CO-16 / G2 before wiring.
+  - No production authentication/session wiring before explicit owner decision and G2/G4 gates.
 conflicts:
-  - Existing PR #20 is stacked on PR #18, but uploaded root AGENTS.md requires every order's PR target to be canonical_branch. This branch is being prepared as a clean canonical-target alternative.
+  - Prior stacked PR #20 was superseded by canonical-target PR #22 to comply with the supplied root agent contract.
 open_questions_for_human:
-  - Q2: choose primary authenticator, lock lifecycle, independent recovery route, and API 24–29 behavior after reviewing the separate CO-01 and CO-02 packets.
+  - Q2: choose primary authenticator A/B/C, lock lifecycle, independent recovery R1/R2/R3, and API 24–29 behavior after reviewing CO-01 and CO-02 together.
 next_actions:
-  - Create draft PR targeting feat/durable-vault-migration-journal and read the exact final SHA's CI.
-  - Prepare CO-02 as its own canonical-based branch and PR.
-  - Ask once for both P0 policy decisions only after both memos are available.
-  - After accepted policy, implement security changes in the ordered slices specified by ADR-0003; do not start lower-priority work first.
-independent_review: NOT_AVAILABLE — no sub-agent capability. Manual cold source comparison performed; a second reviewer is still required for security acceptance.
+  - Check the newest exact-head Actions run after this checkpoint commit; report the known CO-00 failure without folding its fix into this PR.
+  - Keep CO-01 and CO-02 PRs separate and draft until owner decisions are recorded.
+  - Do not proceed to lower-priority P1 orders while P0 decisions are open.
+independent_review: NOT_AVAILABLE — no sub-agent capability; manual source comparison done, independent security review still required.
 </handoff>
