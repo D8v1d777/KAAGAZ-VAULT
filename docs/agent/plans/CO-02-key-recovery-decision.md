@@ -11,8 +11,8 @@ acceptance:
     expect: Ask once for the combined CO-01/CO-02 authenticator and recovery decision; no implementation before acceptance.
 steps:
   - id: 1 status: DONE what: Read CO-02 order, ADR-0003, AuthBoundVaultKey, WrappedVaultKeyStore, and Android primary documentation files: [docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md, app/src/main/java/com/kaagazvault/security/AuthBoundVaultKey.kt] verify: source and official Android API references reviewed
-  - id: 2 status: DOING what: Extend the Proposed ADR with recovery design, enrollment-change/no-biometric cases, and instrumented test plan files: [docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md] verify: explicit loss scenarios and user copy; no implementation
-  - id: 3 status: TODO what: Record handoff/progress, run exact-head CI, and ask the owner once files: [HANDOFF.md, docs/engineering/progress.md] verify: CI result recorded; ADR remains Proposed pending owner decision
+  - id: 2 status: DONE what: Extend the Proposed ADR with recovery design, enrollment-change/no-biometric cases, and instrumented test plan files: [docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md] verify: recovery-key envelope candidate, failure matrix, user copy, and post-acceptance instrumented test matrix are documented; no implementation
+  - id: 3 status: DOING what: Record handoff/progress and run exact-head CI; ask owner once after both decision packets are ready files: [HANDOFF.md, docs/engineering/progress.md] verify: exact-head workflow result; ADR remains Proposed pending owner decision
 risks:
   - risk: Recovery key format or envelope design could become an accidental accepted policy; detect: memo text review; mitigate: mark all format/key choices Proposed and G2-gated.
   - risk: Emulator cannot simulate biometric enrollment changes reliably; detect: instrumented test capability check; mitigate: report UNSUPPORTED/UNVERIFIED rather than passing by assumption.
@@ -25,3 +25,21 @@ evidence:
   - source: Android KeyGenParameterSpec invalidation behavior, https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder
   - source: Android BiometricPrompt auth-per-use keys, https://developer.android.com/identity/sign-in/biometric-auth
 </plan>
+
+## Manual full review (root REVIEW.md full; D5 fallback)
+
+Reviewer mode: cold pass of the ADR/plan-only diff; fresh-context reviewer sub-agent unavailable. No findings were identified.
+
+| Item | Result | Evidence |
+|---|---|---|
+| F1 Diff map | PASS | ADR-0003 and CO-02 plan only; no production code or persisted format changed. |
+| F2 Storage | PASS | Recovery envelope is a proposal only; no storage behavior changed. |
+| F3 Cryptography | NOT_CHECKED | Envelope/key details are explicitly Proposed and G2-gated; no cryptographic implementation changed. |
+| F4 Authentication | NOT_CHECKED | No runtime lock/session behavior implemented. |
+| F5 Platform | PASS | No manifest, exported component, or platform behavior changed. |
+| F6 Network/privacy | PASS | No dependency, permission, or network change; recovery is explicitly local-only. |
+| F7 Crash durability | NOT_CHECKED | Crash behavior is specified as acceptance criteria but no protocol is implemented. |
+| F8 Failure behavior | NOT_CHECKED | Failure matrix is design intent, not runtime evidence. |
+| F9 Performance | PASS | No runtime operation changed. |
+| F10 Tests | NOT_CHECKED | Instrumented tests are deferred until owner accepts the policy. |
+| Q1–Q9 quick review | PASS | Scope is design-only; no unsupported security/verification claim is made. |
