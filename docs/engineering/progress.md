@@ -637,3 +637,20 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Verify the final stable-SDK build configuration through GitHub Actions.
 2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
 3. Start the encrypted-storage prototype only after researching Android Keystore, SQLCipher, Room, and backup/key-lifecycle constraints; keep ADR-0001 Proposed until prototype evidence exists.
+
+
+## 2026-10-20 — CO-04: unreadable encrypted document visibility
+
+### Scope guard
+- No new dependencies, manifest permissions, Room schema, ciphertext format, key policy, key recovery or unrelated UI redesign.
+- Production changes are limited to preserving an opaque unreadable placeholder in listing/search and reporting missing-key failures accurately. Existing `List<ImportedDocument>` API is retained with `isReadable` as the single additive flag.
+
+### Reproduction and implementation evidence
+- Test-first CI run #357: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39379612362 — pre-fix SHA `ee7b4aac0d7d81e0558cd01520e44adbff0ab4f9`; 69 tests, with the two intended regressions failing (unreadable item dropped and missing key swallowed).
+- Implementation CI run #358: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39380066674 — SHA `03bb8b5de1cd64376253e3cd1cde81c25559a445`; debug/release builds, JVM tests, lint and offline merged-manifest policy passed.
+- Static failure-site inventory covers all 35 tracked Kotlin/Java files under `app/src/main` from a non-truncated Git tree; classifications and scope notes are in `docs/agent/plans/CO-04.md`.
+- Current documentation-complete head: `51ef680ee609909e83e4ef5e0987724dce18f176`. Exact-head CI is still required before marking CO-04 complete.
+
+### Verification limitations
+- No local Android build was run: this execution environment lacks Android SDK and a repository checkout. CI is the executable build/test evidence.
+- PR #26 remains draft/unmerged. Do not claim merged or release-ready until exact-head CI and human review.
