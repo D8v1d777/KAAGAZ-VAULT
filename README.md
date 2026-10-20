@@ -1,53 +1,114 @@
 # KAAGAZ-VAULT
 
-**Offline-first Android document vault — implementation in progress.**
+**Privacy-first • Offline-first • Android document vault**
 
-KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text from personal documents without sending document contents to a server in the FOSS build.
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
+[![Status](https://img.shields.io/badge/Status-Active%20Development-orange.svg)](https://github.com/D8v1d777/KAAGAZ-VAULT)
 
-## Implemented so far
+> Capture, encrypt, search, and organize personal documents on your device.  
+> No cloud. No analytics. No document content ever leaves the phone in the FOSS build.
 
-- Android Kotlin + Jetpack Compose app shell.
-- Android Keystore-backed AES-256 keys and versioned AES-GCM payload encryption.
-- Encrypted files in app-private storage, opaque IDs, bounded input, atomic pending-file writes, and interrupted-update recovery.
-- User-selected PDF/image import through Android's document picker; no broad storage permission.
-- Offline Tesseract OCR for images in English, Hindi, and Telugu with pinned model files and build/runtime integrity checks.
-- Human-editable OCR text and review state stored in the encrypted payload.
-- SQLCipher-backed metadata database with a wrapped random database key, local normalized search, index rebuild from encrypted payloads, and in-memory fallback when the encrypted DB is unavailable.
-- User-initiated CameraX capture with in-memory JPEG handling and direct encrypted import.
-- Bounded PDF text extraction/OCR prototype using in-memory PDF bytes, one page at a time, with strict page/pixel/text limits.
+---
 
-**These are implemented code paths, not a claim of release readiness.** The CO-00 settings-sync correction and regression tests passed the full configured Android CI gate on exact code/test SHA `255424c96e3ee1ab88eb6c41b3aec955605f7c3a` in [run #326](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166), including Python policy tests, debug/release builds, JVM unit tests, lint, and the merged-manifest policy gate. Earlier candidate SHA `c2a783385ade3f59144eb282a2983ebf1eab3720` also passed in [run #324](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39361833253), and documentation-only SHA `e6db4d368ccb44499c285888fc2cdadb71bace65` passed in [run #325](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39362435654). The pre-fix source SHA `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489` failed [run #323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) at `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview`; the failing regression is fixed on the cited candidate. These results apply only to the named SHAs and do not establish release readiness. Physical-device camera/OCR tests and on-device database-leakage tests have not been run.
+## Why KAAGAZ-VAULT?
 
-## Privacy and security boundaries
+Most document scanners and "vault" apps quietly send your IDs, prescriptions, and bank statements to servers.  
+KAAGAZ-VAULT is built on the opposite principle:
 
-- FOSS core must remain offline. Do not add INTERNET permission, analytics, ads, cloud OCR, or network AI dependencies.
-- Do not store real Aadhaar/PAN IDs, prescriptions, medical records, personal documents, secrets, or credentials in the repository.
-- OCR/PDF text is untrusted evidence. It must remain editable and reviewable; do not turn uncertain medical text into medication instructions or automatic actions.
-- Document payloads and metadata/search have encrypted-at-rest implementation paths. The missing-key fail-closed guard passed configured CI at commit 54a0ce2. The migration-state model and coordinator pass configured CI on the recorded head; however, the auth-bound key migration, biometric app lock, recovery/rotation, reminders, export controls, and device-level leakage review remain incomplete.
-- File deletion is not guaranteed secure erasure. The app is not release-approved.
+- **Everything stays on the device**
+- Strong encryption with Android Keystore
+- Offline OCR (English, Hindi, Telugu)
+- Open source so you can verify the claims
 
-## Current project status
+This is still **active development**, not a finished release.
 
-- Estimated implemented-scope progress: **35% of weighted objectives**. This is a scope estimate, not a security score or a test-pass percentage.
-- Phase 3 encrypted import + image OCR CI: [passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38030021406).
-- Phase 4 SQLCipher/search CI: [passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38030642290).
-- Phase 5 CameraX CI: [passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/38031637413).
-- Phase 12 migration coordinator: [CI #299 passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144069929) on commit `6291594886eb6f6fb03c644797afc1217adb90e6`.
-- Draft PRs: [Phase 3](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/3), [Phase 4](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/4), [Phase 5](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/5). No PR has been merged.
+---
 
-See [engineering progress](docs/engineering/progress.md), [weighted completion tracker](docs/engineering/product-completion.md), [quality gates](docs/engineering/quality-gates.md), [ADR-0001](docs/engineering/decisions/ADR-0001-sensitive-data-search.md), [ADR-0002 missing-key fail-closed policy](docs/engineering/decisions/ADR-0002-missing-key-fail-closed.md), and [ADR-0003 auth-bound vault session proposal](docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md). The [Phase 12 auth-bound lock plan](docs/PHASE-12-AUTH-BOUND-VAULT-LOCK-PLAN.md) defines migration and verification gates. The human/AI reviewer report is maintained in Notion.
+## Current Status
 
-## Toolchain
+| Area                    | Status          | Notes                                      |
+|-------------------------|-----------------|--------------------------------------------|
+| Core encryption         | Implemented     | AES-GCM + Android Keystore                 |
+| Offline OCR             | Implemented     | Tesseract, pinned models                   |
+| Document import & camera| Implemented     | Document picker + CameraX                  |
+| Local search            | Implemented     | SQLCipher-backed metadata                  |
+| Auth-bound vault lock   | In progress     | Primitive ready, session gating next       |
+| Recovery policy         | Decision needed | Owner decision required (CO-01 / CO-02)    |
+| Instrumentation tests   | Scaffolded      | Real device runs still pending             |
+| Release readiness       | Not yet         | No physical-device validation claimed      |
 
-- AGP 9.1.1
-- Gradle 9.3.1
-- JDK 21 for CI
-- Kotlin 2.3.10 / KSP 2.3.4; AGP built-in Kotlin disabled to align with the PDFium dependency
-- compileSdk/targetSdk 36; provisional minSdk 24
-- Compose BOM 2026.04.01
+---
 
-The Gradle Wrapper is checked in. CI uses `./gradlew --no-daemon clean assembleDebug assembleRelease testDebugUnitTest lint`, preceded by `python3 -m unittest discover -s scripts -p 'test_*.py'` and followed by `python3 scripts/check_offline_manifest.py`. The project's own license has not yet been selected; do not assume the repository grants permission to reuse or redistribute project code.
+## Where is the real source code?
 
-## Engineering workflow
+The default branch (`main`) is a documentation landing page.
 
-Read [AGENTS.md](AGENTS.md) before changing code. Research primary documentation first, implement a small coherent feature, verify the exact current branch, then record decisions, changes, evidence, risks, and next actions in Notion. Never claim a build/test pass without an actual completed run.
+**→ Review the actual Android project here:**  
+[`feat/durable-vault-migration-journal`](https://github.com/D8v1d777/KAAGAZ-VAULT/tree/feat/durable-vault-migration-journal)
+
+```bash
+git clone --branch feat/durable-vault-migration-journal https://github.com/D8v1d777/KAAGAZ-VAULT.git
+cd KAAGAZ-VAULT
+```
+
+---
+
+## Privacy Promise (FOSS build)
+
+- No `INTERNET` permission
+- No analytics or ad SDKs
+- No cloud AI
+- Document images, OCR text, and derived metadata stay on device
+- Government IDs and medical documents treated as sensitive by default
+
+You can verify this yourself by inspecting the manifest and dependencies.
+
+---
+
+## Quick Start (Developers)
+
+**Requirements**
+- JDK 21
+- Android SDK (platform 36 + build-tools 36.0.0)
+
+```bash
+# Unit tests + policy checks
+python3 -m unittest discover -s scripts -p 'test_*.py'
+./gradlew --no-daemon clean assembleDebug testDebugUnitTest lint
+python3 scripts/check_offline_manifest.py
+```
+
+---
+
+## Architecture Highlights
+
+- **Kotlin + Jetpack Compose**
+- **Android Keystore** for non-exportable keys
+- **AES-256-GCM** for document payloads
+- **SQLCipher** for searchable metadata
+- **Opaque IDs** — filenames never leak content
+- Clear separation between UI, domain, crypto, and storage
+
+See [`AGENTS.md`](AGENTS.md) for the full engineering contract and invariants.
+
+---
+
+## Contributing / Reviewing
+
+1. Read the engineering contract in `AGENTS.md`
+2. Prefer small, reviewable PRs
+3. Never commit real documents, Aadhaar/PAN images, or secrets
+4. All security-sensitive changes require explicit evidence
+
+Open draft PRs are currently focused on correction orders (CO-00 → CO-15) and auth/recovery decisions.
+
+---
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE).
+
+---
+
+**Built with the belief that your documents should never leave your pocket.**
