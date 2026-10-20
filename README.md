@@ -16,7 +16,7 @@ KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text 
 - User-initiated CameraX capture with in-memory JPEG handling and direct encrypted import.
 - Bounded PDF text extraction/OCR prototype using in-memory PDF bytes, one page at a time, with strict page/pixel/text limits.
 
-**These are implemented code paths, not a claim of release readiness.** The current migration-coordinator head passed configured CI run [#299](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144069929) at commit `6291594886eb6f6fb03c644797afc1217adb90e6`. This verifies the configured build, unit-test, lint, and offline-manifest gates on that commit; no physical-device camera/OCR tests or on-device database leakage tests have been run.
+**These are implemented code paths, not a claim of release readiness.** The last recorded green Android CI gate was run [#299](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144069929) on commit `6291594886eb6f6fb03c644797afc1217adb90e6`; that evidence applies only to that SHA. The later source head `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489` failed Android CI [run #323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) because `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview` failed. A separate correction branch is addressing that regression; do not claim the candidate is green until the complete gate passes for the exact candidate SHA. No physical-device camera/OCR tests or on-device database leakage tests have been run.
 
 ## Privacy and security boundaries
 
