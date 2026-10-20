@@ -28,12 +28,12 @@ class VaultSessionTest {
 
         session.installVerifiedKey(vek)
         val length = session.withKey {
+            assertArrayEquals(vek, it)
             observedCopy = it
             it.size
         }
 
         assertEquals(32, length)
-        assertArrayEquals(vek, observedCopy)
         assertTrue(observedCopy!!.all { it == 0.toByte() })
         assertTrue(session.isUnlocked())
         session.lock()
