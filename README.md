@@ -2,19 +2,17 @@
 
 # KAAGAZ-VAULT
 
-### Privacy-first • Offline-first • Android Document Vault
+### Privacy-first · Offline-first · Android Document Vault
 
-<br>
+<br/>
 
-<img src="docs/images/gojo-portrait.jpg" alt="The Strongest" width="320" style="border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);"/>
+<img src="docs/images/gojo-portrait.jpg" width="280" alt="Gojo — The Strongest"/>
 
-<br><br>
+<br/>
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-4B8BBE?style=for-the-badge&logo=apache&logoColor=white)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-4B8BBE?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
 [![Status](https://img.shields.io/badge/Status-Active%20Development-orange?style=for-the-badge)](https://github.com/D8v1d777/KAAGAZ-VAULT)
-
-<br>
 
 *Your documents. Your device. No cloud.*
 
@@ -22,81 +20,64 @@
 
 ---
 
-<br>
+## A quiet place for sensitive paper
 
-### A quiet place for sensitive documents
+KAAGAZ-VAULT is for IDs, prescriptions, bank statements, and the rest of the stack that should never leave your pocket. Encrypted on-device. Searchable offline. FOSS build without document content on the wire.
 
-KAAGAZ-VAULT is being built for people who want to keep IDs, prescriptions, bank statements and personal papers **entirely on their phone** — encrypted, searchable, and offline.
+This repo is **active development**, not a finished product.
 
-No analytics.  
-No hidden network calls.  
-No document content leaving the device in the FOSS build.
-
-This repository is still in active development. The core is taking shape, but it is not yet a finished product.
-
-<br>
-
-<p align="center">
-  <img src="docs/images/gojo-wide.jpg" alt="Limitless" width="680" style="border-radius: 10px;"/>
-</p>
-
-<br>
+<div align="center">
+<img src="docs/images/gojo-wide.jpg" width="720" alt="Gojo wide"/>
+</div>
 
 ---
 
-### Where the real code lives
+## Where the real source lives
 
-The `main` branch is intentionally kept as a calm landing page.
+`main` stays a landing page on purpose.
 
-**The complete Android project is here:**
-
-<p align="center">
-  <a href="https://github.com/D8v1d777/KAAGAZ-VAULT/tree/feat/durable-vault-migration-journal">
-    <img src="https://img.shields.io/badge/Review%20Source-feat%2Fdurable--vault--migration--journal-4B8BBE?style=for-the-badge" alt="Review Source Branch"/>
-  </a>
-</p>
+**Review branch:** [feat/durable-vault-migration-journal](https://github.com/D8v1d777/KAAGAZ-VAULT/tree/feat/durable-vault-migration-journal)
 
 ```bash
 git clone --branch feat/durable-vault-migration-journal https://github.com/D8v1d777/KAAGAZ-VAULT.git
 cd KAAGAZ-VAULT
 ```
 
-<br>
+---
+
+## Progress
+
+| Area | Status |
+|------|--------|
+| Encryption foundation | Ready |
+| Offline OCR (EN / HI / TE) | Ready |
+| Document import & camera | Ready |
+| Local encrypted search | Ready |
+| Auth-bound vault lock | In progress |
+| Recovery policy | Owner decision |
+| Device-level validation | Not yet |
+| Public release | Not yet |
+
+<div align="center">
+<img src="docs/images/gojo-purple.jpg" width="640" alt="Gojo purple energy" onerror="this.style.display='none'"/>
+</div>
+
+<!-- gojo-purple may exist on this branch after assets commit -->
 
 ---
 
-### Current Progress
+## Privacy stance
 
-| Area                        | Status              |
-|----------------------------|---------------------|
-| Encryption foundation      | Ready               |
-| Offline OCR (EN / HI / TE) | Ready               |
-| Document import & camera   | Ready               |
-| Local encrypted search     | Ready               |
-| Auth-bound vault lock      | In progress         |
-| Recovery policy            | Decision pending    |
-| Device-level validation    | Not yet             |
-| Public release             | Not yet             |
-
-<br>
+- No `INTERNET` permission in the FOSS build source manifest
+- No analytics / ad SDKs / cloud AI in FOSS
+- OCR treated as untrusted evidence — review state stays explicit
+- Audit the manifest and dependencies yourself
 
 ---
 
-### Privacy Stance
+## Build (developers)
 
-- No `INTERNET` permission in the FOSS build
-- No analytics or advertising SDKs
-- Document images and OCR text stay on device
-- Government IDs and medical documents treated as sensitive by default
-- You can audit the manifest and dependencies yourself
-
-<br>
-
----
-
-### For Reviewers & Developers
-
-**Requirements:** JDK 21 • Android SDK Platform 36
+JDK 21 · Android SDK platform 36
 
 ```bash
 python3 -m unittest discover -s scripts -p 'test_*.py'
@@ -104,29 +85,18 @@ python3 -m unittest discover -s scripts -p 'test_*.py'
 python3 scripts/check_offline_manifest.py
 ```
 
-Full engineering contract and invariants live in [`AGENTS.md`](https://github.com/D8v1d777/KAAGAZ-VAULT/blob/feat/durable-vault-migration-journal/AGENTS.md).
-
-<br>
+Engineering contract: [AGENTS.md](AGENTS.md) on the review branch · collaborator note: [docs/RAVEN.md](docs/RAVEN.md)
 
 ---
 
 <div align="center">
 
-**Built with the belief that some things should never leave your pocket.**
+### Collaborator
 
-<br>
+**Raven** — autonomous agent on visual polish and gap-closure docs.
 
-<sub>Apache License 2.0 • Active development • Not release-ready</sub>
+*Strongest when verified. Soft only where it helps you read.*
 
-</div>
-
----
-
-<div align="center">
-
-### Maintained with intent
-
-**Raven** — autonomous collaborator on this vault.  
-Dark theme. Sharp edges. Soft only when it matters.
+<sub>Apache-2.0 · Active development · Not release-ready</sub>
 
 </div>
