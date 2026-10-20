@@ -3,43 +3,39 @@
 <handoff schema="1">
 updated: 2026-10-20
 author: GPT-6 via connected GitHub tools
-branch: agent/CO-01-02-owner-security-decision
-task: CO-01 / CO-02 — owner security decision memo
-state: OWNER_POLICY_APPROVED — IMPLEMENTATION GATED
-memo: docs/engineering/decisions/CO-01-02-owner-security-decision-memo.md
-memo_commit: e3c0393f9081ead1b3018331ddeb5149c1edaf9c
-implementation_authorized: true — after dependency approval gate and per-order test-first implementation
+branch: agent/CO-04-unreadable-documents-canonical
+task: CO-04 unreadable encrypted document reporting — canonical port
+state: IMPLEMENTATION_PORTED — EXACT-HEAD CI PENDING — HUMAN REVIEW REQUIRED
 canonical_branch: feat/durable-vault-migration-journal
-environment:
-  android_sdk_in_active_execution_environment: MISSING
-  repository_checkout_in_active_execution_environment: MISSING
-  local_gradle_build: NOT_RUN
-  independent_reviewer_subagent: NOT_AVAILABLE
-current_release_gate:
-  CO-04_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/26
-  CO-04_documentation_head_sha: 141b1bdd1e828500861672a9020c8b3edf81a128
-  CO-04_ci_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39397935999
-  observed_status_when_handoff_written: IN_PROGRESS — build/unit-tests/lint step active; final manifest gate pending
+base_sha: 789816fece4b90bb981b9e9cb3a5954f1eebd514
+supersedes_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/26
+source_branch_evidence:
+  implementation_sha: 6dcb7c5012128be377401b24808a138f37e00bdc
+  implementation_ci: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39381593750
+  final_source_docs_sha: 141b1bdd1e828500861672a9020c8b3edf81a128
+  final_source_docs_ci: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39397935999
+  final_source_docs_result: SUCCESS — full configured Android CI passed on that exact source-branch SHA
+ported_changes:
+  - app/src/main/java/com/kaagazvault/MainActivity.kt: safe status and unreadable count, hides opaque item metadata
+  - app/src/main/java/com/kaagazvault/documents/DocumentRepository.kt: preserves unreadable placeholders; MissingEncryptionKeyException propagates; search reconciles every stored item before filtering
+  - app/src/main/java/com/kaagazvault/documents/ImportedDocument.kt: explicit isReadable flag
+  - app/src/test/java/com/kaagazvault/documents/DocumentRepositoryTest.kt: ciphertext-corruption and missing-key regressions
+  - docs/agent/plans/CO-04.md: plan and failure-swallowing inventory with port gate pending
 scope_guard:
-  - No production authentication, key lifecycle, recovery format, encryption format, manifest, dependency, or database schema changes.
-  - ADR-0003 policy direction is Accepted by owner; implementation remains subject to compatibility, failure-test, CI and human security-review gates.
-  - Do not create replacement keys when protected data or a migration journal already exists.
-owner_approved_decision:
-  - A2: strong biometric OR secure device credential only where auth-per-use CryptoObject is supported and tested.
-  - B2: separate random 256-bit recovery key; versioned authenticated recovery envelope; one-time display plus storage confirmation; no server/cloud copy.
-  - C1: lock on explicit lock, screen-off, app foreground loss, and process restart; no inactivity timer without separate owner approval.
+  - No new dependencies, permissions, schema, ciphertext format, key lifecycle, recovery policy or unrelated refactors.
+  - No merge to canonical occurred; only a new work branch was created from the current canonical head.
 verified:
-  - Owner explicitly approved A2 + B2 + C1 in chat on 2026-10-20.
-  - ADR-0003 now records acceptance of the policy direction; implementation remains incomplete.
-  - Memo options and failure matrix are documented.
-  - Android primary documentation for auth-per-use keys, CryptoObject, API level 30 auth parameters and biometric-enrollment invalidation was checked.
+  - Original pre-fix reproduction run #357 contained the expected two behavioral failures.
+  - Source implementation and documentation head passed full configured Android CI on exact SHAs recorded above.
+  - Cold code pass confirms per-document authentication failures are IOException-derived placeholders, while MissingEncryptionKeyException (GeneralSecurityException) is not swallowed by the IOException catch.
+  - Current tree does not contain docs/agent/REVIEW.md despite AGENTS.md referencing it; relevant security, Android engineering, testing and implementation-quality skills were reviewed instead.
 unverified:
-  - No production implementation or Android device test has yet passed in this task.
-  - AndroidX device-credential combinations are unsupported via setAllowedAuthenticators on API 28–29; API 24–29 fallback path requires precise version review and instrumented tests.
-  - Dependency gate remains: AndroidX Biometric is not in the catalog; prepare and obtain the project’s required dependency approval before Gradle changes.
+  - Full Android CI for this canonical-port branch's final SHA is pending.
+  - Independent reviewer sub-agent is unavailable; independent human review remains required.
+  - No local Android build ran because the active execution environment lacks an Android SDK and repository checkout.
 next_actions:
-  - Prepare dependency justification for AndroidX Biometric (version, maintenance, license, privacy/network notes) and seek its required approval before adding it.
-  - Start test-first recovery-envelope and session-gate work in isolated CO-01/CO-02 PRs; do not wire UI until the dependency/API compatibility matrix is confirmed.
-  - Port CO-04 onto current canonical because PR #26 is based on a diverged older branch.
-independent_review: NOT_AVAILABLE — no fresh-context sub-agent capability in this workflow; required human security review remains a release gate.
+  - Open a focused PR targeting feat/durable-vault-migration-journal and verify the full gate on the exact PR head.
+  - Update plan/handoff/progress with the new exact SHA/run; the final docs-head SHA then needs its own full gate.
+  - Request independent human review; do not merge until CI and review gates pass.
+independent_review: NOT_AVAILABLE — no sub-agent tool capability; human review required.
 </handoff>
