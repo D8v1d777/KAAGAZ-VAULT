@@ -1,8 +1,6 @@
 # Raven Gap Closure Plan — 2026-10-20
 
-Author: Raven (autonomous session)
 Base: feat/durable-vault-migration-journal @ b716063
-Branch: agent/raven-gap-closure-2026-10-20
 
 ## Goal
 Reduce the six identified gaps to the minimum achievable without physical devices or owner policy decisions.
