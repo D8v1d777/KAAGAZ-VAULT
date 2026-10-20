@@ -6,7 +6,7 @@
 - Uses a scoped `MigrationVekKeyAccess` callback contract intended to be connected to `VaultSession` later. It is not wired to MainActivity or production repository paths.
 - Added a `VaultDatabaseMigrationActions` boundary; the actual SQLCipher rewrap/reopen/integrity implementation is explicitly **not** supplied by this PR.
 - Added tests for stage idempotency, tamper rejection, publication read-back, root separation, and interruption after each durable coordinator side effect: stage, verification checkpoint 1, verification checkpoint 2, publish, database-key rewrap, and database integrity.
-- Test file was committed before the adapter source: test SHA `11e7a8adbc9bc78bff048d22f67dcd989d944126`; first adapter implementation SHA `9f9efa6d6404fe9554947ddccecfee8f3203f9ae`; review cleanup SHA `7e3bbd4852da2b0e38c4ffd8676fbf9405bebcb5`.
+- Test file was committed before the adapter source: test SHA `11e7a8adbc9bc78bff048d22f67dcd989d944126`; first adapter implementation SHA `9f9efa6d6404fe9554947ddccecfee8f3203f9ae`; review cleanup SHA `7e3bbd4852da2b0e38c4ffd8676fbf9405bebcb5`; best-effort directory sync after ciphertext publication SHA `7a8671951f217d8bc9054a394153981272f5a33a`.
 
 ### Verification boundary
 - Draft PR: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/42; canonical base `789816fece4b90bb981b9e9cb3a5954f1eebd514`.
