@@ -135,6 +135,20 @@ test("copies each verified chunk into private output before awaiting the next ch
   assert.deepEqual([...result], [1, 2, 3, 4, 5]);
 });
 
+test("does not expose mutable manifest nonce buffers to the decrypt adapter", async () => {
+  const f = fixture();
+  const result = await f.run({
+    decryptChunk: async (chunk, context) => {
+      assert.equal(Object.isFrozen(context), true);
+      assert.equal("chunks" in context, false);
+      assert.equal(context.vaultId, "vault_1");
+      assert.equal(context.documentId, "doc_1");
+      return chunk.index === 0 ? plainA : plainB;
+    }
+  });
+  assert.deepEqual([...result], [1, 2, 3, 4, 5]);
+});
+
 test("normalizes chunk-fetch failures and never returns partial plaintext", async () => {
   const f = fixture();
   let calls = 0;
