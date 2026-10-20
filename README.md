@@ -16,6 +16,10 @@ KAAGAZ-VAULT is designed to capture, import, organize, search, and extract text 
 - User-initiated CameraX capture with in-memory JPEG handling and direct encrypted import.
 - Bounded PDF text extraction/OCR prototype using in-memory PDF bytes, one page at a time, with strict page/pixel/text limits.
 
+## Security gate status: vault locking and migration are not wired
+
+The auth-bound key wrapper and migration classes remain experimental spikes, not an active access-control boundary. The running app still constructs document storage, the database provider, and the repository before authentication; repository access is not gated by an unlocked vault session. Do not describe the current app as biometric-locked or as having completed legacy-key migration. ADR-0003 remains **Proposed**. Authenticator choice, API compatibility, lock lifecycle, and recovery behavior require owner approval and exact-SHA JVM/instrumented evidence before any wiring or release claim.
+
 **These are implemented code paths, not a claim of release readiness.** The settings-sync regression was fixed on candidate code head `c2a783385ade3f59144eb282a2983ebf1eab3720`; Android CI [run #324](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39361833253) completed successfully for that exact SHA, including the Python policy tests, debug/release builds, 65+ JVM unit tests, lint, and merged-manifest policy gate. The prior source head `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489` failed run [#323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) at `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview`; the regression test now passes in run #324. This is CI evidence for the cited SHA only, not release approval. No physical-device camera/OCR tests or on-device database leakage tests have been run.
 
 ## Privacy and security boundaries
