@@ -1,3 +1,20 @@
+## 2026-10-20 — CO-03 canonical UUID identity corrected
+
+### Reproduced and fixed
+- Added `EncryptedDocumentStoreTest.rejectsUpperCaseUuidAliasForReadReplaceAndDelete` before changing production code. On test-only SHA `0f94c179f450c74fb08f5bc855ccf2f74f54ab2c`, CI run [#341](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39374096890) failed the new test at line 123: an uppercase alias caused `IOException` instead of the required `IllegalArgumentException`. The same run also had the independently known CO-00 baseline failure.
+- Changed only `EncryptedDocumentStore.fileFor` to require exact equality between the parsed UUID and the original ID. No file rename/migration, AAD/envelope format change, key policy, dependency, manifest, or database schema change.
+- `VaultMigrationState` and `VaultMigrationJournal` already enforce exact UUID canonicality at their other `UUID.fromString` sites.
+- The test clears synthetic plaintext and decrypted buffers in `finally`.
+
+### Verification
+- Exact code/test SHA `79aa3a717d7825e536bba484b95e57486b535671` passed full configured Android CI [run #344](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39375095096): Python policy helpers, debug/release build, JVM tests, lint, and merged-manifest policy gate.
+- The active tool container has no Android SDK, repository checkout, `sdkmanager`, or `gh` CLI; no local Gradle command is claimed.
+- Security review performed as a separate manual pass. Fresh-context sub-agent review is unavailable; `HANDOFF.md` records `independent_review: NOT_AVAILABLE`. No biometric, Keystore, or physical-device behavior was changed or tested.
+
+### Next
+- Continue CO-04 on its own branch/PR: surface unreadable document IDs/count in listing and search, classify relevant error swallowing, and pass the exact-SHA gate. Keep PR #25 draft and unmerged; it is stacked on the CO-00 branch because canonical has the known CO-00 test failure.
+- CO-01/CO-02 remain decisions for the owner; no authentication/session or recovery implementation is authorized by this correction.
+ 
 ## 2026-10-20 — CO-00 exact-head Android CI gate passed
 
 ### Corrected
