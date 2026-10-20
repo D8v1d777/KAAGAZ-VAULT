@@ -1,3 +1,21 @@
+## 2026-10-20 — CO-02 Proposed key invalidation and recovery decision memo
+
+### Prepared
+- Added `docs/engineering/decisions/CO-02-key-invalidation-recovery.md` comparing an independent random recovery key, a passphrase-wrapped second envelope, device credential as an authenticator (not independent recovery), and deferring lock activation until recovery is verified.
+- Included a failure matrix for biometric enrollment changes, missing/invalidated Keystore alias, lock-screen reset, incorrect/lost recovery secret, corrupted envelope, process death during migration, storage-full failure, and absent encrypted files.
+- Added proposed user-facing disclosure and acceptance requirements for Android instrumentation, crash-point migration, and locked-state access tests.
+- No runtime code, key policy, alias, envelope/payload/journal format, KDF, dependency, backup rule, or ADR status changed.
+
+### Verification boundary
+- Canonical base: `feat/durable-vault-migration-journal` at `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489`.
+- CO-00 baseline CI run [#323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) is known failed on the canonical base. Separate CO-00 fix PR #18 passed run [#326](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166) on exact SHA `255424c96e3ee1ab88eb6c41b3aec955605f7c3a`; it remains unmerged pending owner approval.
+- Exact-head CI for this CO-02 branch is pending. No local Android build or instrumented test is claimed because the active container has no Android SDK, `sdkmanager`, `gh` CLI, or repository checkout.
+
+### Next
+- Open a draft PR targeting canonical and record exact-head CI, including any inherited CO-00 failure.
+- Review this recovery memo together with CO-01 PR #22, then ask the owner once for the authenticator, lock lifecycle, recovery route and API 24–29 behavior.
+- Do not implement recovery/key policy or accept ADR-0003 without explicit owner approval. Do not raise completion percentages for decision documentation alone.
+
 ## 2026-10-19 — Phase 15 elderly-friendly simplified mode design
 
 ### Designed
