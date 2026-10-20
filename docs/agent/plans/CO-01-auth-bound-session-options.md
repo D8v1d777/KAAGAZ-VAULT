@@ -17,6 +17,7 @@ risks:
   - risk: An ADR could be misread as approval; detect: status/header and PR text; mitigate: leave Proposed and do not implement session/key wiring
   - risk: Device credential compatibility differs by API; detect: official API docs; mitigate: explicit API 24–29 fallback gate and instrumented tests are required
   - risk: Biometric enrollment/lock-screen changes can irreversibly invalidate keys; detect: KeyGenParameterSpec documentation; mitigate: owner-approved recovery envelope before enabling vault lock
+  - risk: The existing VEK-wrap spike does not supply authenticated additional data; detect: AuthBoundVaultKey.kt:59 and :93; mitigate: define a versioned, context-bound envelope and swap/replay tests as a separate G2 order before wiring
 gated_actions: [G2 key policy/alias/cipher/envelope, G4 ADR status]
 decision_log:
   - when: 2026-10-20 decision: Prepare choices and recommendation only; no policy selection without the owner. alternatives: [Strong biometrics only, per-use biometric plus device credential where supported, separate passphrase/recovery envelope] reversible: yes
