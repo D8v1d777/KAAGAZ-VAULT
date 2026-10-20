@@ -3,6 +3,7 @@ agp = "9.1.1"
 kotlin = "2.3.10"
 composeBom = "2026.04.01"
 activityCompose = "1.13.0"
+biometric = "1.1.0"
 junit = "4.13.2"
 ksp = "2.3.4"
 room = "2.8.4"
@@ -14,6 +15,7 @@ work = "2.12.0"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
