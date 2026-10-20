@@ -3,11 +3,12 @@
 <handoff schema="1">
 updated: 2026-10-20
 author: GPT-6 via connected GitHub tools
-branch: agent/CO-03-uuid-canonicalization-verified
-head_sha: 79aa3a717d7825e536bba484b95e57486b535671
+branch: agent/CO-04-unreadable-documents
+head_sha: 51ef680ee609909e83e4ef5e0987724dce18f176
 ci:
-  last_recorded_green_sha: 79aa3a717d7825e536bba484b95e57486b535671
-  last_recorded_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39375095096
+  last_recorded_green_sha: 03bb8b5de1cd64376253e3cd1cde81c25559a445
+  last_recorded_green_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39380066674
+  documentation_head_ci: PENDING
   reproduction_failed_sha: 0f94c179f450c74fb08f5bc855ccf2f74f54ab2c
   reproduction_failed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39374096890
   current_docs_head_before_checkpoint: c9ecffba81bcf93f8d336e363d09cc6f36d4ba8e
@@ -20,8 +21,9 @@ environment:
   sdkmanager: MISSING
   repository_checkout: MISSING
   sub_agents: NOT_AVAILABLE
-task: CO-03 canonical UUID identity
-state: DONE
+task: CO-04 unreadable encrypted document reporting
+state: IN_PROGRESS — exact-head CI pending
+scope_guard: No new dependencies, permissions, schema, ciphertext format, key lifecycle or unrelated refactors. App code changes limited to unreadable placeholders and accurate key-loss UI messaging.
 changed_files:
   - app/src/main/java/com/kaagazvault/security/EncryptedDocumentStore.kt
   - app/src/test/java/com/kaagazvault/security/EncryptedDocumentStoreTest.kt
@@ -44,7 +46,8 @@ conflicts:
 open_questions_for_human:
   - Q2: choose authenticator, lock lifecycle, and independent recovery policy after reviewing CO-01/CO-02 decision packets.
 next_actions:
-  - A1: execute CO-04 on a separate branch based on this verified work chain; reproduce first, report unreadable document IDs/count, classify failure swallowing, and run exact-head CI.
+  - A1: finish exact-head CI on CO-04 documentation-complete head 51ef680ee609909e83e4ef5e0987724dce18f176; inspect any failure and fix only CO-04 scope.
   - A2: keep CO-01/CO-02 runtime wiring blocked until the owner decision is explicit.
+  - A3: do not merge PR #26 automatically; preserve draft until exact-head CI and human review.
 independent_review: NOT_AVAILABLE
 </handoff>
