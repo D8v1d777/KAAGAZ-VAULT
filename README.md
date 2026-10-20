@@ -1,50 +1,111 @@
+<div align="center">
+
 # KAAGAZ-VAULT
 
-**Privacy-first, offline-first Android document vault — implementation in progress.**
+### Privacy-first • Offline-first • Android Document Vault
 
-> **Source code is not on `main` yet.** The default branch currently serves as a documentation landing page. The complete Android project is available on the review branch below.
+<br>
 
-## Review the actual Android source
+[![License](https://img.shields.io/badge/License-Apache%202.0-4B8BBE?style=for-the-badge&logo=apache&logoColor=white)](LICENSE)
+[![Platform](https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com)
+[![Status](https://img.shields.io/badge/Status-Active%20Development-orange?style=for-the-badge)](https://github.com/D8v1d777/KAAGAZ-VAULT)
 
-**Recommended branch:** [`feat/durable-vault-migration-journal`](https://github.com/D8v1d777/KAAGAZ-VAULT/tree/feat/durable-vault-migration-journal)
+<br>
 
-This branch includes the Gradle project, Android app source, manifest, tests, offline-manifest policy script, CI workflow, and implementation README. The earlier [`phase/11-auth-bound-vault-lock`](https://github.com/D8v1d777/KAAGAZ-VAULT/tree/phase/11-auth-bound-vault-lock) branch contains the underlying app before the latest Phase 12 migration work.
+*Your documents. Your device. No cloud.*
 
-To check out the current review source:
+</div>
+
+---
+
+<br>
+
+### A quiet place for sensitive documents
+
+KAAGAZ-VAULT is being built for people who want to keep IDs, prescriptions, bank statements and personal papers **entirely on their phone** — encrypted, searchable, and offline.
+
+No analytics.  
+No hidden network calls.  
+No document content leaving the device in the FOSS build.
+
+This repository is still in active development. The core is taking shape, but it is not yet a finished product.
+
+<br>
+
+---
+
+### Where the real code lives
+
+The `main` branch is intentionally kept as a calm landing page.
+
+**The complete Android project is here:**
+
+<p align="center">
+  <a href="https://github.com/D8v1d777/KAAGAZ-VAULT/tree/feat/durable-vault-migration-journal">
+    <img src="https://img.shields.io/badge/Review%20Source-feat%2Fdurable--vault--migration--journal-4B8BBE?style=for-the-badge" alt="Review Source Branch"/>
+  </a>
+</p>
 
 ```bash
 git clone --branch feat/durable-vault-migration-journal https://github.com/D8v1d777/KAAGAZ-VAULT.git
 cd KAAGAZ-VAULT
 ```
 
-## Build and test
+<br>
 
-Requirements: JDK 21, Android SDK platform 36, build-tools 36.0.0, and an available Android SDK license acceptance.
+---
+
+### Current Progress
+
+| Area                        | Status              |
+|----------------------------|---------------------|
+| Encryption foundation      | Ready               |
+| Offline OCR (EN / HI / TE) | Ready               |
+| Document import & camera   | Ready               |
+| Local encrypted search     | Ready               |
+| Auth-bound vault lock      | In progress         |
+| Recovery policy            | Decision pending    |
+| Device-level validation    | Not yet             |
+| Public release             | Not yet             |
+
+<br>
+
+---
+
+### Privacy Stance
+
+- No `INTERNET` permission in the FOSS build
+- No analytics or advertising SDKs
+- Document images and OCR text stay on device
+- Government IDs and medical documents treated as sensitive by default
+- You can audit the manifest and dependencies yourself
+
+<br>
+
+---
+
+### For Reviewers & Developers
+
+**Requirements:** JDK 21 • Android SDK Platform 36
 
 ```bash
 python3 -m unittest discover -s scripts -p 'test_*.py'
-./gradlew --no-daemon clean assembleDebug assembleRelease testDebugUnitTest lint
+./gradlew --no-daemon clean assembleDebug testDebugUnitTest lint
 python3 scripts/check_offline_manifest.py
 ```
 
-These are the commands configured in [Android CI](https://github.com/D8v1d777/KAAGAZ-VAULT/blob/feat/durable-vault-migration-journal/.github/workflows/android-ci.yml). Latest recorded run for the migration-coordinator head: [CI #299 — passed](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39144069929), commit `6291594886eb6f6fb03c644797afc1217adb90e6`. This is CI evidence for that commit, not physical-device or release-security acceptance.
+Full engineering contract and invariants live in [`AGENTS.md`](https://github.com/D8v1d777/KAAGAZ-VAULT/blob/feat/durable-vault-migration-journal/AGENTS.md).
 
-## Privacy review entry points
+<br>
 
-- [Android manifest](https://github.com/D8v1d777/KAAGAZ-VAULT/blob/feat/durable-vault-migration-journal/app/src/main/AndroidManifest.xml) — declares CAMERA and POST_NOTIFICATIONS; no explicit INTERNET permission is present in the source manifest.
-- [App Gradle configuration](https://github.com/D8v1d777/KAAGAZ-VAULT/blob/feat/durable-vault-migration-journal/app/build.gradle.kts) — minSdk 24, targetSdk 36, pinned OCR model hashes.
-- [Unit tests](https://github.com/D8v1d777/KAAGAZ-VAULT/tree/feat/durable-vault-migration-journal/app/src/test/java)
-- [CI workflow](https://github.com/D8v1d777/KAAGAZ-VAULT/blob/feat/durable-vault-migration-journal/.github/workflows/android-ci.yml)
-- [Phase 12 migration status](https://github.com/D8v1d777/KAAGAZ-VAULT/blob/docs/auth-bound-migration-design/docs/reports/PHASE-12-MIGRATION-COORDINATOR-STATUS.md)
+---
 
-## What is implemented vs. pending
+<div align="center">
 
-The source branch includes Kotlin/Jetpack Compose UI, document-picker import, encrypted local payload storage, Android Keystore-backed cryptographic primitives, SQLCipher metadata/search paths, camera capture, offline OCR and bounded PDF extraction. The migration coordinator and auth-bound VEK work are partial foundations.
+**Built with the belief that some things should never leave your pocket.**
 
-Not release-accepted: real VEK-backed migration adapter, SQLCipher key rewrap integration, app-wide authenticated session gating, physical-device camera/OCR and biometric tests, crash/power-loss validation, accessibility review, and independent security review. The available test suite is primarily JVM unit tests plus Python CI policy tests; a dedicated [DocumentSignatureValidatorTest](https://github.com/D8v1d777/KAAGAZ-VAULT/blob/feat/durable-vault-migration-journal/app/src/test/java/com/kaagazvault/documents/DocumentSignatureValidatorTest.kt) is present. I did not find an `app/src/androidTest` directory in the reviewed source branch, so instrumentation coverage is not currently evidenced.
+<br>
 
-No real Aadhaar/PAN data, prescription images, credentials, or keystores should be committed. Synthetic fixtures only.
+<sub>Apache License 2.0 • Active development • Not release-ready</sub>
 
-## License
-
-A project license has not been selected. Do not assume this repository grants permission to reuse or redistribute the project.
+</div>
