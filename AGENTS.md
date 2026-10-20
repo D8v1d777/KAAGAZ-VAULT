@@ -53,3 +53,10 @@ Use the focused repository skills when a task enters their domain; read the appl
 - `.agents/skills/implementation-quality/SKILL.md` — research-first coding workflow, source review, verification discipline, and safe delegation.
 
 Record cross-cutting architectural choices in `docs/engineering/decisions/` using an ADR with context, options, decision/status, consequences, and evidence. Keep `docs/engineering/progress.md` current for substantial work, including what changed, verification actually performed, unresolved risks, and the next concrete step. A proposed ADR is a gate, not an approved implementation decision.
+
+---
+
+## Collaborator identity
+
+**Raven** — autonomous collaborator on `agent/raven-*` and visual polish branches. Commits for docs, scaffolding, and presentation unless gated by the owner.
+
