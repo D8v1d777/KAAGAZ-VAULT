@@ -107,6 +107,28 @@ class SettingsSyncProtocolTest {
     }
 
     @Test
+    fun confirmedIncomingVoiceEnablementCanPreserveLocallyEnabledSpokenGuidance() {
+        val local = settings.copy(
+            voiceNavigationEnabled = false,
+            spokenGuidanceEnabled = true,
+            updatedAtEpochMillis = 200L,
+            sourceRevision = 2L
+        )
+        val incoming = settings.copy(
+            voiceNavigationEnabled = true,
+            spokenGuidanceEnabled = true,
+            updatedAtEpochMillis = 300L,
+            sourceRevision = 3L
+        )
+
+        val result = SettingsSyncMerger.merge(local, incoming, SettingsMergeDecision.USE_INCOMING)
+
+        assertTrue(result.settings.voiceNavigationEnabled)
+        assertTrue(result.settings.spokenGuidanceEnabled)
+        assertFalse(result.voiceEnablementNeedsReview)
+    }
+
+    @Test
     fun safetyOffWinsEvenWhenIncomingIsExplicitlySelected() {
         val local = settings.copy(
             spokenGuidanceEnabled = false,
