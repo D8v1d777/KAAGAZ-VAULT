@@ -1,3 +1,23 @@
+## 2026-10-20 — CO-01 Proposed auth/session decision packet
+
+### Prepared
+- Added proposed-only authenticator, recovery, session/lock options and owner checklist to `docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md`; ADR status remains **Proposed**.
+- Marked `AuthBoundVaultKey`, `VaultMigrationCoordinator`, `VaultMigrationJournal`, `VaultMigrationBackend`, and `WrappedVaultKeyStore` as `SPIKE: not wired`. Source-body comparison against canonical baseline confirms only KDoc changes in these files.
+- README explicitly states no active repository/session lock protects the application today.
+- Cold review found the inactive wrapping primitive does not bind authenticated additional data to vault/envelope context on setup or unlock. Track this as CO-16 / G2 before any wiring; no runtime change was made.
+
+### Verification
+- Canonical base: `feat/durable-vault-migration-journal` at `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489`.
+- The preceding stacked CO-01 branch passed Android CI run [#328](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39365463380) on `0035befa33bd736d6f0c31d561f13eade5f63625`; this is **not** verification of the canonical-based branch.
+- Exact-head Android CI run [#334](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39367265745) failed on `b33731e2418c4a814ed571aadb304c2e1824062b` at `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview` (65 tests, 1 failure). This reproduces canonical-base CO-00 run [#323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191); no new test or compile failure was identified. The separate CO-00 fix is PR #18 and remains owner-gated.
+- No local Android build was possible: no repository checkout, Android SDK, `sdkmanager`, or `gh` CLI. No local tests claimed. No sub-agent available; manual cold review done, independent review still required.
+
+### Next
+- Canonical-target draft PR #22 is open. Re-check the exact-head workflow after the checkpoint update, because this documentation commit creates a new SHA.
+- CO-02 has its own canonical-target draft PR #23; it has the same inherited CO-00 test failure on initial exact-head CI.
+- Ask once for the combined P0 owner decision after both packets are reviewable. Do not wire authentication/recovery or accept ADR-0003 without that decision.
+- Progress percentages remain unchanged until implementation gates, tests and reviews—not documentation work alone—close.
+ 
 ## 2026-10-19 — Phase 15 elderly-friendly simplified mode design
 
 ### Designed
