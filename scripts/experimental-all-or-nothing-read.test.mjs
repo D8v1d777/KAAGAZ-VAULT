@@ -46,7 +46,7 @@ function fixture() {
       fetchChunk: async (index) => chunks[index],
       decryptChunk: async (chunk) => {
         seen.push(chunk.index);
-        return chunk.index === 0 ? plainA : plainB;
+        return chunk.index === 0 ? plainA.slice() : plainB.slice();
       },
       limits,
       ...overrides
@@ -91,7 +91,7 @@ test("late authentication failure rejects without returning partial plaintext", 
   const promise = f.run({
     decryptChunk: async (chunk) => {
       if (chunk.index === 1) throw new Error("tag failure");
-      return plainA;
+      return plainA.slice();
     }
   }).then(() => { published = true; });
   await assert.rejects(promise, /Unable to read encrypted document/);
@@ -143,7 +143,9 @@ test("does not expose mutable manifest nonce buffers to the decrypt adapter", as
       assert.equal("chunks" in context, false);
       assert.equal(context.vaultId, "vault_1");
       assert.equal(context.documentId, "doc_1");
-      return chunk.index === 0 ? plainA : plainB;
+      assert.equal(context.documentVersion, 1);
+      assert.equal(context.keyId, "key_1");
+      return chunk.index === 0 ? plainA.slice() : plainB.slice();
     }
   });
   assert.deepEqual([...result], [1, 2, 3, 4, 5]);
@@ -183,11 +185,87 @@ test("snapshots ciphertext and nonce before the asynchronous decrypt adapter", a
       captured.push(chunk);
       f.chunks[0].ciphertext.fill(99);
       f.chunks[0].nonce.fill(99);
-      return chunk.index === 0 ? plainA : plainB;
+      return chunk.index === 0 ? plainA.slice() : plainB.slice();
     }
   });
   const result = await promise;
   assert.deepEqual([...result], [1, 2, 3, 4, 5]);
   assert.equal(captured[0].ciphertext[0], 10);
   assert.equal(captured[0].nonce[0], 1);
+});
+
+test("rejects sparse or augmented manifest chunk arrays before fetching", async () => {
+  for (const mutate of [
+    (chunks) => { delete chunks[1]; },
+    (chunks) => { chunks.extra = true; }
+  ]) {
+    const f = fixture();
+    mutate(f.manifest.chunks);
+    let fetchCalls = 0;
+    await assert.rejects(f.run({
+      fetchChunk: async (index) => { fetchCalls++; return f.chunks[index]; }
+    }), /Unable to read encrypted document/);
+    assert.equal(fetchCalls, 0);
+  }
+});
+
+test("rejects accessor manifest fields without invoking getters", async () => {
+  const f = fixture();
+  let getterCalls = 0;
+  Object.defineProperty(f.manifest, "vaultId", {
+    enumerable: true,
+    configurable: true,
+    get() { getterCalls++; return "vault_1"; }
+  });
+  let fetchCalls = 0;
+  await assert.rejects(f.run({
+    fetchChunk: async (index) => { fetchCalls++; return f.chunks[index]; }
+  }), /Unable to read encrypted document/);
+  assert.equal(getterCalls, 0);
+  assert.equal(fetchCalls, 0);
+});
+
+test("rejects unexpected fetched-chunk fields before decrypting that chunk", async () => {
+  const f = fixture();
+  f.chunks[1].storageKey = "unexpected";
+  const decrypted = [];
+  await assert.rejects(f.run({
+    decryptChunk: async (chunk) => {
+      decrypted.push(chunk.index);
+      return chunk.index === 0 ? plainA.slice() : plainB.slice();
+    }
+  }), /Unable to read encrypted document/);
+  assert.deepEqual(decrypted, [0]);
+});
+
+test("manifest-authentication failure stops before fetching or decrypting", async () => {
+  const f = fixture();
+  let fetchCalls = 0;
+  let decryptCalls = 0;
+  await assert.rejects(f.run({
+    authenticateManifest: async () => { throw new Error("private adapter detail"); },
+    fetchChunk: async (index) => { fetchCalls++; return f.chunks[index]; },
+    decryptChunk: async () => { decryptCalls++; return plainA.slice(); }
+  }), (error) => error.message === "Unable to read encrypted document.");
+  assert.equal(fetchCalls, 0);
+  assert.equal(decryptCalls, 0);
+});
+
+test("clears the adapter-owned plaintext buffer after copying it to unpublished output", async () => {
+  const f = fixture();
+  const ownedPlaintext = new Uint8Array([1, 2, 3]);
+  const result = await f.run({
+    decryptChunk: async (chunk) => chunk.index === 0 ? ownedPlaintext : plainB.slice()
+  });
+  assert.deepEqual([...result], [1, 2, 3, 4, 5]);
+  assert.deepEqual([...ownedPlaintext], [0, 0, 0]);
+});
+
+test("rejects and clears a plaintext chunk with the wrong declared length", async () => {
+  const f = fixture();
+  const invalidPlaintext = new Uint8Array([9]);
+  await assert.rejects(f.run({
+    decryptChunk: async (chunk) => chunk.index === 0 ? invalidPlaintext : plainB.slice()
+  }), /Unable to read encrypted document/);
+  assert.deepEqual([...invalidPlaintext], [0]);
 });
