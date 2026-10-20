@@ -42,6 +42,18 @@ function exactDataRecord(value, keys) {
   return snapshot;
 }
 
+function exactDenseArray(value, expectedLength) {
+  if (!Array.isArray(value) || value.length !== expectedLength) fail();
+  const ownKeys = Reflect.ownKeys(value);
+  // Reject holes, symbols, and attacker-added named properties.
+  if (ownKeys.length !== expectedLength + 1 || !ownKeys.includes("length")) fail();
+  for (let index = 0; index < expectedLength; index++) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (!descriptor || !descriptor.enumerable || !("value" in descriptor)) fail();
+  }
+  return value;
+}
+
 function safeInteger(value, min, max) {
   return Number.isSafeInteger(value) && value >= min && value <= max;
 }
@@ -59,6 +71,7 @@ function validateManifest(input, limits) {
       !safeInteger(m.totalPlaintextLength, 0, limits.maxDocumentBytes) ||
       !Array.isArray(m.chunks) || m.chunks.length !== m.chunkCount) fail();
 
+  exactDenseArray(m.chunks, m.chunkCount);
   const chunks = [];
   let declaredTotal = 0;
   for (let i = 0; i < m.chunks.length; i++) {
@@ -95,9 +108,11 @@ function validateManifest(input, limits) {
 
 /**
  * Experimental all-or-nothing coordinator.
- * authenticateManifest(envelope) MUST authenticate before returning the manifest.
- * fetchChunk(index) returns { index, nonce: Uint8Array, ciphertext: Uint8Array }.
- * decryptChunk(chunk, context) MUST perform AEAD verification using reviewed AAD.
+ * authenticateManifest(envelope) MUST enforce encoded-envelope size/schema bounds before
+ * parsing or large allocations, authenticate before returning, and return data-only fields.
+ * fetchChunk(index) returns exactly one { index, nonce: Uint8Array, ciphertext: Uint8Array }.
+ * decryptChunk(chunk, context) MUST verify AEAD using reviewed AAD and return an owned
+ * Uint8Array plaintext buffer that the coordinator may clear after copying.
  * The context contains immutable scalar document metadata, never mutable manifest buffers.
  * No plaintext is returned until every chunk has verified and all lengths match.
  */
@@ -166,13 +181,18 @@ export async function readAllOrNothing({
         Object.freeze({ index, nonce, ciphertext }),
         decryptContext
       );
-      if (!(plaintext instanceof Uint8Array) ||
-          plaintext.byteLength !== expected.plaintextLength) fail();
-      actualTotal += plaintext.byteLength;
-      if (!Number.isSafeInteger(actualTotal) || actualTotal > effectiveLimits.maxDocumentBytes ||
-          actualTotal > output.byteLength) fail();
-      // Copy immediately into a private, unpublished buffer before the next await.
-      output.set(plaintext, actualTotal - plaintext.byteLength);
+      try {
+        if (!(plaintext instanceof Uint8Array) ||
+            plaintext.byteLength !== expected.plaintextLength) fail();
+        actualTotal += plaintext.byteLength;
+        if (!Number.isSafeInteger(actualTotal) || actualTotal > effectiveLimits.maxDocumentBytes ||
+            actualTotal > output.byteLength) fail();
+        // Copy into private, unpublished output before the next asynchronous boundary.
+        output.set(plaintext, actualTotal - plaintext.byteLength);
+      } finally {
+        // Best-effort clearing only; JavaScript cannot guarantee physical zeroization.
+        if (plaintext instanceof Uint8Array) plaintext.fill(0);
+      }
     }
 
     if (actualTotal !== manifest.totalPlaintextLength) fail();
