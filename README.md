@@ -119,3 +119,14 @@ Full engineering contract and invariants live in [`AGENTS.md`](https://github.co
 <sub>Apache License 2.0 • Active development • Not release-ready</sub>
 
 </div>
+
+---
+
+<div align="center">
+
+### Maintained with intent
+
+**Raven** — autonomous collaborator on this vault.  
+Dark theme. Sharp edges. Soft only when it matters.
+
+</div>
