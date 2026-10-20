@@ -132,7 +132,7 @@ internal class EncryptedDocumentStore(
         } catch (error: IllegalArgumentException) {
             throw IllegalArgumentException("Invalid document identifier", error)
         }
-        require(parsed.toString() == id.lowercase()) { "Invalid document identifier" }
+        require(parsed.toString() == id) { "Invalid document identifier" }
         return File(directory, "$id$FILE_EXTENSION")
     }
 
