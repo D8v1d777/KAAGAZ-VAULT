@@ -72,3 +72,51 @@ The migration must be resumable and idempotent:
 ## Acceptance
 
 This ADR remains Proposed until the migration journal/state design, fallback policy, and API compatibility matrix are reviewed. It becomes Accepted only after the project owner agrees to the recovery and biometric/device-credential behavior. A CI pass alone does not prove the lock is secure.
+
+## CO-01 decision packet — owner approval required (Proposed; no selection accepted)
+
+This section presents alternatives for review. It does not change the ADR status, key policy, or runtime behavior. Do not wire the existing key/migration spike until the owner accepts the authenticator, lock, and recovery behavior.
+
+### Verified current implementation boundary
+
+At this repository head, `AuthBoundVaultKey`, `VaultMigrationJournal`, `VaultMigrationCoordinator`, `VaultMigrationBackend`, and `WrappedVaultKeyStore` are not connected to an application session gate. No class in `app/src/main` implements the migration backend. `MainActivity` constructs the document store, database provider, and repository before any authentication flow; the running app therefore must not be represented as biometric-locked or auth-bound. The following labels mark this work as a spike, not as a completed security boundary.
+
+### Authenticator policy alternatives
+
+| Option | Behavior | Advantages | Risks and costs |
+|---|---|---|---|
+| A — strong biometric only, auth-per-use | Use a per-operation Keystore key requiring `BIOMETRIC_STRONG` and a `Cipher` in `BiometricPrompt.CryptoObject`. | Clear per-use cryptographic authorization; supported API path starts at the current minSdk with the legacy per-use biometric configuration. | Biometric enrollment changes or removing all enrolled biometrics can irreversibly invalidate the wrapping key. No strong biometric means no normal unlock. An independent recovery path is mandatory before this can safely guard user data. |
+| B — strong biometric OR device credential, auth-per-use where supported | On API 30+, investigate `setUserAuthenticationParameters(0, AUTH_BIOMETRIC_STRONG | AUTH_DEVICE_CREDENTIAL)` with a CryptoObject-backed per-use operation. On API 24–29 the combined authenticator prompt configuration is unsupported; do not silently switch to a time-window key. | PIN/pattern/password can be an accessibility fallback on supported API levels and, when included in key authorizations, can change biometric-enrollment invalidation behavior. | Requires an explicit compatibility policy for API 24–29, API/device tests, handling lock-screen reset, and an independent recovery path for unsupported APIs and key/alias loss. The API-30+ combination must be verified on the actual supported devices before any support claim. |
+| C — independent passphrase/recovery envelope for the same VEK | Keep a separately authenticated recovery envelope which can unwrap the same random VEK without depending on the device's biometric alias. | Can recover after biometric enrollment/key-alias loss or on devices without supported biometrics; preserves offline operation. | Requires a reviewed KDF and encoding, rate-limiting/brute-force threat model, careful secret display/entry, recovery proof, and recovery-material lifecycle. A lost recovery secret can still mean permanent loss. Dependency changes require the repository's G3 review gate. |
+
+**Recommendation for review, not an accepted decision:** do not enable an app lock until a universal, tested recovery path exists. Evaluate Option B on API 30+ only if auth-per-use semantics and CryptoObject behavior are verified; pair it with a separately designed recovery envelope for unsupported APIs, lock-screen reset, and alias loss. Keep API 24–29 fail-closed unless the owner approves and tests a concrete recovery path. Do not downgrade to a time-based key just to make the prompt work.
+
+Android's current primary docs distinguish auth-per-use keys from time-based authorization; they show an auth-per-use key can authorize either strong biometrics or device credential using timeout zero, and document the API-level limitations of combined prompt authenticators. They also document irreversible invalidation conditions. See [Biometric authentication and CryptoObject guidance](https://developer.android.com/identity/sign-in/biometric-auth), [KeyGenParameterSpec.Builder](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder), and [BiometricPrompt.CryptoObject](https://developer.android.com/reference/android/hardware/biometrics/BiometricPrompt.CryptoObject).
+
+### Session and lock policy alternatives
+
+- **Immediate background lock:** lock as soon as the app loses foreground, cancel or drain operations which could publish plaintext, remove sensitive UI state, close database handles and related WAL state, and best-effort clear mutable key buffers. Strongest privacy boundary; system file-picker/camera/prompt lifecycles need explicit behavior and tests.
+- **Short inactivity grace:** keep the session unlocked for an owner-selected interval (for example 30–60 seconds) while foregrounded, then lock. Easier for interrupted tasks but expands the time window in which an unattended app remains open. The interval must be explicit and testable, not inferred from OS screen-lock settings.
+- **Manual lock only:** simplest workflow, but weak against app switching, accidental abandonment, and process/lifecycle transitions; not recommended as the only policy.
+
+**Recommendation for review:** start every process in LOCKED state; require explicit unlock before constructing/accessing document, reminder, index, OCR, or database paths; lock on explicit request and immediately on leaving the app, with cancellation/drain rules for active work. Any grace period must be explicitly chosen. A boolean on the UI alone is not a session boundary.
+
+### Proposed implementation order after acceptance
+
+1. Approve and test the authenticator/recovery behavior and API matrix.
+2. Implement the real, idempotent `VaultMigrationBackend` with crash-point tests; never retire the only readable legacy copy before read-back and DB integrity checks.
+3. Add an in-memory `VaultSession` with locked-by-default lifecycle, auth-per-use unwrap, inactivity/background lock, and best-effort cleanup.
+4. Require an unlocked session at every document repository, reminder repository, encrypted metadata index, and database provider entry point. Tests must prove every entry point refuses access while locked.
+5. Add system-prompt UI only after the session and repository gates exist.
+
+### Owner decision checklist
+
+- Authenticator: [ ] A — strong biometric only; [ ] B — per-use biometric/device credential where supported plus defined fallback; [ ] other: ______.
+- Recovery: [ ] independent recovery envelope; [ ] other reviewed and testable recovery design: ______.
+- Lock: [ ] immediate background lock; [ ] explicit short inactivity grace (duration): ______.
+- API 24–29 behavior: [ ] do not enable vault lock until recovery is available; [ ] other approved and tested policy: ______.
+- Accept ADR-0003 only after the recovery semantics, failure matrix, and supported API/device test plan are agreed. This proposal does **not** accept the ADR.
+
+### Cold-review finding — envelope context is not yet bound (future CO-16; not fixed here)
+
+A review of the inactive spike found that `AuthBoundVaultKey.kt:59` encrypts the VEK with `Cipher.doFinal(vek)` without calling `updateAAD`, and `AuthBoundVaultKey.kt:93` initializes the decrypt cipher without supplying AAD. AES-GCM still authenticates the ciphertext and tag, but this envelope currently does not cryptographically bind a vault identifier, envelope version, key role, or key identifier. Before this code is wired, define a versioned wrapping-envelope contract and bind the same reviewed context on setup and unlock; test wrong-context substitution, envelope/version mismatch, bit flips, and interrupted writes. This requires a separate G2 key-envelope decision and review. No runtime code was changed under CO-01; the spike remains explicitly unwired.
