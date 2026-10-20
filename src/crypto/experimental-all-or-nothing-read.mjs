@@ -4,6 +4,7 @@
 
 const NONCE_BYTES = 12;
 const GCM_TAG_BYTES = 16;
+const MAX_CONTENT_TYPE_CHARS = 256;
 const MANIFEST_KEYS = [
   "version",
   "vaultId",
@@ -52,7 +53,8 @@ function validateManifest(input, limits) {
       typeof m.documentId !== "string" || m.documentId.length < 1 || m.documentId.length > 128 ||
       typeof m.keyId !== "string" || m.keyId.length < 1 || m.keyId.length > 128 ||
       !safeInteger(m.documentVersion, 1, 0xffff_ffff) ||
-      typeof m.contentType !== "string" ||
+      typeof m.contentType !== "string" || m.contentType.length < 1 ||
+      m.contentType.length > MAX_CONTENT_TYPE_CHARS ||
       !safeInteger(m.chunkCount, 1, limits.maxChunks) ||
       !safeInteger(m.totalPlaintextLength, 0, limits.maxDocumentBytes) ||
       !Array.isArray(m.chunks) || m.chunks.length !== m.chunkCount) fail();
@@ -121,10 +123,13 @@ export async function readAllOrNothing({
       !safeInteger(effectiveLimits.maxChunkPlaintextBytes, 1, effectiveLimits.maxDocumentBytes) ||
       !safeInteger(effectiveLimits.maxChunkCiphertextBytes, GCM_TAG_BYTES + 1, effectiveLimits.maxChunkPlaintextBytes + GCM_TAG_BYTES)) fail();
 
+  let output;
   try {
     const authenticated = await authenticateManifest(manifestEnvelope);
     const manifest = validateManifest(authenticated, effectiveLimits);
-    const staged = [];
+    // Allocate one bounded publication buffer. Staging every chunk and then
+    // concatenating it would duplicate document-sized plaintext in memory.
+    output = new Uint8Array(manifest.totalPlaintextLength);
     let actualTotal = 0;
 
     for (let index = 0; index < manifest.chunkCount; index++) {
@@ -148,22 +153,18 @@ export async function readAllOrNothing({
       );
       if (!(plaintext instanceof Uint8Array) ||
           plaintext.byteLength !== expected.plaintextLength) fail();
-      const snapshot = plaintext.slice();
-      actualTotal += snapshot.byteLength;
-      if (!Number.isSafeInteger(actualTotal) || actualTotal > effectiveLimits.maxDocumentBytes) fail();
-      staged.push(snapshot);
+      actualTotal += plaintext.byteLength;
+      if (!Number.isSafeInteger(actualTotal) || actualTotal > effectiveLimits.maxDocumentBytes ||
+          actualTotal > output.byteLength) fail();
+      // Copy immediately into a private, unpublished buffer before the next await.
+      output.set(plaintext, actualTotal - plaintext.byteLength);
     }
 
     if (actualTotal !== manifest.totalPlaintextLength) fail();
-    const result = new Uint8Array(actualTotal);
-    let offset = 0;
-    for (const chunk of staged) {
-      result.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    return result;
+    return output;
   } catch {
-    // Never return staged plaintext on any failure. JS cannot guarantee physical zeroization.
+    // Best-effort logical clearing only; JS cannot guarantee physical zeroization.
+    output?.fill(0);
     fail();
   }
 }
