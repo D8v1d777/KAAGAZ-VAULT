@@ -1,3 +1,20 @@
+## 2026-10-20 — CO-01/CO-02 authentication and recovery decision gate prepared
+
+### Prepared
+- Added a status-neutral owner decision memo to `docs/engineering/decisions/ADR-0003-auth-bound-vault-session.md` in commit `19e74656524e753681286b89c3aea7edb3768539`.
+- The memo compares three primary unlock policies, three independent recovery choices, and three lock/session policies; includes a failure matrix, proposed user-facing copy, API compatibility constraints, and implementation gates.
+- Recommendation for owner review: strong biometric OR device credential where auth-per-use `CryptoObject` is verified, plus a separately approved recovery mechanism; hybrid locking; independent recovery key as the leading recovery option. This is a recommendation only, not an accepted policy.
+- Official Android docs consulted: [BiometricPrompt and CryptoObject](https://developer.android.com/identity/sign-in/biometric-auth), [KeyGenParameterSpec.Builder](https://developer.android.com/reference/kotlin/android/security/keystore/KeyGenParameterSpec.Builder), and [KeyPermanentlyInvalidatedException](https://developer.android.com/reference/android/security/keystore/KeyPermanentlyInvalidatedException).
+
+### Verification boundary
+- No production source, key flags, key aliases, persisted formats, dependency versions, manifest permissions, or ADR status changed. ADR-0003 remains Proposed.
+- Android CI run [#326](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166) succeeded on CO-00 candidate SHA `255424c96e3ee1ab88eb6c41b3aec955605f7c3a`; all configured steps passed. That does not verify this memo branch, which still requires exact-head CI.
+- Local Android build unavailable: OpenJDK 21 is present; Android SDK variables are empty; no `sdkmanager`, `gh`, `local.properties`, or repository checkout exists in the active container.
+
+### Next
+- Open a draft PR for the memo and obtain exact-head CI.
+- Ask the owner once to select primary authentication (A/B/C), lock policy (L1/L2/L3), and recovery (R1/R2/R3).
+- Do not wire a production session or proceed to lower-priority P1 orders until the P0 policy decisions are accepted and recorded.
 ## 2026-10-19 — Phase 15 elderly-friendly simplified mode design
 
 ### Designed
