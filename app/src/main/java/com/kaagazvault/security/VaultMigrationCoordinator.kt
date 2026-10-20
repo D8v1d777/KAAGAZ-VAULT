@@ -3,6 +3,7 @@ package com.kaagazvault.security
 import java.io.IOException
 
 /**
+ * SPIKE: not wired — no production backend implementation is connected to this coordinator.
  * Resumes migration from the last durable checkpoint.
  *
  * Backend operations must be idempotent: if the process stops after a side effect but before
