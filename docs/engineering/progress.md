@@ -1,3 +1,18 @@
+## 2026-10-20 — CO-04 port onto canonical; CO-01/CO-02 slices opened
+
+### CO-04 canonical port
+- Ported the CO-04 unreadable-document production changes, repository tests and plan onto `agent/CO-04-canonical-port`, based directly on canonical SHA `789816fece4b90bb981b9e9cb3a5954f1eebd514`.
+- Source branch exact-head CI passed at SHA `141b1bdd1e828500861672a9020c8b3edf81a128` in run #381, but that branch had diverged from canonical. It is not evidence for this port.
+- Full CI for the new port head is required before calling CO-04 verified against canonical. Independent human review remains mandatory.
+
+### CO-01 / CO-02 implementation slices
+- Owner approved A2 + B2 + C1; ADR-0003 is accepted for policy direction only.
+- CO-01 session gate PR #37 and CO-02 recovery-envelope PR #38 are isolated, test-first changes. Exact-head CI is pending; neither is merged nor production-wired.
+- No production data-access path has yet been routed through VaultSession. No recovery key is persisted or shown by the recovery primitive.
+- API compatibility, Android Keystore instrumentation, migration crash tests and independent security review remain release gates.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
