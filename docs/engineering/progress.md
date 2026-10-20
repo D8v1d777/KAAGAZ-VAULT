@@ -1,3 +1,25 @@
+## 2026-10-20 — CO-01: owner-approved AndroidX Biometric dependency (draft PR #41)
+
+### Implemented
+- Recorded the owner's explicit option-1 approval in PR #40 and updated that decision memo to state that stable `androidx.biometric:biometric:1.1.0` was approved.
+- On canonical-based branch `agent/CO-01-biometric-dependency`, pinned `biometric = "1.1.0"` in `gradle/libs.versions.toml`, added the `androidx-biometric` library alias, and declared `implementation(libs.androidx.biometric)` in the app module.
+- Added `scripts/test_biometric_dependency_catalog.py` to guard the exact approved pin and version-catalog usage. Its commit precedes the Gradle configuration commits (test-first ordering).
+- Kept this bounded: no BiometricPrompt UI, key changes, fallback behavior, manifest permissions, repositories or schema changes.
+
+### Verification and evidence
+- Official AndroidX release notes checked on 2026-10-20 list 1.1.0 as the stable Biometric release and 1.4.0-alpha07 as alpha: https://developer.android.com/jetpack/androidx/releases/biometric
+- No local test or Gradle build ran: the active environment has no repository checkout, Android SDK variables, local.properties, `gh`, or `sdkmanager`. OpenJDK 21.0.12.1 is available.
+- PR #41 is a draft targeting `feat/durable-vault-migration-journal`. The exact-head GitHub Actions run on the final PR head is the build/test gate; check the PR's latest run and confirm its SHA equals `head_sha` before treating it as verified.
+- Previous exact-head Android CI passed independently for PR #37 SHA `d035e4a00b4637b10c094016ae3597ab9699ef49` / run https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39408883628; PR #38 SHA `f4f53e92a9b3daea79251ab422f67d94fa8c23d7` / run https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39408956479; PR #39 SHA `bc3837036d02d73b590d2f171207693f2cc5ba75` / run https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39409066230. PR #40's updated doc head must be checked separately.
+
+### Remaining gates
+- CO-06 dependency verification remains open; canonical has no `gradle/verification-metadata.xml`, and this PR does not claim dependency checksum verification is enforced.
+- Authentication is still conditional: API/authenticator compatibility, auth-per-use CryptoObject behavior, Android instrumentation and device coverage remain unverified. Do not wire production unlock behavior from dependency presence alone.
+- Independent human review is required before merge. Do not merge from this agent run.
+- Next: inspect latest exact-head CI for PR #41 and PR #40; diagnose only real failures. Then continue CO-01/CO-02 integration with crash-point tests and no production wiring until the compatibility/API gates are met.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
