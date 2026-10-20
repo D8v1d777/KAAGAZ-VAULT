@@ -111,21 +111,40 @@ class EncryptedDocumentStoreTest {
         val directory = temporaryFolder.newFolder()
         val key = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
         val store = newStore(key, directory)
-        var id: String
-        do {
-            id = store.save("case-sensitive identifier test".toByteArray())
-        } while (id.uppercase(Locale.ROOT) == id)
-        val uppercaseId = id.uppercase(Locale.ROOT)
+        val payload = "case-sensitive identifier test".toByteArray()
+        val expectedPayload = payload.copyOf()
+        val replacement = "replacement".toByteArray()
+        try {
+            var id: String
+            do {
+                id = store.save(payload)
+            } while (id.uppercase(Locale.ROOT) == id)
+            val uppercaseId = id.uppercase(Locale.ROOT)
 
-        assertEquals(id, id.lowercase(Locale.ROOT))
-        assertTrue(uppercaseId != id)
-        assertArrayEquals("case-sensitive identifier test".toByteArray(), store.read(id))
-        assertThrows(IllegalArgumentException::class.java) { store.read(uppercaseId) }
-        assertThrows(IllegalArgumentException::class.java) {
-            store.replace(uppercaseId, "replacement".toByteArray())
+            assertEquals(id, id.lowercase(Locale.ROOT))
+            assertTrue(uppercaseId != id)
+            val before = store.read(id)
+            try {
+                assertArrayEquals(expectedPayload, before)
+            } finally {
+                before.fill(0)
+            }
+            assertThrows(IllegalArgumentException::class.java) { store.read(uppercaseId) }
+            assertThrows(IllegalArgumentException::class.java) {
+                store.replace(uppercaseId, replacement)
+            }
+            assertThrows(IllegalArgumentException::class.java) { store.delete(uppercaseId) }
+            val after = store.read(id)
+            try {
+                assertArrayEquals(expectedPayload, after)
+            } finally {
+                after.fill(0)
+            }
+        } finally {
+            payload.fill(0)
+            expectedPayload.fill(0)
+            replacement.fill(0)
         }
-        assertThrows(IllegalArgumentException::class.java) { store.delete(uppercaseId) }
-        assertArrayEquals("case-sensitive identifier test".toByteArray(), store.read(id))
     }
 
     @Test
