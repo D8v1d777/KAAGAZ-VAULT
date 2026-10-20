@@ -123,28 +123,65 @@ internal class DocumentRepository(
 
     @Throws(IOException::class, GeneralSecurityException::class)
     fun list(): List<ImportedDocument> {
-        val documents = store.listIds().mapNotNull { id ->
-            runCatching { toDocument(DocumentPayloadCodec.decode(store.read(id)), id) }.getOrNull()
-        }.sortedByDescending { it.displayName.lowercase() }
-        // The encrypted files remain the source of truth; rebuilding repairs stale index rows.
-        updateIndex { it.rebuild(documents) }
+        val documents = store.listIds()
+            .map(::readDocumentOrUnreadablePlaceholder)
+            .sortedWith(
+                compareByDescending<ImportedDocument> { it.displayName.lowercase() }
+                    .thenBy { it.id }
+            )
+        // The encrypted files remain the source of truth; only authenticated payloads enter the
+        // optional searchable index. An unreadable ciphertext remains represented by opaque ID.
+        updateIndex { it.rebuild(documents.filter(ImportedDocument::isReadable)) }
         return documents
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
     fun search(query: String): List<ImportedDocument> {
-        if (query.isBlank()) return list()
+        // Reconcile every stored ciphertext before applying a query. Otherwise a corrupt item that
+        // does not match its old indexed name could disappear silently from search results.
+        val allDocuments = list()
+        if (query.isBlank()) return allDocuments
+
+        val unreadable = allDocuments.filterNot(ImportedDocument::isReadable)
         val ids = updateIndex { it.search(query) }
-        if (ids != null) {
-            val matched = ids.mapNotNull { id ->
-                runCatching { toDocument(DocumentPayloadCodec.decode(store.read(id)), id) }.getOrNull()
+        val readableMatches = if (ids != null) {
+            allDocuments.filter { it.isReadable && it.id in ids }
+        } else {
+            val normalized = EncryptedMetadataIndex.normalize(query)
+            allDocuments.filter { document ->
+                document.isReadable &&
+                    EncryptedMetadataIndex.normalize(document.displayName + " " + document.ocrText.orEmpty())
+                        .contains(normalized)
             }
-            return matched
         }
-        val normalized = EncryptedMetadataIndex.normalize(query)
-        return list().filter { document ->
-            EncryptedMetadataIndex.normalize(document.displayName + " " + document.ocrText.orEmpty())
-                .contains(normalized)
+        return readableMatches + unreadable
+    }
+
+    /**
+     * Only per-document I/O/authentication/decode failures become placeholders. Key-provider
+     * failures (GeneralSecurityException, including MissingEncryptionKeyException) deliberately
+     * escape so the caller can distinguish vault-key loss from one damaged ciphertext.
+     */
+    private fun readDocumentOrUnreadablePlaceholder(id: String): ImportedDocument {
+        var encodedPayload: ByteArray? = null
+        try {
+            encodedPayload = store.read(id)
+            val payload = DocumentPayloadCodec.decode(encodedPayload)
+            return try {
+                toDocument(payload, id)
+            } finally {
+                payload.content.fill(0)
+            }
+        } catch (_: IOException) {
+            return ImportedDocument(
+                id = id,
+                displayName = UNREADABLE_DOCUMENT_LABEL,
+                mimeType = UNREADABLE_DOCUMENT_MIME,
+                byteSize = 0,
+                isReadable = false
+            )
+        } finally {
+            encodedPayload?.fill(0)
         }
     }
 
@@ -183,6 +220,8 @@ internal class DocumentRepository(
     }
 
     companion object {
+        private const val UNREADABLE_DOCUMENT_LABEL = "Unreadable encrypted document"
+        private const val UNREADABLE_DOCUMENT_MIME = "application/octet-stream"
         private const val MAX_NAME_LENGTH = 180
         private const val MAX_OCR_CHARACTERS = 150_000
         private const val PDF_MIME = "application/pdf"
