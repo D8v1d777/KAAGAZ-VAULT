@@ -1,3 +1,23 @@
+## 2026-10-20 — CO-01 / CO-02 owner security decision memo prepared
+
+### Prepared
+- Added `docs/engineering/decisions/CO-01-02-owner-security-decision-memo.md` with explicit options and recommendations for authentication, lock lifecycle, and independent recovery.
+- Recorded a failure matrix covering cancelled authentication, unavailable biometrics, biometric enrollment change, missing/invalidated Keystore alias, wrong recovery material, malformed envelopes, interrupted migration, and SQLCipher integrity failure.
+- Recommendation for owner review: biometric OR device credential only where the supported Android/API path proves auth-per-use cryptographic enforcement; an independent one-time random recovery key; immediate lock on explicit lock, screen-off, process restart and foreground loss; no unapproved inactivity timer.
+- Primary Android documentation was checked for `BiometricPrompt.CryptoObject`, auth-per-use keys, `setUserAuthenticationParameters` (API 30), and biometric enrollment invalidation.
+
+### Verification boundary
+- Decision/documentation only. No production authentication, key lifecycle, recovery envelope, ciphertext format, manifest, dependency, or database schema was changed.
+- ADR-0003 remains Proposed. Production wiring is not authorized until the owner selects policy and compatibility/testing gates are defined.
+- The decision branch has no local Android SDK or repository checkout, so no local build is claimed. See HANDOFF.md and the PR head for exact state.
+- CO-04 final documentation-head CI is a separate gate; as of the initial check, run #381 was in progress on SHA `141b1bdd1e828500861672a9020c8b3edf81a128`: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39397935999.
+
+### Next
+- Ask once for the owner’s explicit authenticator, recovery, and lock policy choices.
+- After approval, keep CO-01 and CO-02 implementation in separate, bounded branches/PRs; verify each exact head and obtain independent review before release claims.
+
+---
+
 ## 2026-10-20 — CO-03 canonical UUID identity corrected
 
 ### Reproduced and fixed
