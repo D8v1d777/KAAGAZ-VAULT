@@ -94,7 +94,7 @@ internal class EncryptedDocumentMigrationBackend(
             throw IOException("Published document exists without its staged source; recovery is required")
         }
 
-        val plaintext = decryptFile(source, id) { ciphertext ->
+        val plaintext = decryptFile(source) { ciphertext ->
             envelope.decrypt(ciphertext, legacyKey, contextFor(id))
         }
         try {
@@ -102,13 +102,10 @@ internal class EncryptedDocumentMigrationBackend(
                 envelope.encrypt(plaintext, key, contextFor(id))
             }
             try {
-                val wrote = writeCiphertextIfAbsent(stagingDirectory, id, encrypted, STAGING_SUFFIX)
-                if (!wrote) {
-                    // Another migration worker won the create-once race; authenticate its copy.
-                    verifyStagedDocument(id)
-                } else {
-                    verifyStagedDocument(id)
-                }
+                // A concurrent worker may have created the destination first; either way,
+                // authenticate and compare the durable result before advancing the journal.
+                writeCiphertextIfAbsent(stagingDirectory, id, encrypted, STAGING_SUFFIX)
+                verifyStagedDocument(id)
             } finally {
                 encrypted.fill(0)
             }
@@ -121,7 +118,7 @@ internal class EncryptedDocumentMigrationBackend(
     @Throws(IOException::class, GeneralSecurityException::class)
     override fun verifyStagedDocument(documentId: String) {
         val id = canonicalId(documentId)
-        val sourcePayload = decryptFile(fileFor(legacyDirectory, id), id) { ciphertext ->
+        val sourcePayload = decryptFile(fileFor(legacyDirectory, id)) { ciphertext ->
             envelope.decrypt(ciphertext, legacyKey, contextFor(id))
         }
         try {
@@ -192,12 +189,12 @@ internal class EncryptedDocumentMigrationBackend(
     override fun verifyDatabaseIntegrity() = databaseActions.verifyDatabaseIntegrity()
 
     private fun decryptVekFile(file: File, id: String): ByteArray =
-        decryptFile(file, id) { ciphertext -> decryptVek(ciphertext, id) }
+        decryptFile(file) { ciphertext -> decryptVek(ciphertext, id) }
 
     private fun decryptVek(ciphertext: ByteArray, id: String): ByteArray =
         vekKeyAccess.withKey { key -> envelope.decrypt(ciphertext, key, contextFor(id)) }
 
-    private fun decryptFile(file: File, id: String, decrypt: (ByteArray) -> ByteArray): ByteArray {
+    private fun decryptFile(file: File, decrypt: (ByteArray) -> ByteArray): ByteArray {
         if (!file.isFile) throw IOException("Encrypted document is missing from migration storage")
         val ciphertext = readBoundedCiphertext(file)
         return try {
