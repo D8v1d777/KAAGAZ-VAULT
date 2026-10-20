@@ -9,10 +9,11 @@
 ### Verification boundary
 - Canonical base: `feat/durable-vault-migration-journal` at `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489`.
 - CO-00 baseline CI run [#323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) is known failed on the canonical base. Separate CO-00 fix PR #18 passed run [#326](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166) on exact SHA `255424c96e3ee1ab88eb6c41b3aec955605f7c3a`; it remains unmerged pending owner approval.
-- Exact-head CI for this CO-02 branch is pending. No local Android build or instrumented test is claimed because the active container has no Android SDK, `sdkmanager`, `gh` CLI, or repository checkout.
+- Exact-head Android CI run [#335](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39367507199) failed on `83487d07c907c9c97deb73a4946e55c85ee08b2e` at `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview` (65 tests, 1 failure), the known canonical-base CO-00 regression. The Python offline-manifest helper passed; the merged-manifest step was skipped after Gradle failed. CO-00 fix is separate PR #18 and remains owner-gated.
+- No local Android build or instrumented test is claimed because the active container has no Android SDK, `sdkmanager`, `gh` CLI, or repository checkout.
 
 ### Next
-- Open a draft PR targeting canonical and record exact-head CI, including any inherited CO-00 failure.
+- Canonical-target draft PR #23 is open. Re-check the new exact-head workflow after this checkpoint update; source changes remain documentation only.
 - Review this recovery memo together with CO-01 PR #22, then ask the owner once for the authenticator, lock lifecycle, recovery route and API 24–29 behavior.
 - Do not implement recovery/key policy or accept ADR-0003 without explicit owner approval. Do not raise completion percentages for decision documentation alone.
 
