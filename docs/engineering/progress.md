@@ -1,3 +1,22 @@
+## 2026-10-20 — CO-04 unreadable-document handling ported to current canonical
+
+### Changes carried forward
+- Rebased by a focused canonical-port branch from canonical SHA `789816fece4b90bb981b9e9cb3a5954f1eebd514`; only the CO-04 production/test files and CO-04 plan were ported. The older PR #26 remains unmerged and points at a diverged base.
+- Preserved damaged encrypted files as opaque unreadable entries in listing and search; missing vault-key errors escape rather than making the vault appear empty.
+- Added the two repository regressions and preserved the failure-swallowing classification table.
+
+### Evidence and boundaries
+- Source implementation CI passed on exact SHA `6dcb7c5012128be377401b24808a138f37e00bdc` in [run #362](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39381593750).
+- Source documentation-complete CI passed on SHA `141b1bdd1e828500861672a9020c8b3edf81a128` in [run #381](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39397935999). This does not verify the new canonical-port SHA.
+- The exact-head full CI for this port is pending. Independent human review remains required before merge. No new dependency, permission, schema, ciphertext format, key policy or recovery policy was introduced.
+- The root agent contract references `docs/agent/REVIEW.md`, but that file is absent from the current canonical tree. The relevant secure-storage, privacy-security, Android-engineering, testing-quality and implementation-quality skills were used for the cold source review; human review remains a hard gate.
+
+### Next
+- Run the full workflow against the PR's exact final SHA, then update this record with the result.
+- Do not merge until exact-head CI and independent human review both pass.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
