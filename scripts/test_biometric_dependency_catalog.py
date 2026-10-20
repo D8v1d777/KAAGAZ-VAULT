@@ -1,7 +1,6 @@
 """Regression guard for the owner-approved AndroidX Biometric dependency pin."""
 
 from pathlib import Path
-import re
 import unittest
 
 
