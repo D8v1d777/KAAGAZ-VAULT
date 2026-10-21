@@ -1,3 +1,25 @@
+## 2026-10-21 — CO-01 migration backend clean port to current canonical (draft candidate)
+
+### Implemented in isolated branch
+- Ported the test-covered file-backed `EncryptedDocumentMigrationBackend` and its regression tests onto a branch created from current canonical SHA `6b30ceaf5ab09b2494d82356b08c4bebf7406521`.
+- This adapter stages legacy payloads under the same opaque ID using the current authenticated envelope with document-ID AAD, compares decrypted legacy/staged bytes, publishes into distinct roots without overwriting the legacy or staged copies, re-authenticates read-back and supports idempotent coordinator replay at injected failure boundaries.
+- Kept SQLCipher rewrap/integrity as an explicit collaborator because the actual close/rewrap/reopen/integrity implementation is not yet supplied. The adapter is not wired to `MainActivity` or live repository paths, and no active-root switch or legacy retirement is performed.
+- Updated the CO-01 correction-order status and added a focused port plan. Did not replace `HANDOFF.md` or the weighted completion score from the stale branch.
+
+### Verification boundary
+- Fresh branch: `agent/CO-01-document-migration-backend-current-base-2026-10-21`, based on `6b30ceaf5ab09b2494d82356b08c4bebf7406521`.
+- Prior draft PR #42 source head `2c6a1d694e7adbf21fd226be0b69748fe6ec6282` had exact-head configured CI [#39536144943](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39536144943) passing; that run does **not** verify this fresh port SHA.
+- Current-head full CI is required. Local checkout/build remain unavailable in this environment (GitHub DNS resolution failed and no Android SDK is installed).
+- No document/key format, key alias, Room schema, dependency, manifest, or production call-path change is part of this port. No merge or release-ready claim.
+
+### Next
+- Run the configured gate on the port's exact head.
+- Resolve coordinator/crash-point expectations if CO-08's duplicate-verification change is integrated before this slice.
+- Implement a real SQLCipher key-wrapper migration collaborator, authenticate the session, wire the document-root cutover, and add device/instrumentation tests before claiming CO-01 complete.
+- Require independent human security review.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
