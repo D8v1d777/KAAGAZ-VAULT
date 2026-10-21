@@ -1,6 +1,7 @@
 package com.kaagazvault.database
 
 import android.content.Context
+import com.kaagazvault.security.SessionMigrationVekKeyAccess
 import com.kaagazvault.security.VaultDatabaseMigrationActions
 import com.kaagazvault.security.VaultSession
 import java.io.IOException
