@@ -1,3 +1,29 @@
+## 2026-10-20 — CO-01: non-destructive document migration backend (draft PR #42)
+
+### Implemented
+- Added `EncryptedDocumentMigrationBackend`, implementing the existing coordinator backend for legacy document discovery, re-encryption, staged verification, and publication into separate storage roots.
+- Retains the legacy encrypted file at its original path and retains staged ciphertext after publication. Uses the existing `AesGcmEnvelope` v1 format with the canonical document ID as authenticated context; no new document format or key alias was introduced.
+- Uses a scoped `MigrationVekKeyAccess` callback contract intended to be connected to `VaultSession` later. It is not wired to MainActivity or production repository paths.
+- Added a `VaultDatabaseMigrationActions` boundary; the actual SQLCipher rewrap/reopen/integrity implementation is explicitly **not** supplied by this PR.
+- Added tests for stage idempotency, tamper rejection, publication read-back, root separation, and interruption after each durable coordinator side effect: stage, verification checkpoint 1, verification checkpoint 2, publish, database-key rewrap, and database integrity.
+- Test file was committed before the adapter source: test SHA `11e7a8adbc9bc78bff048d22f67dcd989d944126`; first adapter implementation SHA `9f9efa6d6404fe9554947ddccecfee8f3203f9ae`; review cleanup SHA `7e3bbd4852da2b0e38c4ffd8676fbf9405bebcb5`; best-effort directory sync after ciphertext publication SHA `7a8671951f217d8bc9054a394153981272f5a33a`.
+
+### Verification boundary
+- Draft PR: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/42; canonical base `789816fece4b90bb981b9e9cb3a5954f1eebd514`.
+- No local Android build or test ran because the active environment has no repo checkout or Android SDK. Wait for and record CI only from the final PR head SHA; do not reuse an earlier run if this branch changes.
+- This adapter does not switch the app's active document directory or retire old key/ciphertext material. A separate reviewed cutover/recovery gate must prove authenticated read-back and durable journal completion before legacy data can be retired.
+- No actual SQLCipher database-key rewrap, close/reopen, `PRAGMA integrity_check`, or instrumented test is implemented in this slice. A green JVM/Android CI run cannot close that gate.
+- The callback-scoped key contract still needs the production `VaultSession` binding from PR #37. Do not wire the adapter until dependency PRs are reviewed/merged and its API behavior is validated.
+- Independent human security review is mandatory before merge.
+
+### Next
+- Verify PR #42 exact-head full CI and inspect any actual test/build failure.
+- Cold-review the adapter for interrupted-write behavior and key/payload cleanup.
+- Implement SQLCipher rewrap/read-back only after the existing key hierarchy and failure/recovery design is proven; preserve legacy wrapper/ciphertext until durable COMPLETE state and integrity checks are recorded.
+- Keep CO-06 dependency verification and Android instrumentation/device coverage open; do not inflate overall progress from these bounded slices.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
