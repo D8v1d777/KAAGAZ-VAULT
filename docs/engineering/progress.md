@@ -681,3 +681,12 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Verify the final stable-SDK build configuration through GitHub Actions.
 2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
 3. Start the encrypted-storage prototype only after researching Android Keystore, SQLCipher, Room, and backup/key-lifecycle constraints; keep ADR-0001 Proposed until prototype evidence exists.
+
+
+## 2026-10-21 — Plaintext buffer lifetime hardening
+
+- `DocumentRepository.saveContent` now clears the consumed import byte array and serialized payload buffer in a `finally` block, including validation/storage failures. Regression tests cover success with authenticated read-back and invalid-signature rejection.
+- OCR and reviewed-OCR paths clear serialized store reads, encoded replacement buffers, and decoded content bytes after processing. The document payload codec wipes its output stream's internal buffer and temporary OCR UTF-8 bytes.
+- AES-GCM document envelope operations clear temporary IV/ciphertext/AAD arrays after use. Settings-transfer crypto clears temporary plaintext/ciphertext/IV/key byte arrays where ownership is local.
+- This is best-effort JVM memory hygiene, not a guarantee against provider/JIT copies or immutable strings. No user document data was used in tests; tests use synthetic bytes only.
+- New code/test head is `7d69425b08b6aafefb9481a627f689d06fd4c563`; documentation follow-up is separate. Full Android CI must pass on the final documentation head before this batch is called verified.
