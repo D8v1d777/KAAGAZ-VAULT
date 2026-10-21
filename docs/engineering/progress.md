@@ -1,3 +1,12 @@
+## 2026-10-21 — CO-01 session primitive clean port (draft candidate)
+
+- Ported `VaultSession.kt` and `VaultSessionTest.kt` from the already-tested narrow session-primitive draft onto fresh branch `agent/CO-01-vault-session-core-current-base-2026-10-21` directly based on current canonical `6b30ceaf5ab09b2494d82356b08c4bebf7406521`.
+- Tests cover locked-state denial, 256-bit key length, ownership isolation, temporary-copy cleanup on success/exception, no session-key replacement, and lock waiting for active operations.
+- This remains a primitive only. It does not authenticate callers, persist keys, wire the auth-bound CryptoObject, guard repository/database/provider calls, close cached SQLCipher handles, or lock workers/UI state. CO-01 stays open/P0.
+- Prior PR #37 head `0aa62ce41b66bba2f37bb841e0e908e11fa984e9` passed exact-head CI [#39536769146](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39536769146); that result is on a stale-base SHA, not this port. Current-head CI pending.
+- No local build/test could run because this execution container has no Android SDK and cannot resolve github.com for a checkout. No merge or security-completion claim.
+
+---
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
