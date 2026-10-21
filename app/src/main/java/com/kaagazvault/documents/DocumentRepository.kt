@@ -7,7 +7,6 @@ import com.kaagazvault.database.EncryptedMetadataIndexProvider
 import com.kaagazvault.ocr.OfflineOcrEngine
 import com.kaagazvault.security.EncryptedDocumentStore
 import com.kaagazvault.security.VaultSession
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.security.GeneralSecurityException
 
