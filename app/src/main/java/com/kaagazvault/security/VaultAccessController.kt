@@ -113,7 +113,7 @@ internal class VaultAccessController(
                 state(VaultAccessUiState.RecoveryRequired("Existing vault-key material prevents fresh setup. Use recovery; no replacement key was generated."))
                 return
             }
-            val alias = AuthBoundVaultKey.newAlias()
+            val alias = AuthBoundVaultKey().newAliasForRecoveryOrSetup()
             val key = AuthBoundVaultKey(alias)
             startPrompt(Purpose.SETUP, key, alias, null, key.prepareSetupCipher(), "Set up Kaagaz Vault")
         } catch (failure: Exception) {
@@ -146,7 +146,7 @@ internal class VaultAccessController(
             envelope = recovery.loadOrNull()
                 ?: throw IOException("Recovery envelope is missing. Existing protected files were preserved.")
             vek = RecoveryKeyEnvelope().unwrap(envelope, keyBytes)
-            val alias = AuthBoundVaultKey.newAlias()
+            val alias = AuthBoundVaultKey().newAliasForRecoveryOrSetup()
             val key = AuthBoundVaultKey(alias)
             val cipher = key.prepareSetupCipher()
             pendingVek = vek
