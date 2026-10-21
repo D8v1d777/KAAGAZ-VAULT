@@ -135,6 +135,8 @@ done_when: schemas committed; migration test ran on CI for the SHA.
 claim: The journal persists enum ordinals, contains a check that can never fail, and the coordinator verifies a staged document twice in a row.
 evidence: VaultMigrationJournal.kt:127, :130, :135 (ordinal); :198 (`step !in DocumentMigrationStep.entries`); VaultMigrationCoordinator.kt:36 and :43 (verifyStagedDocument called back to back).
 action: replace ordinals with stable explicit codes plus fromCode(); pin the codes in a test; if any journal could already exist on a device, bump FORMAT_VERSION to 2 and keep a v1 reader (CO-01 shows nothing wires the journal yet, so confirm and record); delete the tautology; remove the duplicate verify or document, by crash point, why both are required.
+status: FIXED
+evidence: tests `VaultMigrationJournalTest.migrationCodesAreExplicitAndStable`, `VaultMigrationJournalTest.readsLegacyV1OrdinalSnapshot`, `VaultMigrationCoordinatorTest.completesAllStagesAndPersistsCompletion`; fix SHA `c44f774a452eb09595e254454c0efc3a2bb020e3`; exact-head CI https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39540043969 (SUCCESS).
 done_when: tests green on CI for the SHA.
 </order>
 

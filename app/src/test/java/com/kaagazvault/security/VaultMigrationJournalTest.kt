@@ -1,8 +1,11 @@
 package com.kaagazvault.security
 
 import java.io.File
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import java.io.IOException
 import java.nio.file.Files
+import java.util.zip.CRC32
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
@@ -10,6 +13,40 @@ import org.junit.Test
 
 class VaultMigrationJournalTest {
     private val documentId = "123e4567-e89b-12d3-a456-426614174000"
+
+    @Test
+    fun migrationCodesAreExplicitAndStable() {
+        assertEquals(10, VaultMigrationPhase.NOT_STARTED.code)
+        assertEquals(60, VaultMigrationPhase.COMPLETE.code)
+        assertEquals(10, DocumentMigrationStep.PENDING.code)
+        assertEquals(40, DocumentMigrationStep.PUBLISHED.code)
+    }
+
+    @Test
+    fun readsLegacyV1OrdinalSnapshot() {
+        withDirectory { directory ->
+            val payload = ByteArrayOutputStream()
+            DataOutputStream(payload).use { out ->
+                out.writeInt(VaultMigrationPhase.PREPARING.ordinal)
+                out.writeBoolean(false)
+                out.writeBoolean(false)
+                out.writeInt(-1)
+                out.writeInt(0)
+            }
+            val payloadBytes = payload.toByteArray()
+            val snapshot = ByteArrayOutputStream()
+            DataOutputStream(snapshot).use { out ->
+                out.writeInt(0x4B47564D)
+                out.writeInt(1)
+                out.writeInt(payloadBytes.size)
+                out.write(payloadBytes)
+                out.writeLong(CRC32().apply { update(payloadBytes) }.value)
+            }
+            File(directory, "vault-migration.journal").writeBytes(snapshot.toByteArray())
+
+            assertEquals(VaultMigrationState().begin(), VaultMigrationJournal(directory).load())
+        }
+    }
 
     @Test
     fun roundTripsStateAndOpaqueDocumentProgress() {

@@ -18,7 +18,7 @@ class VaultMigrationCoordinatorTest {
         val result = VaultMigrationCoordinator(journal, backend).resume()
 
         assertEquals(VaultMigrationPhase.COMPLETE, result.phase)
-        assertEquals(listOf("stage:$id", "verify:$id", "verify:$id", "publish:$id",
+        assertEquals(listOf("stage:$id", "verify:$id", "publish:$id",
             "rewrap", "integrity"), backend.events)
         assertEquals(VaultMigrationPhase.COMPLETE, journal.load()?.phase)
     }

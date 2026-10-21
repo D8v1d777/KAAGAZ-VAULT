@@ -33,7 +33,6 @@ internal class VaultMigrationCoordinator(
                     if (step == DocumentMigrationStep.PENDING) {
                         journal.save(state)
                         backend.stageDocument(id)
-                        backend.verifyStagedDocument(id)
                         state = state.advanceDocument(id, DocumentMigrationStep.STAGED)
                         journal.save(state)
                         step = DocumentMigrationStep.STAGED
