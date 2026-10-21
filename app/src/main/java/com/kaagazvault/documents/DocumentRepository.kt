@@ -47,18 +47,23 @@ internal class DocumentRepository(
 
         val displayName = queryDisplayName(uri, contentResolver)
         val content = contentResolver.openInputStream(uri)?.use { input ->
-            val output = ByteArrayOutputStream()
+            val output = WipingByteArrayOutputStream(DEFAULT_BUFFER_SIZE)
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            var total = 0
-            while (true) {
-                val count = input.read(buffer)
-                if (count < 0) break
-                total += count
-                if (total > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
-                output.write(buffer, 0, count)
+            try {
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    if (total > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
+                    output.write(buffer, 0, count)
+                }
+                if (total == 0) throw IOException("The selected document is empty")
+                output.copyAndClear()
+            } finally {
+                buffer.fill(0)
+                output.clear()
             }
-            if (total == 0) throw IOException("The selected document is empty")
-            output.toByteArray()
         } ?: throw IOException("Could not open the selected document")
 
         return saveContent(displayName, mimeType, content)
