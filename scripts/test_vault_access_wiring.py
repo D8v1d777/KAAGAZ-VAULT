@@ -74,6 +74,7 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("pendingVek = null", recovery_body)
         self.assertIn("pendingRecoveryText = null", recovery_body)
         self.assertIn("clearPrompt()", recovery_body)
+        self.assertIn("recoveryWrappingKey?.discardAbandonedSetup()", recovery_body)
 
     def test_background_reminder_worker_does_not_open_encrypted_database(self):
         worker_start = self.worker.index("internal class ReminderNotificationWorker")
