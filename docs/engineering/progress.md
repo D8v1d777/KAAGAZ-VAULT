@@ -1,3 +1,11 @@
+## 2026-10-21 — Combined integration candidate created
+
+- Combined CO-08, CO-04, CO-01 document-migration adapter, approved Biometric dependency, VaultSession primitive and CO-02 recovery envelope primitive onto one validation branch created from canonical SHA `6b30ceaf5ab09b2494d82356b08c4bebf7406521`.
+- Integrated source SHA before report: `83aa16a0c29a57962c65d547e1204d14688ddff8`. Exact-head combined CI is pending; isolated green runs do not substitute for this run.
+- See `docs/engineering/INTEGRATION-CANDIDATE-2026-10-21.md` for scope and explicit security blockers. No canonical branch changes or merges performed.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
