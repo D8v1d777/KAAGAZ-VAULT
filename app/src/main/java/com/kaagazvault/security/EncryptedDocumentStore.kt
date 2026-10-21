@@ -9,27 +9,37 @@ import java.util.UUID
 /**
  * Stores opaque, encrypted document payloads under app-private internal storage.
  *
- * This first vertical slice protects payload bytes only. It does not yet persist document
- * metadata/OCR, implement vault locking, or provide secure deletion or backup recovery.
+ * Key access is supplied by [DocumentPayloadCryptography]. The session-backed implementation
+ * holds the session read lock over every store operation, including atomic publication and delete.
+ * Legacy callers can continue to use [DocumentKeyProvider] during the reviewed migration window.
  */
 internal class EncryptedDocumentStore(
     private val directory: File,
-    private val keyProvider: DocumentKeyProvider,
-    private val envelope: AesGcmEnvelope = AesGcmEnvelope()
+    private val cryptography: DocumentPayloadCryptography
 ) {
+    constructor(
+        directory: File,
+        keyProvider: DocumentKeyProvider,
+        envelope: AesGcmEnvelope = AesGcmEnvelope()
+    ) : this(directory, LegacyDocumentPayloadCryptography(keyProvider, envelope))
+
+    private val recoveryLock = Any()
+    @Volatile private var temporaryFilesRecovered = false
+
     init {
         if (!directory.exists() && !directory.mkdirs()) {
             throw IOException("Could not create encrypted document directory")
         }
         if (!directory.isDirectory) throw IOException("Encrypted document path is not a directory")
-        recoverTemporaryFiles()
+        // Recovery can rename/delete ciphertext files, so defer it until the first authorized
+        // store operation rather than mutating protected storage merely by constructing a store.
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun save(payload: ByteArray): String {
+    fun save(payload: ByteArray): String = withCipher { cipher ->
         require(payload.size <= MAX_PAYLOAD_BYTES) { "Document payload exceeds the supported size limit" }
         val id = UUID.randomUUID().toString()
-        val encrypted = envelope.encrypt(payload, keyProvider.getOrCreateKey(), id.toByteArray(Charsets.UTF_8))
+        val encrypted = cipher.encrypt(payload, id.toByteArray(Charsets.UTF_8))
         val destination = fileFor(id)
         val temporary = File(directory, ".$id.pending")
 
@@ -41,22 +51,92 @@ internal class EncryptedDocumentStore(
             if (!temporary.renameTo(destination)) {
                 throw IOException("Could not atomically publish encrypted document")
             }
-            return id
+            id
         } finally {
+            encrypted.fill(0)
             // Only ciphertext is ever written to the pending file.
             if (temporary.exists()) temporary.delete()
         }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun read(id: String): ByteArray {
+    fun read(id: String): ByteArray = withCipher { cipher ->
         val file = fileFor(id)
         if (!file.isFile) throw IOException("Encrypted document not found")
         if (file.length() > MAX_ENVELOPE_BYTES || file.length() < MIN_ENVELOPE_BYTES) {
             throw IOException("Encrypted document has an invalid size")
         }
         val encrypted = file.readBytes()
-        return envelope.decrypt(encrypted, keyProvider.getOrCreateKey(), id.toByteArray(Charsets.UTF_8))
+        try {
+            cipher.decrypt(encrypted, id.toByteArray(Charsets.UTF_8))
+        } finally {
+            encrypted.fill(0)
+        }
+    }
+
+    /**
+     * Replaces a stored ciphertext under the same opaque ID. Both pending and backup files
+     * contain ciphertext only; rollback preserves the previous document if publication fails.
+     */
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun replace(id: String, payload: ByteArray) = withCipher { cipher ->
+        require(payload.size <= MAX_PAYLOAD_BYTES) { "Document payload exceeds the supported size limit" }
+        val destination = fileFor(id)
+        if (!destination.isFile) throw IOException("Encrypted document not found")
+        val encrypted = cipher.encrypt(payload, id.toByteArray(Charsets.UTF_8))
+        val temporary = File(directory, ".$id.pending")
+        val backup = File(directory, ".$id.backup")
+
+        try {
+            FileOutputStream(temporary).use { output ->
+                output.write(encrypted)
+                output.fd.sync()
+            }
+            if (backup.exists() && !backup.delete()) throw IOException("Could not prepare encrypted document update")
+            if (!destination.renameTo(backup)) throw IOException("Could not stage encrypted document update")
+            if (!temporary.renameTo(destination)) {
+                backup.renameTo(destination)
+                throw IOException("Could not publish encrypted document update")
+            }
+            // A stale backup is ciphertext, not plaintext. Startup recovery restores it if
+            // publication was interrupted before the new destination became visible.
+            backup.delete()
+        } finally {
+            encrypted.fill(0)
+            if (temporary.exists()) temporary.delete()
+        }
+    }
+
+    /** Returns opaque IDs only, but remains inside the same authorization boundary. */
+    fun listIds(): List<String> = withCipher {
+        directory.listFiles()
+            ?.asSequence()
+            ?.filter { it.isFile && it.name.endsWith(FILE_EXTENSION) }
+            ?.map { it.name.removeSuffix(FILE_EXTENSION) }
+            ?.filter { id -> runCatching { fileFor(id) }.isSuccess }
+            ?.toList()
+            .orEmpty()
+    }
+
+    @Throws(IOException::class)
+    fun delete(id: String) = withCipher {
+        val file = fileFor(id)
+        if (file.exists() && !file.delete()) throw IOException("Could not delete encrypted document")
+    }
+
+    private fun <T> withCipher(block: (DocumentPayloadCipher) -> T): T =
+        cryptography.withCipher { cipher ->
+            ensureTemporaryFilesRecovered()
+            block(cipher)
+        }
+
+    private fun ensureTemporaryFilesRecovered() {
+        if (temporaryFilesRecovered) return
+        synchronized(recoveryLock) {
+            if (temporaryFilesRecovered) return
+            recoverTemporaryFiles()
+            temporaryFilesRecovered = true
+        }
     }
 
     private fun recoverTemporaryFiles() {
@@ -76,54 +156,6 @@ internal class EncryptedDocumentStore(
                 file.name.startsWith(".") && file.name.endsWith(".pending") -> file.delete()
             }
         }
-    }
-
-    /**
-     * Replaces a stored ciphertext under the same opaque ID. Both pending and backup files
-     * contain ciphertext only; rollback preserves the previous document if publication fails.
-     */
-    @Throws(IOException::class, GeneralSecurityException::class)
-    fun replace(id: String, payload: ByteArray) {
-        require(payload.size <= MAX_PAYLOAD_BYTES) { "Document payload exceeds the supported size limit" }
-        val destination = fileFor(id)
-        if (!destination.isFile) throw IOException("Encrypted document not found")
-        val encrypted = envelope.encrypt(payload, keyProvider.getOrCreateKey(), id.toByteArray(Charsets.UTF_8))
-        val temporary = File(directory, ".$id.pending")
-        val backup = File(directory, ".$id.backup")
-
-        try {
-            FileOutputStream(temporary).use { output ->
-                output.write(encrypted)
-                output.fd.sync()
-            }
-            if (backup.exists() && !backup.delete()) throw IOException("Could not prepare encrypted document update")
-            if (!destination.renameTo(backup)) throw IOException("Could not stage encrypted document update")
-            if (!temporary.renameTo(destination)) {
-                backup.renameTo(destination)
-                throw IOException("Could not publish encrypted document update")
-            }
-            // A stale backup is ciphertext, not plaintext. Startup recovery restores it if
-            // publication was interrupted before the new destination became visible.
-            backup.delete()
-        } finally {
-            if (temporary.exists()) temporary.delete()
-        }
-    }
-
-    /** Returns opaque IDs only; filenames contain no document metadata. */
-    fun listIds(): List<String> =
-        directory.listFiles()
-            ?.asSequence()
-            ?.filter { it.isFile && it.name.endsWith(FILE_EXTENSION) }
-            ?.map { it.name.removeSuffix(FILE_EXTENSION) }
-            ?.filter { id -> runCatching { fileFor(id) }.isSuccess }
-            ?.toList()
-            .orEmpty()
-
-    @Throws(IOException::class)
-    fun delete(id: String) {
-        val file = fileFor(id)
-        if (file.exists() && !file.delete()) throw IOException("Could not delete encrypted document")
     }
 
     private fun fileFor(id: String): File {
