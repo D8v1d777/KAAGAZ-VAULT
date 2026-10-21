@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -180,11 +181,13 @@ private fun VaultAccessScreen(
             is VaultAccessUiState.ConfirmRecoveryKey -> {
                 Text("Save this recovery key somewhere private and offline. Anyone with it may be able to restore vault access.")
                 Card(Modifier.fillMaxWidth()) {
-                    Text(
-                        state.key,
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                    SelectionContainer {
+                        Text(
+                            state.key,
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
                 state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 OutlinedTextField(
