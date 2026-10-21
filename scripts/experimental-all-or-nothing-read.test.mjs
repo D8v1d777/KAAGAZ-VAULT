@@ -129,10 +129,11 @@ test("copies each verified chunk into private output before awaiting the next ch
     decryptChunk: async (chunk) => {
       if (chunk.index === 0) return firstPlaintext;
       firstPlaintext.fill(99);
-      return plainB;
+      return plainB.slice();
     }
   });
   assert.deepEqual([...result], [1, 2, 3, 4, 5]);
+  assert.deepEqual([...plainB], [4, 5], "cleanup must not mutate the shared test fixture");
 });
 
 test("does not expose mutable manifest nonce buffers to the decrypt adapter", async () => {
