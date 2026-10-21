@@ -88,7 +88,13 @@ internal object DocumentPayloadCodec {
                 (textLength >= 0 && textLength != data.available())
             ) throw IOException("Invalid encrypted OCR payload length")
             val text = if (textLength >= 0) {
-                ByteArray(textLength).also(data::readFully).toString(Charsets.UTF_8)
+                val textBytes = ByteArray(textLength)
+                try {
+                    data.readFully(textBytes)
+                    textBytes.toString(Charsets.UTF_8)
+                } finally {
+                    textBytes.fill(0)
+                }
             } else null
             return ImportedPayload(
                 displayName = name,
