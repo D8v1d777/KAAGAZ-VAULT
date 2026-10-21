@@ -50,6 +50,16 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("newProvider?.close()", self.controller)
         self.assertIn("synchronized(this)", self.controller)
 
+    def test_dispose_invalidates_late_authentication_callbacks_and_clears_wrapped_key(self):
+        dispose_start = self.controller.index("fun dispose()")
+        dispose_end = self.controller.index("private fun startPrompt(", dispose_start)
+        dispose_body = self.controller[dispose_start:dispose_end]
+        self.assertIn("disposed = true", dispose_body)
+        self.assertIn("clearPrompt()", dispose_body)
+        self.assertLess(dispose_body.index("clearPrompt()"), dispose_body.index("prompt.cancelAuthentication()"))
+        self.assertIn("if (disposed) return", self.controller)
+        self.assertIn("if (!disposed && accessEpoch == expectedEpoch)", self.controller)
+
     def test_background_reminder_worker_does_not_open_encrypted_database(self):
         worker_start = self.worker.index("internal class ReminderNotificationWorker")
         worker = self.worker[worker_start:]
