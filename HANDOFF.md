@@ -31,15 +31,15 @@ verified_in_candidate_source:
   - Migration controller runs journal/backend before runtime publication, and legacy provider cleanup is handled on success/failure.
   - Reminder worker does not open SQLCipher and uses generic notification text; cancellation and delivery-gate tests are present.
   - Import/repository/OCR/payload/AES-GCM/settings-transfer code now clears owned temporary plaintext or key byte arrays where possible; tests cover import-buffer clearing on success/failure.
-  - Controller disposal invalidates late authentication callbacks and suppresses late state publication; a source-level regression guard covers ordering.
-  - Canonical README/HANDOFF/AGENTS files are not included in the candidate PR's changed-file list.
+  - Controller disposal invalidates late authentication callbacks and suppresses late state publication; synchronous prompt setup failures clear pending recovery state and remove only uncommitted wrapper aliases, with source-level regression guards.
+  - README.md and AGENTS.md remain unchanged; HANDOFF.md is updated on this candidate branch to record current release gates.
 unverified:
-  - Exact-head Android CI run #485 is queued; no pass claim until its result is complete for candidate_head_sha.
+  - A fresh exact-head Android CI run is triggered by the latest source/test and handoff commits; no pass claim until the result matches the live PR #48 head SHA.
   - No physical-device/emulator instrumentation run for authenticator compatibility, recovery, screen-off/background locking, picker return flows, process death or interrupted migration.
   - SQLCipher rewrap/reopen/integrity behavior remains unverified on a disposable Android vault.
   - Independent human security review remains mandatory.
 next_actions:
-  - Check run #485 and confirm its head SHA matches candidate_head_sha; fix only reproduced failures, then rerun CI on the final SHA.
+  - Check the newest run linked from PR #48 and confirm its head SHA matches the live PR head; fix only reproduced failures, then rerun CI on the final SHA.
   - Run Android emulator/device tests for setup, unlock, recovery, app background/screen-off, external picker return, process death, and interrupted migration.
   - Validate SQLCipher rewrap/reopen/integrity and legacy/staging retention on a disposable test vault.
   - Perform a cold review of the final diff; independent reviewer sub-agent is unavailable, so human review is still required.
