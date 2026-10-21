@@ -1,3 +1,23 @@
+## 2026-10-21 — CO-04 unreadable-document behavior ported onto current canonical (draft candidate)
+
+### Implemented in isolated branch
+- Ported the previously test-covered CO-04 repository/UI behavior onto a branch created directly from current canonical SHA `6b30ceaf5ab09b2494d82356b08c4bebf7406521`: damaged/unreadable ciphertext remains represented as an opaque placeholder; missing encryption-key exceptions escape instead of being treated as per-file corruption; search reconciles unreadable items instead of hiding nonmatching corrupt files; UI surfaces safe generic status/count messaging without revealing names or contents.
+- Added the CO-04 repository regression tests and focused plan. Preserved the current canonical `README.md` redesign and `HANDOFF.md`; those files were not copied from the stale port branch.
+- Confirmed that the pre-CO-04 versions of `MainActivity.kt`, `DocumentRepository.kt`, and `ImportedDocument.kt` have identical blob SHAs at the old merge base and current canonical, so this port does not overwrite intervening source edits.
+
+### Verification boundary
+- Fresh branch: `agent/CO-04-current-canonical-port-2026-10-21`, based on `6b30ceaf5ab09b2494d82356b08c4bebf7406521`.
+- Source/test content was ported from draft PR #39; its earlier implementation head `bc3837036d02d73b590d2f171207693f2cc5ba75` had configured Android CI run [#39409066230](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39409066230) passing. That earlier run is **not** verification of this new branch/head.
+- Local checkout/build remain unavailable in this environment (GitHub DNS resolution failed); run exact-head CI on this candidate and use only that result as current evidence.
+- No merge, key-format change, dependency change, permission/manifest change, schema change, or key-retirement behavior was introduced. Weighted progress percentage is unchanged; independent human review remains required.
+
+### Next
+- Read live PR/head metadata and wait for the new exact-head workflow result.
+- Review repository error handling and UI branches against the CO-04 acceptance list; fix only reproduced failures.
+- Keep this candidate draft/unmerged until exact-head CI and required human review are recorded.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
