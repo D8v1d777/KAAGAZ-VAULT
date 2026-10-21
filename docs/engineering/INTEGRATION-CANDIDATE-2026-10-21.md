@@ -3,7 +3,7 @@
 **Branch:** `agent/integration-security-hardening-candidate-2026-10-21`  
 **Canonical base SHA:** `6b30ceaf5ab09b2494d82356b08c4bebf7406521`  
 **Live candidate head / CI:** tracked in [draft PR #48](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48); use GitHub's current PR head SHA and its exact-head workflow run as authoritative evidence.  
-**Status:** draft validation PR #48 is open. Exact-head CI passed on `8a3cd92d15234caf947f49f4bd69e0dacf0e642b` (run #466); subsequent documentation corrections trigger a fresh run, so the PR’s latest check is authoritative. No merge is requested.
+**Status:** draft validation PR #48 is open and unmerged. The latest security-buffer hardening is on the branch head; use the latest exact-head CI run linked from PR #48 as authoritative. Earlier green runs apply only to their named SHAs. No merge is requested.
 
 ## What is combined
 
@@ -16,6 +16,14 @@ This branch composes independently tested, current-base changes into one integra
 5. **VaultSession primitive:** 256-bit in-memory session key, temporary operation-scoped copy, best-effort clearing, lock waiting for active uses and preventing later uses.
 6. **CO-02 recovery envelope primitive:** random 256-bit recovery key encoding and versioned AES-GCM envelope with wrong-key/tamper/unsupported-format tests.
 7. **Session-backed document store seam:** `DocumentPayloadCryptography` supports legacy-key and session-key adapters; store read/write/replace/list/delete run within the crypto access callback, locked operations fail, startup artifact recovery is deferred until an authorized store operation, and ciphertext buffers are cleared after writes/reads where applicable.
+
+## Plaintext-buffer lifetime hardening — 2026-10-21
+
+- Document imports now consume and clear the supplied plaintext byte array on both success and validation/storage failure; serialized payload and OCR text scratch buffers are wiped after use.
+- OCR and reviewed-OCR updates now clear serialized reads, encoded replacement payloads, and decoded document-content buffers after each operation.
+- AES-GCM document-envelope operations clear temporary IV, ciphertext and associated-data buffers after assembling the result or completing decryption.
+- Settings-transfer encryption/decryption clears temporary plaintext, ciphertext, IV and decoded key byte arrays; pairing-ticket construction clears its original random key buffer after creating the key object.
+- Added repository regression tests for successful import round-trip plus buffer clearing and invalid-import buffer clearing. These are best-effort in-memory hygiene measures; JVM/provider copies and immutable String instances cannot be guaranteed erased.
 
 ## Session-backed document-store seam review
 
