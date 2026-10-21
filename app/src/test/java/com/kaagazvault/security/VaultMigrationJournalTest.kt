@@ -12,6 +12,14 @@ class VaultMigrationJournalTest {
     private val documentId = "123e4567-e89b-12d3-a456-426614174000"
 
     @Test
+    fun migrationCodesAreExplicitAndStable() {
+        assertEquals(10, VaultMigrationPhase.NOT_STARTED.code)
+        assertEquals(60, VaultMigrationPhase.COMPLETE.code)
+        assertEquals(10, DocumentMigrationStep.PENDING.code)
+        assertEquals(40, DocumentMigrationStep.PUBLISHED.code)
+    }
+
+    @Test
     fun roundTripsStateAndOpaqueDocumentProgress() {
         withDirectory { directory ->
             val journal = VaultMigrationJournal(directory)
