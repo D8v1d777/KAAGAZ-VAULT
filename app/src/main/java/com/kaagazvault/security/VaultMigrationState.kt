@@ -8,7 +8,7 @@ import java.util.UUID
  * This class does not perform I/O or cryptography. Persist snapshots atomically before
  * acting on each transition; do not treat this model alone as a durable migration journal.
  */
-internal enum class VaultMigrationPhase {
+internal enum class VaultMigrationPhase(val code: Int) {
     NOT_STARTED(10),
     PREPARING(20),
     MIGRATING_DOCUMENTS(30),
@@ -22,11 +22,9 @@ internal enum class VaultMigrationPhase {
             entries.firstOrNull { it.code == code }
                 ?: throw IllegalArgumentException("Unknown migration phase code: $code")
     }
-
-    val code: Int
 }
 
-internal enum class DocumentMigrationStep {
+internal enum class DocumentMigrationStep(val code: Int) {
     PENDING(10),
     STAGED(20),
     VERIFIED(30),
@@ -37,8 +35,6 @@ internal enum class DocumentMigrationStep {
             entries.firstOrNull { it.code == code }
                 ?: throw IllegalArgumentException("Unknown document migration step code: $code")
     }
-
-    val code: Int
 }
 
 internal data class VaultMigrationState(
