@@ -60,6 +60,7 @@ internal class VaultAccessController(
     private var pendingVek: ByteArray? = null
     private var pendingRecoveryText: String? = null
     private var runtime: VaultRuntime? = null
+    @Volatile private var accessEpoch: Long = 0L
 
     private val prompt = BiometricPrompt(
         activity,
@@ -188,6 +189,7 @@ internal class VaultAccessController(
     }
 
     fun lockNow(message: String? = null) {
+        accessEpoch += 1
         try { session.lock() } catch (_: Exception) { }
         runtime = null
         pendingVek?.fill(0)
@@ -212,6 +214,7 @@ internal class VaultAccessController(
     }
 
     fun dispose() {
+        accessEpoch += 1
         try { prompt.cancelAuthentication() } catch (_: Exception) { }
         pendingVek?.fill(0)
         pendingVek = null
@@ -323,9 +326,11 @@ internal class VaultAccessController(
     }
 
     private fun migrate() {
+        val migrationEpoch = accessEpoch
         state(VaultAccessUiState.Migrating("Verifying the migration journal and protected data…"))
         executor.execute {
             var oldProvider: VaultDatabaseProvider? = null
+            var newProvider: VaultDatabaseProvider? = null
             var legacyKey: SecretKey? = null
             try {
                 val legacy = File(files, "encrypted_documents")
@@ -354,15 +359,27 @@ internal class VaultAccessController(
                 }
                 if (journal.load()?.phase != VaultMigrationPhase.COMPLETE) throw IOException("No durable COMPLETE checkpoint exists")
                 val provider = VaultDatabaseProvider(activity.applicationContext, session)
+                newProvider = provider
                 val store = EncryptedDocumentStore(published, SessionDocumentPayloadCryptography(session))
                 val repository = DocumentRepository(activity.contentResolver, store, EncryptedMetadataIndexProvider(provider), session)
                 val next = VaultRuntime(repository, OfflineOcrEngine(activity.applicationContext), ReminderRepository(activity.applicationContext, provider, session), provider)
+                // Background migration may finish after onStop locked the session. Never publish
+                // repositories from a stale migration epoch into the foreground UI.
+                if (migrationEpoch != accessEpoch || !session.isUnlocked()) {
+                    provider.close()
+                    newProvider = null
+                    throw VaultLockedException()
+                }
                 runtime = next
-                postState(VaultAccessUiState.Ready(next))
+                postStateIfEpoch(VaultAccessUiState.Ready(next), migrationEpoch)
             } catch (failure: Exception) {
                 try { session.lock() } catch (_: Exception) { }
                 runtime = null
-                postState(VaultAccessUiState.Locked("Migration could not be verified; legacy files and old wrappers remain. Unlock to resume. " + safeFailure(failure)))
+                try { newProvider?.close() } catch (_: Exception) { }
+                postStateIfEpoch(
+                    VaultAccessUiState.Locked("Migration could not be verified; legacy files and old wrappers remain. Unlock to resume. " + safeFailure(failure)),
+                    migrationEpoch
+                )
             } finally {
                 legacyKey = null
                 try { oldProvider?.close() } catch (_: Exception) { }
@@ -427,5 +444,11 @@ internal class VaultAccessController(
 
     private fun postState(value: VaultAccessUiState) {
         main.post { uiState.value = value }
+    }
+
+    private fun postStateIfEpoch(value: VaultAccessUiState, expectedEpoch: Long) {
+        main.post {
+            if (accessEpoch == expectedEpoch) uiState.value = value
+        }
     }
 }
