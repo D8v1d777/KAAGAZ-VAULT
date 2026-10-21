@@ -1,6 +1,6 @@
 ## 2026-10-21 — Integration security hardening continuation
 
-- Candidate branch `agent/integration-security-hardening-candidate-2026-10-21`, PR #48, latest head before this progress update: `a49f05dd246c9c91e47a34be422327e2c638a83e`.
+- Candidate branch `agent/integration-security-hardening-candidate-2026-10-21`, PR #48; consult the live PR head and matching workflow run because follow-up handoff/plan commits continue this documentation pass.
 - Cleared owned plaintext scratch buffers in document import streams, document serialization, OCR/reviewed-OCR reads and replacements, AES-GCM envelope operations, and settings-transfer crypto. Import tests cover plaintext buffer clearing on successful read-back and invalid signature rejection.
 - Controller disposal now marks the controller disposed, invalidates the active prompt purpose, clears retained wrapped-key bytes before cancelling the prompt, and suppresses late authentication/UI-state callbacks. Source-level regression coverage added.
 - Reminder cancellation coverage and lock-time UI metadata/settings-buffer cleanup remain part of the candidate. Migration retains legacy/staging data; no retirement or canonical merge was performed.
