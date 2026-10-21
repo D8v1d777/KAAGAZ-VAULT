@@ -65,6 +65,14 @@ internal class VaultKeyRecordStore(private val file: File) {
         syncDirectoryBestEffort()
     }
 
+    /** Commits a recovered VEK record whether the prior record was missing or still present. */
+    @Synchronized
+    @Throws(IOException::class)
+    fun persistRecovered(alias: String, wrappedVek: ByteArray) {
+        if (hasArtifacts()) replaceAfterRecovery(alias, wrappedVek)
+        else saveIfAbsent(alias, wrappedVek)
+    }
+
     /**
      * Used only after successful recovery-key authentication has produced the existing VEK and the
      * new alias has authenticated that same VEK. Crash ordering preserves either the old record or
