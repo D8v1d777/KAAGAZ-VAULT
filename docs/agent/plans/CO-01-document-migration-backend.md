@@ -18,3 +18,8 @@ A concrete file-backed implementation of the existing migration-backend contract
 
 ## Boundaries / next
 This PR does not switch the production app to the migrated root or retire legacy ciphertext. Database rewrap is an injected boundary only; a real SQLCipher implementation and instrumentation evidence are still required before production wiring.
+
+
+## CO-08 coordinator compatibility
+
+The recovery-injection matrix tests the single coordinator-owned verification failure point after staging. It intentionally does not assume the older duplicate verification call, because CO-08 removes that duplicate. `EncryptedDocumentMigrationBackend.stageDocument` and `publishDocument` still authenticate their own staged/published copy at their boundaries; the test wrapper injects failure only around coordinator-visible backend calls. If the coordinator changes again, update these crash-point tests from the real call graph, not from assumed event counts.
