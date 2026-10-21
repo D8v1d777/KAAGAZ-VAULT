@@ -61,12 +61,14 @@ internal class VaultAccessController(
     private var pendingRecoveryText: String? = null
     private var runtime: VaultRuntime? = null
     @Volatile private var accessEpoch: Long = 0L
+    @Volatile private var disposed: Boolean = false
 
     private val prompt = BiometricPrompt(
         activity,
         ContextCompat.getMainExecutor(activity),
         object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                if (disposed) return
                 val cipher = result.cryptoObject?.cipher
                 if (cipher == null) {
                     onPromptFailure("The authenticated cryptographic operation was unavailable.")
@@ -85,12 +87,14 @@ internal class VaultAccessController(
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                if (disposed) return
                 onPromptFailure("Authentication was cancelled or unavailable. Existing vault data was preserved.")
             }
         }
     )
 
     fun initialize() {
+        if (disposed) return
         try {
             val record = records.loadOrNull()
             if (record != null) {
@@ -109,6 +113,7 @@ internal class VaultAccessController(
     }
 
     fun beginSetup() {
+        if (disposed) return
         try {
             if (records.hasArtifacts() || orphanedVekMaterialExists()) {
                 state(VaultAccessUiState.RecoveryRequired("Existing vault-key material prevents fresh setup. Use recovery; no replacement key was generated."))
@@ -123,6 +128,7 @@ internal class VaultAccessController(
     }
 
     fun beginUnlock() {
+        if (disposed) return
         try {
             val record = records.loadOrNull()
                 ?: throw MissingEncryptionKeyException("Vault key record is missing; recovery is required.")
@@ -139,6 +145,7 @@ internal class VaultAccessController(
     }
 
     fun recoverWithKey(text: String) {
+        if (disposed) return
         var keyBytes: ByteArray? = null
         var envelope: ByteArray? = null
         var vek: ByteArray? = null
@@ -165,6 +172,7 @@ internal class VaultAccessController(
 
     /** Requires a full-key re-entry in the UI, rather than a blind "I saved it" tap. */
     fun confirmRecoveryKeyStored(confirmation: String) {
+        if (disposed) return
         val vek = pendingVek
         val expected = pendingRecoveryText
         if (vek == null || expected == null || confirmation != expected) {
@@ -189,6 +197,7 @@ internal class VaultAccessController(
     }
 
     fun lockNow(message: String? = null) {
+        if (disposed) return
         // Invalidate pending publication atomically with detaching the current runtime.
         val previousRuntime = synchronized(this) {
             accessEpoch += 1
@@ -219,10 +228,15 @@ internal class VaultAccessController(
     }
 
     fun dispose() {
+        if (disposed) return
+        disposed = true
         val previousRuntime = synchronized(this) {
             accessEpoch += 1
             runtime.also { runtime = null }
         }
+        // Invalidate callback purpose and wipe retained wrapped-key bytes before cancellation can
+        // deliver a late authentication callback into this controller.
+        clearPrompt()
         try { prompt.cancelAuthentication() } catch (_: Exception) { }
         pendingVek?.fill(0)
         pendingVek = null
@@ -421,6 +435,7 @@ internal class VaultAccessController(
     }
 
     private fun onPromptFailure(message: String) {
+        if (disposed) return
         val lastPurpose = purpose
         val key = authKey
         clearPrompt()
@@ -459,16 +474,17 @@ internal class VaultAccessController(
     }
 
     private fun state(value: VaultAccessUiState) {
+        if (disposed) return
         if (Looper.myLooper() == Looper.getMainLooper()) uiState.value = value else postState(value)
     }
 
     private fun postState(value: VaultAccessUiState) {
-        main.post { uiState.value = value }
+        main.post { if (!disposed) uiState.value = value }
     }
 
     private fun postStateIfEpoch(value: VaultAccessUiState, expectedEpoch: Long) {
         main.post {
-            if (accessEpoch == expectedEpoch) uiState.value = value
+            if (!disposed && accessEpoch == expectedEpoch) uiState.value = value
         }
     }
 }
