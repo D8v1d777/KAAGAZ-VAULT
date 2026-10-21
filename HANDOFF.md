@@ -8,16 +8,16 @@ task: Continue CO-01/CO-02 integration hardening; preserve vault data and keep c
 state: INTEGRATION_CANDIDATE — EXACT_HEAD_CI_PENDING — DEVICE_VERIFICATION_REQUIRED
 canonical_branch: feat/durable-vault-migration-journal
 candidate_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48
-candidate_head_sha: e3519e41dcf2d8e556424476019aa12b624b45f0
+candidate_head_sha: resolve from the live PR #48 head after this handoff commit; do not trust a cached SHA here
 environment:
   repository_checkout_in_active_execution_environment: NOT_AVAILABLE — GitHub connector used for branch edits
   android_sdk_in_active_execution_environment: NOT_AVAILABLE
   local_gradle_build: NOT_RUN
   independent_reviewer_subagent: NOT_AVAILABLE
 current_release_gate:
-  exact_head_ci_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39615937636
-  observed_status_when_handoff_written: QUEUED — run #485; result must be rechecked against candidate_head_sha
-  prior_green_run_policy: Older green runs do not verify this head
+  exact_head_ci_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions
+  observed_status_when_handoff_written: A fresh run is triggered by this handoff commit; inspect the latest PR #48 run and confirm its head SHA matches the live PR head
+  prior_green_run_policy: Older green runs do not verify the current head
 scope_guard:
   - No changes to canonical branch or merge performed.
   - Do not retire legacy ciphertext, staging copies, or old key wrappers until authenticated read-back, SQLCipher reopen/integrity verification, durable migration completion, and independent review are recorded.
