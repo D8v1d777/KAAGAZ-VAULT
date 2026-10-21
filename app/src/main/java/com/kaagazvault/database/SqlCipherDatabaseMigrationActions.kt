@@ -16,7 +16,7 @@ internal class SqlCipherDatabaseMigrationActions(
     context: Context,
     private val activeProvider: VaultDatabaseProvider,
     private val session: VaultSession
-) : VaultMigrationBackendDatabaseActions {
+) : VaultDatabaseMigrationActions {
     private val appContext = context.applicationContext
     private val vekKeyAccess = SessionMigrationVekKeyAccess(session)
 
