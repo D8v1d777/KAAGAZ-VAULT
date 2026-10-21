@@ -1,3 +1,22 @@
+## 2026-10-21 — CO-08 stable migration journal codes fixed
+
+### Reproduced and fixed
+- Baseline canonical HEAD was `6b30ceaf5ab09b2494d82356b08c4bebf7406521`; the migration journal persisted enum ordinals, had a tautological enum-membership check, and the coordinator verified a newly staged document twice.
+- Test-first commit `1e76968329e2700f64613b44e608534692f46448` added `VaultMigrationJournalTest.migrationCodesAreExplicitAndStable`; local Gradle execution reached project configuration but stopped because the Sandbox has no Android SDK.
+- Exact-head CI on intermediate fix `a6f7fc241a5249bd99ac23274c7a420d81e8e54a` reproduced a Kotlin enum-constructor compile error. Commit `c44f774a452eb09595e254454c0efc3a2bb020e3` corrected it by declaring the code in each enum primary constructor.
+- `VaultMigrationJournal` now writes format v2 explicit codes, reads legacy v1 ordinal snapshots, rejects unknown codes, and uses a version-specific no-recovery sentinel. `VaultMigrationCoordinator` verifies each staged document once. The tautological validation was removed.
+
+### Verification
+- Exact-head Android CI passed for `c44f774a452eb09595e254454c0efc3a2bb020e3` in [run #39540043969](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39540043969): Python offline-manifest tests, debug/release builds, JVM unit tests, lint, and merged-manifest policy enforcement.
+- Local Python policy tests passed: `python3 -m unittest discover -s scripts -p 'test_*.py'` — 8 tests.
+- Local Android/Gradle tests were not run because `ANDROID_HOME` and `ANDROID_SDK_ROOT` are unset and no SDK is installed. No emulator or physical-device test ran.
+- Draft PR: [#43](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/43), targeting current canonical branch; no merge performed.
+
+### Remaining boundary
+- This closes CO-08 only. CO-01 session/auth wiring, CO-02 recovery lifecycle, exact-base reconciliation of PRs #37–#42, and independent human security review remain open.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
