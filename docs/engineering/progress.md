@@ -690,3 +690,11 @@ This log records repository work and evidence. It distinguishes documentation ch
 - AES-GCM document envelope operations clear temporary IV/ciphertext/AAD arrays after use. Settings-transfer crypto clears temporary plaintext/ciphertext/IV/key byte arrays where ownership is local.
 - This is best-effort JVM memory hygiene, not a guarantee against provider/JIT copies or immutable strings. No user document data was used in tests; tests use synthetic bytes only.
 - New code/test head is `7d69425b08b6aafefb9481a627f689d06fd4c563`; documentation follow-up is separate. Full Android CI must pass on the final documentation head before this batch is called verified.
+
+
+## 2026-10-21 — Import stream and authentication-disposal hardening
+
+- Document import now uses a wiping stream accumulator and clears the reusable read buffer after each import attempt, including size/stream failures.
+- Controller disposal now marks the controller disposed, invalidates the active prompt purpose and clears wrapped-key bytes before cancelling authentication. Late biometric callbacks and late UI-state posts are ignored.
+- Added a source-level regression guard for disposal ordering and late callback/state suppression.
+- This code is on the integration candidate only; verify the final exact head with full Android CI. No merge, production-ready claim, or device-test claim is made.
