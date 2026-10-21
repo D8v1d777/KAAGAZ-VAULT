@@ -16,7 +16,7 @@ import com.kaagazvault.reminders.ReminderRepository
 import java.io.File
 import java.io.IOException
 import java.security.GeneralSecurityException
-import java.security.KeyGenerator
+import javax.crypto.KeyGenerator
 import java.util.concurrent.Executors
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
