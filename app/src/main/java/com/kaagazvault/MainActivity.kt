@@ -46,6 +46,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -257,6 +258,16 @@ private fun VaultHomeScreen(
     var pendingIncomingSettings by remember { mutableStateOf<SyncableVaultSettings?>(null) }
     val activeTypography = if (simplifiedMode.value) MaterialTheme.typography.simplified() else MaterialTheme.typography
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
+    // The authenticated home tree is removed on lock. Clear document metadata and zero any
+    // pending settings-transfer buffers rather than leaving them referenced by disposed UI state.
+    DisposableEffect(Unit) {
+        onDispose {
+            documents.clear()
+            pendingExportBundle?.fill(0)
+            pendingImportBundle?.fill(0)
+        }
+    }
 
     fun refresh(message: String? = null) {
         submitIo {
