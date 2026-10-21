@@ -97,7 +97,7 @@ internal class ReminderNotificationWorker(
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .build()
-            NotificationManagerCompat.from(applicationContext).notify(reminder.id.hashCode(), notification)
+            NotificationManagerCompat.from(applicationContext).notify(reminderId.hashCode(), notification)
             Result.success()
         } catch (_: SecurityException) {
             // Permission can change between the permission check and notify().
