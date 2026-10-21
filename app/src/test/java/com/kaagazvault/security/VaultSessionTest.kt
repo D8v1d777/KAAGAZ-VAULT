@@ -61,6 +61,38 @@ class VaultSessionTest {
     }
 
     @Test
+    fun installedKeyIsIsolatedFromCallerBufferMutations() {
+        val session = VaultSession()
+        val callerBuffer = ByteArray(32) { 4 }
+        val expectedKey = callerBuffer.copyOf()
+
+        session.installVerifiedKey(callerBuffer)
+        callerBuffer.fill(0)
+
+        session.withKey { activeKey ->
+            assertArrayEquals(expectedKey, activeKey)
+        }
+        session.lock()
+    }
+
+    @Test
+    fun clearsEphemeralKeyCopyWhenOperationThrows() {
+        val session = VaultSession()
+        session.installVerifiedKey(ByteArray(32) { 5 })
+        var observedCopy: ByteArray? = null
+
+        assertThrows(IllegalArgumentException::class.java) {
+            session.withKey {
+                observedCopy = it
+                throw IllegalArgumentException("synthetic operation failure")
+            }
+        }
+
+        assertTrue(observedCopy!!.all { it == 0.toByte() })
+        session.lock()
+    }
+
+    @Test
     fun rejectsInvalidKeyLengthWithoutUnlocking() {
         val session = VaultSession()
 
