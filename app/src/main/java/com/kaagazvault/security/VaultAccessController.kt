@@ -189,9 +189,12 @@ internal class VaultAccessController(
     }
 
     fun lockNow(message: String? = null) {
-        accessEpoch += 1
+        // Invalidate pending publication atomically with dropping the UI's runtime reference.
+        synchronized(this) {
+            accessEpoch += 1
+            runtime = null
+        }
         try { session.lock() } catch (_: Exception) { }
-        runtime = null
         pendingVek?.fill(0)
         pendingVek = null
         pendingRecoveryText = null
@@ -214,14 +217,16 @@ internal class VaultAccessController(
     }
 
     fun dispose() {
-        accessEpoch += 1
+        val previousRuntime = synchronized(this) {
+            accessEpoch += 1
+            runtime.also { runtime = null }
+        }
         try { prompt.cancelAuthentication() } catch (_: Exception) { }
         pendingVek?.fill(0)
         pendingVek = null
         pendingRecoveryText = null
         try { session.lock() } catch (_: Exception) { }
-        runtime?.databaseProvider?.close()
-        runtime = null
+        try { previousRuntime?.databaseProvider?.close() } catch (_: Exception) { }
         executor.shutdownNow()
     }
 
@@ -365,12 +370,19 @@ internal class VaultAccessController(
                 val next = VaultRuntime(repository, OfflineOcrEngine(activity.applicationContext), ReminderRepository(activity.applicationContext, provider, session), provider)
                 // Background migration may finish after onStop locked the session. Never publish
                 // repositories from a stale migration epoch into the foreground UI.
-                if (migrationEpoch != accessEpoch || !session.isUnlocked()) {
+                val published = synchronized(this) {
+                    if (migrationEpoch != accessEpoch || !session.isUnlocked()) {
+                        false
+                    } else {
+                        runtime = next
+                        true
+                    }
+                }
+                if (!published) {
                     provider.close()
                     newProvider = null
                     throw VaultLockedException()
                 }
-                runtime = next
                 postStateIfEpoch(VaultAccessUiState.Ready(next), migrationEpoch)
             } catch (failure: Exception) {
                 try { session.lock() } catch (_: Exception) { }
