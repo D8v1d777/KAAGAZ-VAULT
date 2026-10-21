@@ -105,6 +105,7 @@ internal class EncryptedDocumentStore(
             encrypted.fill(0)
             if (temporary.exists()) temporary.delete()
         }
+        Unit
     }
 
     /** Returns opaque IDs only, but remains inside the same authorization boundary. */
