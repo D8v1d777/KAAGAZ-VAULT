@@ -23,18 +23,27 @@ internal class AesGcmEnvelope(
     fun encrypt(plaintext: ByteArray, key: SecretKey, context: ByteArray): ByteArray {
         require(plaintext.size <= MAX_PLAINTEXT_BYTES) { "Document payload exceeds the supported size limit" }
         val iv = ByteArray(IV_LENGTH).also(random::nextBytes)
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
-        cipher.updateAAD(associatedData(context))
-        val ciphertext = cipher.doFinal(plaintext)
+        var ciphertext: ByteArray? = null
+        var aad: ByteArray? = null
+        try {
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
+            aad = associatedData(context)
+            cipher.updateAAD(aad)
+            ciphertext = cipher.doFinal(plaintext)
 
-        return ByteBuffer.allocate(HEADER_LENGTH + ciphertext.size)
-            .order(ByteOrder.BIG_ENDIAN)
-            .put(MAGIC)
-            .put(FORMAT_VERSION)
-            .put(iv)
-            .put(ciphertext)
-            .array()
+            return ByteBuffer.allocate(HEADER_LENGTH + ciphertext.size)
+                .order(ByteOrder.BIG_ENDIAN)
+                .put(MAGIC)
+                .put(FORMAT_VERSION)
+                .put(iv)
+                .put(ciphertext)
+                .array()
+        } finally {
+            iv.fill(0)
+            ciphertext?.fill(0)
+            aad?.fill(0)
+        }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
@@ -48,21 +57,30 @@ internal class AesGcmEnvelope(
 
         val buffer = ByteBuffer.wrap(envelope).order(ByteOrder.BIG_ENDIAN)
         val magic = ByteArray(MAGIC_LENGTH).also(buffer::get)
-        if (!magic.contentEquals(MAGIC)) throw IOException("Unrecognized encrypted document format")
+        if (!magic.contentEquals(MAGIC)) {
+            magic.fill(0)
+            throw IOException("Unrecognized encrypted document format")
+        }
         val version = buffer.get()
+        magic.fill(0)
         if (version != FORMAT_VERSION) throw IOException("Unsupported encrypted document version")
 
         val iv = ByteArray(IV_LENGTH).also(buffer::get)
         val ciphertext = ByteArray(buffer.remaining()).also(buffer::get)
+        var aad: ByteArray? = null
         return try {
-            Cipher.getInstance(TRANSFORMATION).run {
-                init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
-                updateAAD(associatedData(context))
-                doFinal(ciphertext)
-            }
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
+            aad = associatedData(context)
+            cipher.updateAAD(aad)
+            cipher.doFinal(ciphertext)
         } catch (error: GeneralSecurityException) {
             // Do not return unauthenticated plaintext or include document content in errors.
             throw EncryptedDocumentAuthenticationException(error)
+        } finally {
+            iv.fill(0)
+            ciphertext.fill(0)
+            aad?.fill(0)
         }
     }
 
