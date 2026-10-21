@@ -22,4 +22,31 @@ class ReminderWorkDataTest {
             ReminderScheduler.buildInputData("Passport renewal — medical records")
         }
     }
+
+    @Test
+    fun cancelledReminderDoesNotDeliverNotification() {
+        val gate = ReminderDeliveryGate()
+        val id = UUID.randomUUID().toString()
+        var deliveries = 0
+        gate.cancel(id)
+
+        val delivered = gate.deliverIfAllowed(id) { deliveries += 1 }
+
+        assertEquals(false, delivered)
+        assertEquals(0, deliveries)
+    }
+
+    @Test
+    fun cancellationAfterSchedulingSuppressesDeliveryAndRescheduleReenablesIt() {
+        val gate = ReminderDeliveryGate()
+        val id = UUID.randomUUID().toString()
+        var deliveries = 0
+        gate.allow(id)
+        gate.cancel(id)
+        assertEquals(false, gate.deliverIfAllowed(id) { deliveries += 1 })
+
+        gate.allow(id)
+        assertEquals(true, gate.deliverIfAllowed(id) { deliveries += 1 })
+        assertEquals(1, deliveries)
+    }
 }
