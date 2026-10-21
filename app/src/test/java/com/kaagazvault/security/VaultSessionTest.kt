@@ -44,6 +44,23 @@ class VaultSessionTest {
     }
 
     @Test
+    fun rejectsReplacingAnUnlockedSessionKey() {
+        val session = VaultSession()
+        val originalKey = ByteArray(32) { 3 }
+        val replacementKey = ByteArray(32) { 9 }
+
+        session.installVerifiedKey(originalKey)
+
+        assertThrows(IllegalStateException::class.java) {
+            session.installVerifiedKey(replacementKey)
+        }
+        session.withKey { activeKey ->
+            assertArrayEquals(originalKey, activeKey)
+        }
+        session.lock()
+    }
+
+    @Test
     fun rejectsInvalidKeyLengthWithoutUnlocking() {
         val session = VaultSession()
 
