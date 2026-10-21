@@ -3,6 +3,7 @@
 - Candidate branch `agent/integration-security-hardening-candidate-2026-10-21`, PR #48; consult the live PR head and matching workflow run because follow-up handoff/plan commits continue this documentation pass.
 - Cleared owned plaintext scratch buffers in document import streams, document serialization, OCR/reviewed-OCR reads and replacements, AES-GCM envelope operations, and settings-transfer crypto. Import tests cover plaintext buffer clearing on successful read-back and invalid signature rejection.
 - Controller disposal now marks the controller disposed, invalidates the active prompt purpose, clears retained wrapped-key bytes before cancelling the prompt, and suppresses late authentication/UI-state callbacks. Source-level regression coverage added.
+- Synchronous setup/recovery prompt setup failures now clear pending recovery material and remove only the uncommitted wrapper alias, avoiding orphaned-key lockout on retry; source-level guards cover this cleanup.
 - Reminder cancellation coverage and lock-time UI metadata/settings-buffer cleanup remain part of the candidate. Migration retains legacy/staging data; no retirement or canonical merge was performed.
 - Exact-head full Android CI is required for the final head. At this entry, run #485 was queued on the prior head; verify the new run after this documentation commit. Device/emulator verification and independent human security review remain outstanding.
 
