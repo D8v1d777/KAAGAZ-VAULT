@@ -114,6 +114,7 @@ internal class VaultAccessController(
 
     fun beginSetup() {
         if (disposed) return
+        var setupKey: AuthBoundVaultKey? = null
         try {
             if (records.hasArtifacts() || orphanedVekMaterialExists()) {
                 state(VaultAccessUiState.RecoveryRequired("Existing vault-key material prevents fresh setup. Use recovery; no replacement key was generated."))
@@ -121,8 +122,16 @@ internal class VaultAccessController(
             }
             val alias = AuthBoundVaultKey().newAliasForRecoveryOrSetup()
             val key = AuthBoundVaultKey(alias)
+            setupKey = key
             startPrompt(Purpose.SETUP, key, alias, null, key.prepareSetupCipher(), "Set up Kaagaz Vault")
         } catch (failure: Exception) {
+            clearPrompt()
+            // Synchronous prompt setup failures occur before any VEK record is persisted. Remove
+            // only this fresh alias so a retry is not misclassified as orphaned-key recovery.
+            if (!records.hasArtifacts() && !recovery.hasArtifacts() && !setup.hasArtifacts() &&
+                !File(noBackup, "vault-migration").exists()) {
+                try { setupKey?.discardAbandonedSetup() } catch (_: Exception) { }
+            }
             state(VaultAccessUiState.SetupRequired(safeFailure(failure)))
         }
     }
@@ -163,6 +172,10 @@ internal class VaultAccessController(
             startPrompt(Purpose.RECOVERY_REWRAP, key, alias, null, cipher, "Restore vault access")
         } catch (failure: Exception) {
             vek?.fill(0)
+            pendingVek?.fill(0)
+            pendingVek = null
+            pendingRecoveryText = null
+            clearPrompt()
             state(VaultAccessUiState.RecoveryRequired(safeFailure(failure)))
         } finally {
             keyBytes?.fill(0)
