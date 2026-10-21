@@ -44,6 +44,12 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("migrationEpoch != accessEpoch || !session.isUnlocked()", self.controller)
         self.assertIn("postStateIfEpoch(VaultAccessUiState.Ready(next), migrationEpoch)", self.controller)
 
+    def test_migration_closes_legacy_provider_on_success_and_all_providers_on_failure(self):
+        self.assertIn("oldProvider?.close()", self.controller)
+        self.assertIn("oldProvider = null", self.controller)
+        self.assertIn("newProvider?.close()", self.controller)
+        self.assertIn("synchronized(this)", self.controller)
+
     def test_background_reminder_worker_does_not_open_encrypted_database(self):
         worker_start = self.worker.index("internal class ReminderNotificationWorker")
         worker = self.worker[worker_start:]
