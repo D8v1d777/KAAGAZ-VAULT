@@ -42,7 +42,11 @@ internal class VekWrappedDatabaseKeyStore(
             }
             return key
         }
-        if (!pending.exists()) return null
+        if (!pending.exists()) {
+            // Even an empty-store probe is an access operation: a locked session must not
+            // expose the wrapper store's state through this API.
+            return keyAccess.withKey { null }
+        }
 
         val key = decryptFile(pending)
         if (file.exists() || !pending.renameTo(file)) {
