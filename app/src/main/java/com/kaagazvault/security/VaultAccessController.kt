@@ -370,7 +370,7 @@ internal class VaultAccessController(
                 val next = VaultRuntime(repository, OfflineOcrEngine(activity.applicationContext), ReminderRepository(activity.applicationContext, provider, session), provider)
                 // Background migration may finish after onStop locked the session. Never publish
                 // repositories from a stale migration epoch into the foreground UI.
-                val published = synchronized(this) {
+                val runtimePublished = synchronized(this) {
                     if (migrationEpoch != accessEpoch || !session.isUnlocked()) {
                         false
                     } else {
@@ -378,7 +378,7 @@ internal class VaultAccessController(
                         true
                     }
                 }
-                if (!published) {
+                if (!runtimePublished) {
                     provider.close()
                     newProvider = null
                     throw VaultLockedException()
