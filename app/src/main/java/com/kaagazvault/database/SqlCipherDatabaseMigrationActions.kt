@@ -1,7 +1,7 @@
 package com.kaagazvault.database
 
 import android.content.Context
-import com.kaagazvault.security.VaultMigrationBackend
+import com.kaagazvault.security.VaultDatabaseMigrationActions
 import com.kaagazvault.security.VaultSession
 import java.io.IOException
 
@@ -45,9 +45,4 @@ internal class SqlCipherDatabaseMigrationActions(
             verificationProvider.close()
         }
     }
-}
-
-/** Narrow collaborator interface reused by the migration adapter. */
-internal interface VaultDatabaseMigrationActions : VaultMigrationBackend {
-    // The document-specific methods are supplied by EncryptedDocumentMigrationBackend.
 }
