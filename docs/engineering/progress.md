@@ -1,3 +1,11 @@
+## 2026-10-21 — CO-01 migration crash matrix aligned with CO-08
+
+- Updated the current-base draft PR #45 test matrix so it injects a single coordinator-owned `verifyStagedDocument` failure point after staging, instead of assuming the historical duplicate coordinator verification.
+- This change makes the migration backend slice compatible with the CO-08 coordinator sequence (draft PR #43) while preserving failure/restart coverage. The backend still authenticates staging during `stageDocument` and rechecks at publication; the test injector targets coordinator calls only.
+- Updated the CO-01 migration plan to document this contract. Exact-head CI is now required for the updated PR #45 head; previous run #39544662090 applies only to its previous SHA.
+
+---
+
 ## 2026-10-21 — CO-01 migration backend clean port to current canonical (draft candidate)
 
 ### Implemented in isolated branch
