@@ -1,3 +1,23 @@
+## 2026-10-21 — CO-01 approved Biometric dependency clean port (draft candidate)
+
+### Implemented in isolated branch
+- Ported the owner-approved `androidx.biometric:biometric:1.1.0` version-catalog pin and app-module alias usage onto current canonical `6b30ceaf5ab09b2494d82356b08c4bebf7406521`.
+- Ported the narrow Python source guard for the exact version-catalog alias/module usage, plus a focused decision/verification plan.
+- This enables a later auth-bound UI/API integration slice; it does not itself authenticate, lock the app, prove auth-per-use CryptoObject behavior, or authorize a runtime fallback.
+
+### Verification boundary
+- Fresh branch: `agent/CO-01-biometric-dependency-current-base-2026-10-21`, based on `6b30ceaf5ab09b2494d82356b08c4bebf7406521`.
+- The stale draft PR #41 previously passed CI run [#39412891444](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39412891444) on its own old-base head `3406185e55b4a717252804e79cd06aa3e5a39f38`; this is not verification of the current-base port.
+- Exact-head Android CI and the Python test on this candidate are pending. Local Android build/test is unavailable because GitHub DNS resolution fails in this execution environment and no Android SDK is installed.
+- No BiometricPrompt code, manifest change, key/crypto format, repository wiring, Room schema, INTERNET permission or network behavior was added. No merge or security-completion claim.
+
+### Next
+- Run the configured full CI on the exact candidate head.
+- Independently review the dependency, license/privacy/network surface and CI result.
+- Then use the dependency from the auth-bound unlock path only after the API-level/authenticator compatibility matrix and instrumentation tests are in place.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
