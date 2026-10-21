@@ -122,7 +122,8 @@ internal class DocumentRepository(
                 replacement.fill(0)
             }
             val updatedEncoded = store.read(id)
-            val updated = try { toDocument(DocumentPayloadCodec.decode(updatedEncoded), id) } finally { updatedEncoded.fill(0) }
+            val updatedPayload = try { DocumentPayloadCodec.decode(updatedEncoded) } finally { updatedEncoded.fill(0) }
+            val updated = try { toDocument(updatedPayload, id) } finally { updatedPayload.content.fill(0) }
             updateIndex { it.upsert(updated) }
             return updated
         } finally {
@@ -150,7 +151,8 @@ internal class DocumentRepository(
                 replacement.fill(0)
             }
             val updatedEncoded = store.read(id)
-            val updated = try { toDocument(DocumentPayloadCodec.decode(updatedEncoded), id) } finally { updatedEncoded.fill(0) }
+            val updatedPayload = try { DocumentPayloadCodec.decode(updatedEncoded) } finally { updatedEncoded.fill(0) }
+            val updated = try { toDocument(updatedPayload, id) } finally { updatedPayload.content.fill(0) }
             updateIndex { it.upsert(updated) }
             return updated
         } finally {
