@@ -3,7 +3,7 @@
 **Branch:** `agent/integration-security-hardening-candidate-2026-10-21`  
 **Canonical base SHA:** `6b30ceaf5ab09b2494d82356b08c4bebf7406521`  
 **Live candidate head / CI:** tracked in [draft PR #48](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48); use GitHub's current PR head SHA and its exact-head workflow run as authoritative evidence.  
-**Status:** draft validation PR #48 is open; exact-head combined CI is running. No merge is requested.
+**Status:** draft validation PR #48 is open. Exact-head CI passed on `8a3cd92d15234caf947f49f4bd69e0dacf0e642b` (run #466); subsequent documentation corrections trigger a fresh run, so the PR’s latest check is authoritative. No merge is requested.
 
 ## What is combined
 
@@ -19,16 +19,15 @@ This branch composes independently tested, current-base changes into one integra
 
 ## Session-backed document-store seam review
 
-The combined candidate now has a `SessionDocumentPayloadCryptography` adapter that runs each store operation inside `VaultSession.withKey`, so the session read lock remains held through file publication/deletion, not only through encryption. A regression test asserts locked save/list/read/replace/delete are rejected and stored ciphertext is retained. This seam is not yet used by production `MainActivity`; the existing legacy `DocumentKeyProvider` path remains available during migration.
+The production `MainActivity` now creates the home screen only from `VaultAccessUiState.Ready`, with repositories supplied by `VaultAccessController`; it no longer constructs the legacy document store or database provider directly. `SessionDocumentPayloadCryptography` keeps each protected store operation inside `VaultSession.withKey`. The controller runs the migration journal/backend before publishing the runtime, uses `SqlCipherDatabaseMigrationActions` to close/re-wrap/reopen SQLCipher and check `PRAGMA integrity_check`, and now closes the legacy provider on both success and failure. Legacy and staging ciphertext are deliberately retained; this is not permission to retire old data before device-level verification.
 
 ## What this candidate does not establish
 
-- **CO-01 remains OPEN / P0 pending verification.** `MainActivity` now gates home-screen creation on the controller's `Ready` state and the controller uses an auth-per-use CryptoObject, but end-to-end enforcement across every repository/provider, OCR/import/search/export/share path and cached handle still needs review and regression coverage. The background reminder worker no longer opens SQLCipher and emits only generic notification text; stale/deleted reminder behavior still needs explicit verification.
-- **CO-02 remains OPEN / P0 pending verification.** The controller now includes persistent envelope storage, first-time setup, one-time recovery-key display with exact re-entry confirmation, and recovery UI/state transitions. Process-death, interruption, malformed-state, device/instrumentation tests and real recovery behavior remain outstanding.
-- The document migration backend is not wired into production repository construction or the active storage root. It does not implement a real SQLCipher database-key rewrap, close/reopen, integrity-check collaborator, nor active-root cutover.
-- Legacy ciphertext/key retirement remains prohibited until authenticated read-back, real SQLCipher reopen/integrity verification and durable journal completion are proven.
-- Device/emulator instrumentation and independent human security review are not present.
-- Unit/CI success cannot establish key invalidation behavior, authenticator compatibility, process/screen-off/background locking, notification privacy, or recovery on an actual Android device.
+- **CO-01 remains OPEN / P0 pending device verification.** Production UI wiring now gates access on the authenticated session and durable migration completion; source-level regression checks guard the wiring. Static review still cannot prove every asynchronous UI callback and device lifecycle edge. The reminder worker does not open SQLCipher, emits generic notification text, and cancellation now cancels scheduled work plus any displayed notification; a delivery gate suppresses in-process cancellation races and has unit tests.
+- **CO-02 remains OPEN / P0 pending device verification.** Setup, auth-per-use unlock, persistent recovery envelope, exact recovery-key re-entry, recovery re-wrap and recovery-required UI are wired. Process-death, interrupted biometric prompts, malformed persistent state and real-device recovery still need instrumentation.
+- The migration backend and SQLCipher key rewrap/integrity collaborator are wired into the controller, but CI uses unit tests and cannot establish device-specific Keystore/SQLCipher behavior or safe migration on real user data.
+- Legacy ciphertext, staging copies and old key wrappers must not be retired until real-device authenticated read-back, SQLCipher reopen/integrity verification and durable journal completion are independently confirmed.
+- Device/emulator instrumentation and independent human security review are not present. Unit/CI success cannot establish authenticator compatibility, screen-off/background locking, process-death recovery, or actual notification privacy on Android devices.
 
 ## Cross-PR compatibility check
 
@@ -40,9 +39,8 @@ Before the latest exact-head gate, the v1-reader tests were expanded to round-tr
 
 ## Required next work
 
-1. Run full exact-head CI on the combined branch.
-2. Inspect any compile/test failures and fix only reproduced integration issues.
-3. Inspect the full changed-file diff and confirm canonical README/HANDOFF were preserved.
-4. Review and test all access paths and lock/close ordering, then verify the SQLCipher/legacy document migration cutover without destructive key replacement.
-5. Add process-death, interruption and device/instrumentation coverage for recovery and background locking.
-6. Obtain independent human security review before release.
+1. Re-run full CI on the post-documentation exact head and keep its result attached to PR #48.
+2. Finish the changed-file audit and verify canonical README/HANDOFF remain unchanged.
+3. Run Android device/emulator checks for setup/unlock/recovery, screen-off and app-background locking, interrupted migration, and reminder deletion/notification races.
+4. Validate SQLCipher key rewrap, reopen, integrity check and legacy/staging retention on a disposable test vault before any retirement policy is considered.
+5. Obtain independent human security review before release; do not merge or package as production-ready until the P0 device checks pass.
