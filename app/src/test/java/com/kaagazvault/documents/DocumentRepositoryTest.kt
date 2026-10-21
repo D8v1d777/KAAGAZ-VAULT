@@ -33,6 +33,52 @@ class DocumentRepositoryTest {
     }
 
     @Test
+    fun importConsumesAndClearsPlaintextBuffersAfterSaving() {
+        val directory = temporaryFolder.newFolder()
+        val key = newKey()
+        val store = EncryptedDocumentStore(directory, DocumentKeyProvider { key })
+        val repository = DocumentRepository(null, store)
+        val content = byteArrayOf(
+            0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+            0x11, 0x22, 0x33, 0x44
+        )
+        val expected = content.copyOf()
+
+        val imported = repository.importBytes("private.png", "image/png", content)
+
+        assertTrue("Import buffers must be cleared after storage", content.all { it == 0.toByte() })
+        val encoded = store.read(imported.id)
+        try {
+            val payload = DocumentPayloadCodec.decode(encoded)
+            try {
+                assertEquals("private.png", payload.displayName)
+                assertEquals(expected.toList(), payload.content.toList())
+            } finally {
+                payload.content.fill(0)
+            }
+        } finally {
+            encoded.fill(0)
+            expected.fill(0)
+        }
+    }
+
+    @Test
+    fun invalidImportAlsoClearsTheSuppliedPlaintextBuffer() {
+        val directory = temporaryFolder.newFolder()
+        val key = newKey()
+        val store = EncryptedDocumentStore(directory, DocumentKeyProvider { key })
+        val repository = DocumentRepository(null, store)
+        val invalid = "not a real image".toByteArray()
+
+        assertThrows(UnsupportedDocumentTypeException::class.java) {
+            repository.importBytes("private.png", "image/png", invalid)
+        }
+
+        assertTrue("Rejected import buffers must also be cleared", invalid.all { it == 0.toByte() })
+        assertTrue(directory.listFiles()!!.isEmpty())
+    }
+
+    @Test
     fun listRetainsUnreadableDocumentAndSearchSurfacesItEvenWhenItDoesNotMatch() {
         val directory = temporaryFolder.newFolder()
         val key = newKey()
