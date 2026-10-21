@@ -112,7 +112,7 @@ internal object DocumentPayloadCodec {
 }
 
 /** ByteArrayOutputStream variant that wipes its internal plaintext buffer after copying. */
-private class WipingByteArrayOutputStream(initialSize: Int) : ByteArrayOutputStream(initialSize) {
+internal class WipingByteArrayOutputStream(initialSize: Int) : ByteArrayOutputStream(initialSize) {
     fun copyAndClear(): ByteArray = toByteArray().also { clear() }
 
     fun clear() {
