@@ -4,6 +4,9 @@ import java.io.File
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.util.zip.CRC32
 import org.junit.Assert.assertEquals
@@ -25,26 +28,72 @@ class VaultMigrationJournalTest {
     @Test
     fun readsLegacyV1OrdinalSnapshot() {
         withDirectory { directory ->
-            val payload = ByteArrayOutputStream()
-            DataOutputStream(payload).use { out ->
-                out.writeInt(VaultMigrationPhase.PREPARING.ordinal)
-                out.writeBoolean(false)
-                out.writeBoolean(false)
-                out.writeInt(-1)
-                out.writeInt(0)
-            }
-            val payloadBytes = payload.toByteArray()
-            val snapshot = ByteArrayOutputStream()
-            DataOutputStream(snapshot).use { out ->
-                out.writeInt(0x4B47564D)
-                out.writeInt(1)
-                out.writeInt(payloadBytes.size)
-                out.write(payloadBytes)
-                out.writeLong(CRC32().apply { update(payloadBytes) }.value)
-            }
-            File(directory, "vault-migration.journal").writeBytes(snapshot.toByteArray())
+            val expected = VaultMigrationState().begin()
+            File(directory, "vault-migration.journal").writeBytes(encodeLegacyV1(expected))
 
-            assertEquals(VaultMigrationState().begin(), VaultMigrationJournal(directory).load())
+            assertEquals(expected, VaultMigrationJournal(directory).load())
+        }
+    }
+
+    @Test
+    fun readsEveryLegacyV1PhaseAndDocumentStepOrdinal() {
+        withDirectory { directory ->
+            val base = VaultMigrationState()
+            val preparing = base.begin()
+            val migrating = preparing.beginDocumentMigration(listOf(documentId))
+            val staged = migrating.advanceDocument(documentId, DocumentMigrationStep.STAGED)
+            val verified = staged.advanceDocument(documentId, DocumentMigrationStep.VERIFIED)
+            val published = verified.advanceDocument(documentId, DocumentMigrationStep.PUBLISHED)
+            val databaseMigration = published.beginDatabaseKeyMigration()
+            val rewrapped = databaseMigration.markDatabaseKeyRewrapped()
+            val verifying = rewrapped.beginVerification()
+            val integrityVerified = verifying.markDatabaseIntegrityVerified()
+            val completed = integrityVerified.complete()
+            val recoveryRequired = verifying.requireRecovery()
+
+            val expectedStates = listOf(
+                base,
+                preparing,
+                migrating,
+                staged,
+                verified,
+                published,
+                databaseMigration,
+                rewrapped,
+                verifying,
+                completed,
+                recoveryRequired
+            )
+            val journal = VaultMigrationJournal(directory)
+            val primary = File(directory, "vault-migration.journal")
+
+            expectedStates.forEachIndexed { index, expected ->
+                primary.writeBytes(encodeLegacyV1(expected))
+                assertEquals("Legacy v1 state #" + index + " (" + expected.phase + ")", expected, journal.load())
+            }
+        }
+    }
+
+    @Test
+    fun rejectsUnknownV2PhaseAndDocumentStepCodesEvenWithValidChecksum() {
+        withDirectory { directory ->
+            val journal = VaultMigrationJournal(directory)
+            val primary = File(directory, "vault-migration.journal")
+
+            journal.save(VaultMigrationState().begin())
+            val unknownPhase = primary.readBytes()
+            ByteBuffer.wrap(unknownPhase).order(ByteOrder.BIG_ENDIAN).putInt(12, 9999)
+            primary.writeBytes(withValidChecksum(unknownPhase))
+            assertThrows(IOException::class.java) { journal.load() }
+
+            primary.delete()
+            journal.save(VaultMigrationState().begin().beginDocumentMigration(listOf(documentId)))
+            val unknownStep = primary.readBytes()
+            val payloadSize = ByteBuffer.wrap(unknownStep).order(ByteOrder.BIG_ENDIAN).getInt(8)
+            ByteBuffer.wrap(unknownStep).order(ByteOrder.BIG_ENDIAN)
+                .putInt(12 + payloadSize - 4, 9999)
+            primary.writeBytes(withValidChecksum(unknownStep))
+            assertThrows(IOException::class.java) { journal.load() }
         }
     }
 
@@ -190,6 +239,42 @@ class VaultMigrationJournalTest {
 
             assertEquals(completeDocument, journal.load())
         }
+    }
+
+    private fun encodeLegacyV1(state: VaultMigrationState): ByteArray {
+        val payload = ByteArrayOutputStream()
+        DataOutputStream(payload).use { out ->
+            out.writeInt(state.phase.ordinal)
+            out.writeBoolean(state.databaseKeyRewrapped)
+            out.writeBoolean(state.databaseIntegrityVerified)
+            out.writeInt(state.recoveryPhase?.ordinal ?: -1)
+            val entries = state.documentSteps.toSortedMap()
+            out.writeInt(entries.size)
+            entries.forEach { (id, step) ->
+                val encodedId = id.toByteArray(StandardCharsets.UTF_8)
+                out.writeInt(encodedId.size)
+                out.write(encodedId)
+                out.writeInt(step.ordinal)
+            }
+        }
+        val payloadBytes = payload.toByteArray()
+        return ByteArrayOutputStream().also { snapshot ->
+            DataOutputStream(snapshot).use { out ->
+                out.writeInt(0x4B47564D)
+                out.writeInt(1)
+                out.writeInt(payloadBytes.size)
+                out.write(payloadBytes)
+                out.writeLong(CRC32().apply { update(payloadBytes) }.value)
+            }
+        }.toByteArray()
+    }
+
+    private fun withValidChecksum(snapshot: ByteArray): ByteArray {
+        val header = ByteBuffer.wrap(snapshot).order(ByteOrder.BIG_ENDIAN)
+        val payloadSize = header.getInt(8)
+        val checksum = CRC32().apply { update(snapshot, 12, payloadSize) }.value
+        ByteBuffer.wrap(snapshot).order(ByteOrder.BIG_ENDIAN).putLong(12 + payloadSize, checksum)
+        return snapshot
     }
 
     private fun withDirectory(block: (File) -> Unit) {
