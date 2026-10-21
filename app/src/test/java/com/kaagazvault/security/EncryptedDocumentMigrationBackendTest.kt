@@ -95,8 +95,8 @@ class EncryptedDocumentMigrationBackendTest {
     fun coordinatorResumesAfterEachBackendSideEffectCrashPoint() = withFixture { fixture ->
         val crashPoints = listOf(
             "stage:${fixture.id}#1",
+            // CO-08 leaves one coordinator-owned verification transition after staging.
             "verify:${fixture.id}#1",
-            "verify:${fixture.id}#2",
             "publish:${fixture.id}#1",
             "rewrap#1",
             "integrity#1"
