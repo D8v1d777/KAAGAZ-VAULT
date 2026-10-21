@@ -1,3 +1,11 @@
+## 2026-10-21 — Session-backed document store seam added to integration candidate
+
+- Added `DocumentPayloadCryptography` with legacy and session-backed implementations. The session-backed path holds `VaultSession` access across the full encrypted-store operation (including atomic file writes and deletion), and store recovery cleanup is deferred until a permitted operation rather than running at construction time.
+- Added regression coverage that locked sessions reject save/read/replace/list/delete and keep existing ciphertext.
+- This adapter is not wired into `MainActivity`; production access paths and SQLCipher/worker locking remain open. Combined exact-head CI on the live PR #48 head is required after these changes.
+
+---
+
 ## 2026-10-21 — Combined candidate regression hardening
 
 - Expanded the integration candidate's CO-08 journal tests to cover all legacy v1 phase states and each document-step ordinal, and reject unknown v2 phase/document-step codes even when the CRC is recalculated correctly.

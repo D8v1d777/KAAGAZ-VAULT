@@ -15,6 +15,11 @@ This branch composes independently tested, current-base changes into one integra
 4. **Biometric prerequisite:** owner-approved `androidx.biometric:biometric:1.1.0` pin and exact-version source guard.
 5. **VaultSession primitive:** 256-bit in-memory session key, temporary operation-scoped copy, best-effort clearing, lock waiting for active uses and preventing later uses.
 6. **CO-02 recovery envelope primitive:** random 256-bit recovery key encoding and versioned AES-GCM envelope with wrong-key/tamper/unsupported-format tests.
+7. **Session-backed document store seam:** `DocumentPayloadCryptography` supports legacy-key and session-key adapters; store read/write/replace/list/delete run within the crypto access callback, locked operations fail, startup artifact recovery is deferred until an authorized store operation, and ciphertext buffers are cleared after writes/reads where applicable.
+
+## Session-backed document-store seam review
+
+The combined candidate now has a `SessionDocumentPayloadCryptography` adapter that runs each store operation inside `VaultSession.withKey`, so the session read lock remains held through file publication/deletion, not only through encryption. A regression test asserts locked save/list/read/replace/delete are rejected and stored ciphertext is retained. This seam is not yet used by production `MainActivity`; the existing legacy `DocumentKeyProvider` path remains available during migration.
 
 ## What this candidate does not establish
 
