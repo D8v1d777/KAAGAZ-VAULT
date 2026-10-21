@@ -31,8 +31,7 @@ internal class SqlCipherDatabaseMigrationActions(
         activeProvider.close()
         val verificationProvider = VaultDatabaseProvider(appContext, session)
         try {
-            session.withKey {
-                val database = verificationProvider.get()
+            verificationProvider.withDatabase { database ->
                 database.openHelper.writableDatabase.query("PRAGMA integrity_check").use { cursor ->
                     if (!cursor.moveToFirst() || cursor.getString(0) != "ok" || cursor.moveToNext()) {
                         throw IOException("SQLCipher integrity_check did not return exactly one ok result")

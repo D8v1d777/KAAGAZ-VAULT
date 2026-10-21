@@ -30,12 +30,30 @@ internal class VaultDatabaseProvider(context: Context, private val session: Vaul
         ensureLockListenerRegistered()
     }
 
-    @Synchronized
+    /** Raw Room handles are restricted to legacy providers. Session providers use withDatabase. */
     fun get(): VaultDatabase {
+        check(session == null) {
+            "Session-bound database provider requires withDatabase so lock can drain active DAO work"
+        }
+        return getUnchecked()
+    }
+
+    /** Holds session access across database open and the complete DAO/query callback. */
+    fun <T> withDatabase(operation: (VaultDatabase) -> T): T {
+        val activeSession = session
+        return if (activeSession == null) {
+            operation(getUnchecked())
+        } else {
+            activeSession.withKey {
+                ensureLockListenerRegistered()
+                operation(getUnchecked())
+            }
+        }
+    }
+
+    @Synchronized
+    private fun getUnchecked(): VaultDatabase {
         ensureLockListenerRegistered()
-        // Validate access even if this provider already has a cached Room instance.
-        // DAO operations must still run inside a session operation at their call sites.
-        session?.withKey { }
         instance?.let { return it }
         System.loadLibrary("sqlcipher")
         Logger.setTarget(NoopTarget())
