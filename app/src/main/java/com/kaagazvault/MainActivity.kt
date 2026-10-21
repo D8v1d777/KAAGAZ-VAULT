@@ -61,15 +61,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kaagazvault.camera.CameraCaptureScreen
-import com.kaagazvault.database.EncryptedMetadataIndexProvider
-import com.kaagazvault.database.VaultDatabaseProvider
 import com.kaagazvault.documents.DocumentRepository
 import com.kaagazvault.documents.ImportedDocument
 import com.kaagazvault.ocr.OfflineOcrEngine
 import com.kaagazvault.reminders.ReminderRepository
 import com.kaagazvault.reminders.ReminderSection
-import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
-import com.kaagazvault.security.EncryptedDocumentStore
 import com.kaagazvault.security.MissingEncryptionKeyException
 import com.kaagazvault.security.VaultAccessController
 import com.kaagazvault.security.VaultAccessUiState
