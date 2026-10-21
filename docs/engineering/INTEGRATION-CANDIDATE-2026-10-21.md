@@ -20,6 +20,7 @@ This branch composes independently tested, current-base changes into one integra
 ## Plaintext-buffer lifetime hardening — 2026-10-21
 
 - Document imports now consume and clear the supplied plaintext byte array on both success and validation/storage failure; serialized payload and OCR text scratch buffers are wiped after use.
+- Stream import now wipes its reusable read buffer and the internal accumulation buffer; controller disposal invalidates late biometric callbacks, clears wrapped-key state, and prevents late UI-state publication.
 - OCR and reviewed-OCR updates now clear serialized reads, encoded replacement payloads, and decoded document-content buffers after each operation.
 - AES-GCM document-envelope operations clear temporary IV, ciphertext and associated-data buffers after assembling the result or completing decryption.
 - Settings-transfer encryption/decryption clears temporary plaintext, ciphertext, IV and decoded key byte arrays; pairing-ticket construction clears its original random key buffer after creating the key object.
