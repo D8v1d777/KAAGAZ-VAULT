@@ -155,6 +155,7 @@ internal class VaultAccessController(
 
     fun recoverWithKey(text: String) {
         if (disposed) return
+        var recoveryWrappingKey: AuthBoundVaultKey? = null
         var keyBytes: ByteArray? = null
         var envelope: ByteArray? = null
         var vek: ByteArray? = null
@@ -165,6 +166,7 @@ internal class VaultAccessController(
             vek = RecoveryKeyEnvelope().unwrap(envelope, keyBytes)
             val alias = AuthBoundVaultKey().newAliasForRecoveryOrSetup()
             val key = AuthBoundVaultKey(alias)
+            recoveryWrappingKey = key
             val cipher = key.prepareSetupCipher()
             pendingVek = vek
             vek = null
@@ -176,6 +178,7 @@ internal class VaultAccessController(
             pendingVek = null
             pendingRecoveryText = null
             clearPrompt()
+            try { recoveryWrappingKey?.discardAbandonedSetup() } catch (_: Exception) { }
             state(VaultAccessUiState.RecoveryRequired(safeFailure(failure)))
         } finally {
             keyBytes?.fill(0)
