@@ -124,15 +124,15 @@ internal class VaultMigrationJournal(private val directory: File) {
     private fun encode(state: VaultMigrationState): ByteArray {
         val payloadBuffer = ByteArrayOutputStream()
         DataOutputStream(payloadBuffer).use { out ->
-            out.writeInt(state.phase.ordinal)
+            out.writeInt(state.phase.code)
             out.writeBoolean(state.databaseKeyRewrapped)
             out.writeBoolean(state.databaseIntegrityVerified)
-            out.writeInt(state.recoveryPhase?.ordinal ?: NO_RECOVERY_PHASE)
+            out.writeInt(state.recoveryPhase?.code ?: NO_RECOVERY_PHASE)
             val entries = state.documentSteps.toSortedMap()
             out.writeInt(entries.size)
             entries.forEach { (id, step) ->
                 writeString(out, id)
-                out.writeInt(step.ordinal)
+                out.writeInt(step.code)
             }
         }
         val payload = payloadBuffer.toByteArray()
@@ -154,7 +154,10 @@ internal class VaultMigrationJournal(private val directory: File) {
         }
         val input = DataInputStream(ByteArrayInputStream(bytes))
         if (input.readInt() != MAGIC) throw IOException("Invalid migration journal magic")
-        if (input.readInt() != FORMAT_VERSION) throw IOException("Unsupported migration journal version")
+        val formatVersion = input.readInt()
+        if (formatVersion !in LEGACY_FORMAT_VERSION..FORMAT_VERSION) {
+            throw IOException("Unsupported migration journal version")
+        }
         val payloadSize = input.readInt()
         if (payloadSize < MIN_PAYLOAD_BYTES || payloadSize != bytes.size - HEADER_BYTES - CHECKSUM_BYTES) {
             throw IOException("Invalid migration journal payload length")
@@ -168,12 +171,25 @@ internal class VaultMigrationJournal(private val directory: File) {
         }
 
         val data = DataInputStream(ByteArrayInputStream(payload))
-        val phase = enumValue<VaultMigrationPhase>(data.readInt(), "phase")
+        val phaseCode = data.readInt()
+        val phase = if (formatVersion == LEGACY_FORMAT_VERSION) {
+            enumValue<VaultMigrationPhase>(phaseCode, "legacy phase")
+        } else {
+            codeValue({ VaultMigrationPhase.fromCode(phaseCode) }, "phase")
+        }
         val dbRewrapped = data.readBoolean()
         val dbVerified = data.readBoolean()
-        val recoveryOrdinal = data.readInt()
-        val recoveryPhase = if (recoveryOrdinal == NO_RECOVERY_PHASE) null
-            else enumValue<VaultMigrationPhase>(recoveryOrdinal, "recovery phase")
+        val recoveryCode = data.readInt()
+        val noRecoveryCode = if (formatVersion == LEGACY_FORMAT_VERSION) {
+            LEGACY_NO_RECOVERY_PHASE
+        } else {
+            NO_RECOVERY_PHASE
+        }
+        val recoveryPhase = if (recoveryCode == noRecoveryCode) null else if (formatVersion == LEGACY_FORMAT_VERSION) {
+            enumValue<VaultMigrationPhase>(recoveryCode, "legacy recovery phase")
+        } else {
+            codeValue({ VaultMigrationPhase.fromCode(recoveryCode) }, "recovery phase")
+        }
         val count = data.readInt()
         if (count < 0 || count > MAX_DOCUMENTS) throw IOException("Invalid migration document count")
         val steps = LinkedHashMap<String, DocumentMigrationStep>(count)
@@ -183,7 +199,12 @@ internal class VaultMigrationJournal(private val directory: File) {
             if (parsed == null || parsed.toString() != id || steps.containsKey(id)) {
                 throw IOException("Invalid or duplicate migration document identifier")
             }
-            steps[id] = enumValue(data.readInt(), "document step")
+            val stepCode = data.readInt()
+            steps[id] = if (formatVersion == LEGACY_FORMAT_VERSION) {
+                enumValue(stepCode, "legacy document step")
+            } else {
+                codeValue({ DocumentMigrationStep.fromCode(stepCode) }, "document step")
+            }
         }
         if (data.available() != 0) throw IOException("Unexpected migration journal payload data")
         val state = VaultMigrationState(phase, steps, dbRewrapped, dbVerified, recoveryPhase)
@@ -195,7 +216,7 @@ internal class VaultMigrationJournal(private val directory: File) {
         if (state.documentSteps.size > MAX_DOCUMENTS) throw IOException("Too many migration documents")
         state.documentSteps.forEach { (id, step) ->
             val parsed = runCatching { UUID.fromString(id) }.getOrNull()
-            if (parsed == null || parsed.toString() != id || step !in DocumentMigrationStep.entries) {
+            if (parsed == null || parsed.toString() != id) {
                 throw IOException("Invalid migration document entry")
             }
         }
@@ -237,6 +258,13 @@ internal class VaultMigrationJournal(private val directory: File) {
 
     private inline fun <reified T : Enum<T>> enumValue(ordinal: Int, label: String): T =
         enumValues<T>().getOrNull(ordinal) ?: throw IOException("Invalid migration $label")
+
+    private inline fun <T> codeValue(read: () -> T, label: String): T =
+        try {
+            read()
+        } catch (error: IllegalArgumentException) {
+            throw IOException("Invalid migration $label", error)
+        }
 
     private fun writeString(out: DataOutputStream, value: String) {
         val bytes = value.toByteArray(StandardCharsets.UTF_8)
@@ -282,13 +310,15 @@ internal class VaultMigrationJournal(private val directory: File) {
     private companion object {
         const val JOURNAL_NAME = "vault-migration.journal"
         const val MAGIC = 0x4B47564D // KGVM
-        const val FORMAT_VERSION = 1
+        const val LEGACY_FORMAT_VERSION = 1
+        const val FORMAT_VERSION = 2
         const val HEADER_BYTES = 12
         const val CHECKSUM_BYTES = 8
         const val MIN_PAYLOAD_BYTES = 4 + 1 + 1 + 4 + 4
         const val MAX_ID_BYTES = 64
         const val MAX_DOCUMENTS = 10_000
         const val MAX_JOURNAL_BYTES = 1_000_000
-        const val NO_RECOVERY_PHASE = -1
+        const val LEGACY_NO_RECOVERY_PHASE = -1
+        const val NO_RECOVERY_PHASE = 0
     }
 }

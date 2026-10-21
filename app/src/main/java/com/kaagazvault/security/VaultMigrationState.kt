@@ -8,21 +8,33 @@ import java.util.UUID
  * This class does not perform I/O or cryptography. Persist snapshots atomically before
  * acting on each transition; do not treat this model alone as a durable migration journal.
  */
-internal enum class VaultMigrationPhase {
-    NOT_STARTED,
-    PREPARING,
-    MIGRATING_DOCUMENTS,
-    MIGRATING_DATABASE_KEY,
-    VERIFYING,
-    COMPLETE,
-    RECOVERY_REQUIRED
+internal enum class VaultMigrationPhase(val code: Int) {
+    NOT_STARTED(10),
+    PREPARING(20),
+    MIGRATING_DOCUMENTS(30),
+    MIGRATING_DATABASE_KEY(40),
+    VERIFYING(50),
+    COMPLETE(60),
+    RECOVERY_REQUIRED(70);
+
+    companion object {
+        fun fromCode(code: Int): VaultMigrationPhase =
+            entries.firstOrNull { it.code == code }
+                ?: throw IllegalArgumentException("Unknown migration phase code: $code")
+    }
 }
 
-internal enum class DocumentMigrationStep {
-    PENDING,
-    STAGED,
-    VERIFIED,
-    PUBLISHED
+internal enum class DocumentMigrationStep(val code: Int) {
+    PENDING(10),
+    STAGED(20),
+    VERIFIED(30),
+    PUBLISHED(40);
+
+    companion object {
+        fun fromCode(code: Int): DocumentMigrationStep =
+            entries.firstOrNull { it.code == code }
+                ?: throw IllegalArgumentException("Unknown document migration step code: $code")
+    }
 }
 
 internal data class VaultMigrationState(
