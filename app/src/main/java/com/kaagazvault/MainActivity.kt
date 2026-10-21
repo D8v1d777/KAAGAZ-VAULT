@@ -8,7 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -70,6 +70,10 @@ import com.kaagazvault.reminders.ReminderSection
 import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
 import com.kaagazvault.security.EncryptedDocumentStore
 import com.kaagazvault.security.MissingEncryptionKeyException
+import com.kaagazvault.security.VaultAccessController
+import com.kaagazvault.security.VaultAccessUiState
+import com.kaagazvault.security.VaultRuntime
+import com.kaagazvault.security.VaultSession
 import com.kaagazvault.sync.SettingsMergeDecision
 import com.kaagazvault.sync.SettingsPairingTicket
 import com.kaagazvault.sync.SettingsSyncCrypto
@@ -83,52 +87,147 @@ import java.io.InputStream
 import java.security.GeneralSecurityException
 import java.util.concurrent.Executors
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val ioExecutor = Executors.newSingleThreadExecutor()
-    private var databaseProvider: VaultDatabaseProvider? = null
+    private var accessController: VaultAccessController? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Keep sensitive document previews out of the app switcher snapshot.
+        // Keep sensitive document previews and the recovery key out of app-switcher snapshots.
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        val store = EncryptedDocumentStore(
-            java.io.File(filesDir, "encrypted_documents"),
-            AndroidKeystoreDocumentKeyProvider {
-                java.io.File(filesDir, "encrypted_documents").listFiles()
-                    ?.any { it.name.endsWith(".kgv") || it.name.endsWith(".backup") } == true
-            }
-        )
-        val provider = VaultDatabaseProvider(applicationContext)
-        databaseProvider = provider
-        val repository = DocumentRepository(
-            contentResolver,
-            store,
-            EncryptedMetadataIndexProvider(provider)
-        )
-        val ocrEngine = OfflineOcrEngine(applicationContext)
-        val reminderRepository = ReminderRepository(applicationContext, provider)
+
+        val controller = VaultAccessController(this, VaultSession())
+        accessController = controller
         setContent {
+            val accessState by controller.uiState
+            LaunchedEffect(Unit) { controller.initialize() }
             KaagazTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    VaultHomeScreen(
-                        lifecycleOwner = this@MainActivity,
-                        repository = repository,
-                        ocrEngine = ocrEngine,
-                        reminderRepository = reminderRepository,
-                        submitIo = { work -> ioExecutor.execute(work) }
-                    )
+                    when (val state = accessState) {
+                        is VaultAccessUiState.Ready -> {
+                            val runtime: VaultRuntime = state.runtime
+                            VaultHomeScreen(
+                                lifecycleOwner = this@MainActivity,
+                                repository = runtime.documents,
+                                ocrEngine = runtime.ocr,
+                                reminderRepository = runtime.reminders,
+                                submitIo = { work -> ioExecutor.execute(work) }
+                            )
+                        }
+                        else -> VaultAccessScreen(state = state, controller = controller)
+                    }
                 }
             }
         }
     }
 
+    override fun onStop() {
+        accessController?.onActivityStopped()
+        super.onStop()
+    }
+
     override fun onDestroy() {
-        databaseProvider?.let { provider -> ioExecutor.execute { provider.close() } }
-        ioExecutor.shutdown()
+        accessController?.dispose()
+        accessController = null
+        ioExecutor.shutdownNow()
         super.onDestroy()
     }
 }
 
+@Composable
+private fun VaultAccessScreen(
+    state: VaultAccessUiState,
+    controller: VaultAccessController
+) {
+    var recoveryKey by remember(state) { mutableStateOf("") }
+    var recoveryConfirmation by remember(state) { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(24.dp))
+        Text("KAAGAZ VAULT", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(
+            "Your documents stay on this device. Unlock access before opening the vault.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        when (state) {
+            VaultAccessUiState.Initializing -> {
+                CircularProgressIndicator()
+                Text("Checking protected vault state…")
+            }
+            is VaultAccessUiState.SetupRequired -> {
+                Text("Set up device authentication and create a recovery key before storing documents.")
+                state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Button(onClick = controller::beginSetup, modifier = Modifier.fillMaxWidth()) {
+                    Text("Set up secure vault")
+                }
+            }
+            is VaultAccessUiState.Locked -> {
+                Text("The vault is locked. Authenticate to access your documents.")
+                state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Button(onClick = controller::beginUnlock, modifier = Modifier.fillMaxWidth()) {
+                    Text("Unlock vault")
+                }
+            }
+            is VaultAccessUiState.ConfirmRecoveryKey -> {
+                Text("Save this recovery key somewhere private and offline. Anyone with it may be able to restore vault access.")
+                Card(Modifier.fillMaxWidth()) {
+                    Text(
+                        state.key,
+                        modifier = Modifier.padding(16.dp),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                OutlinedTextField(
+                    value = recoveryConfirmation,
+                    onValueChange = { recoveryConfirmation = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Re-enter the full recovery key") },
+                    supportingText = { Text("Confirmation must match exactly.") }
+                )
+                Button(
+                    onClick = { controller.confirmRecoveryKeyStored(recoveryConfirmation) },
+                    enabled = recoveryConfirmation.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Confirm saved recovery key") }
+            }
+            is VaultAccessUiState.RecoveryRequired -> {
+                Text(
+                    "Normal unlock is unavailable. Enter your existing recovery key. Do not reset or reinstall the app while recovery is unresolved.",
+                    color = MaterialTheme.colorScheme.error
+                )
+                Text(state.message)
+                OutlinedTextField(
+                    value = recoveryKey,
+                    onValueChange = { recoveryKey = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Recovery key") },
+                    supportingText = { Text("The key is used locally and is not sent to a server.") }
+                )
+                Button(
+                    onClick = { controller.recoverWithKey(recoveryKey.trim()) },
+                    enabled = recoveryKey.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Restore access") }
+            }
+            is VaultAccessUiState.Migrating -> {
+                CircularProgressIndicator()
+                Text(state.message)
+                Text("Keep the app open while protected data is verified. Existing files are not intentionally deleted by this screen.")
+            }
+            is VaultAccessUiState.Ready -> Unit
+        }
+    }
+}
 @Composable
 private fun VaultHomeScreen(
     lifecycleOwner: androidx.lifecycle.LifecycleOwner,
