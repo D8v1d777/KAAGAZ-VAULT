@@ -70,20 +70,29 @@ internal class DocumentRepository(
 
     @Throws(IOException::class, GeneralSecurityException::class)
     private fun saveContent(displayName: String, mimeType: String, content: ByteArray): ImportedDocument {
-        if (content.isEmpty()) throw IOException("The selected document is empty")
-        if (content.size > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
-        if (mimeType != PDF_MIME && !mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
-        if (!DocumentSignatureValidator.isSupported(mimeType, content)) throw UnsupportedDocumentTypeException()
+        var encodedPayload: ByteArray? = null
+        try {
+            if (content.isEmpty()) throw IOException("The selected document is empty")
+            if (content.size > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
+            if (mimeType != PDF_MIME && !mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
+            if (!DocumentSignatureValidator.isSupported(mimeType, content)) throw UnsupportedDocumentTypeException()
 
-        val safeName = displayName.filterNot { it.isISOControl() }
-            .substringAfterLast('/')
-            .trim()
-            .take(MAX_NAME_LENGTH)
-            .ifBlank { "Imported document" }
-        val id = store.save(DocumentPayloadCodec.encode(ImportedPayload(safeName, mimeType, content)))
-        val imported = ImportedDocument(id, safeName, mimeType, content.size)
-        updateIndex { it.upsert(imported) }
-        return imported
+            val safeName = displayName.filterNot { it.isISOControl() }
+                .substringAfterLast('/')
+                .trim()
+                .take(MAX_NAME_LENGTH)
+                .ifBlank { "Imported document" }
+            encodedPayload = DocumentPayloadCodec.encode(ImportedPayload(safeName, mimeType, content))
+            val id = store.save(encodedPayload)
+            val imported = ImportedDocument(id, safeName, mimeType, content.size)
+            updateIndex { it.upsert(imported) }
+            return imported
+        } finally {
+            // Import buffers are consumed by this operation. Do not leave plaintext document bytes
+            // or the serialized payload reachable after success, validation failure, or I/O failure.
+            encodedPayload?.fill(0)
+            content.fill(0)
+        }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
@@ -91,15 +100,15 @@ internal class DocumentRepository(
         withVaultSession { recognizeDocumentInternal(id, engine) }
 
     private fun recognizeDocumentInternal(id: String, engine: OfflineOcrEngine): ImportedDocument {
-        val payload = DocumentPayloadCodec.decode(store.read(id))
-        val result = when {
-            payload.mimeType.startsWith("image/") -> engine.recognizeImage(payload.content)
-            payload.mimeType == PDF_MIME -> engine.recognizePdf(payload.content)
-            else -> throw UnsupportedDocumentTypeException()
-        }
-        store.replace(
-            id,
-            DocumentPayloadCodec.encode(payload.copy(
+        val encoded = store.read(id)
+        val payload = try { DocumentPayloadCodec.decode(encoded) } finally { encoded.fill(0) }
+        try {
+            val result = when {
+                payload.mimeType.startsWith("image/") -> engine.recognizeImage(payload.content)
+                payload.mimeType == PDF_MIME -> engine.recognizePdf(payload.content)
+                else -> throw UnsupportedDocumentTypeException()
+            }
+            val replacement = DocumentPayloadCodec.encode(payload.copy(
                 ocrText = result.text.take(MAX_OCR_CHARACTERS),
                 ocrConfidence = result.meanConfidence,
                 ocrReviewed = false,
@@ -107,10 +116,18 @@ internal class DocumentRepository(
                 ocrSource = result.source,
                 ocrLanguages = result.languages
             ))
-        )
-        val updated = toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
-        updateIndex { it.upsert(updated) }
-        return updated
+            try {
+                store.replace(id, replacement)
+            } finally {
+                replacement.fill(0)
+            }
+            val updatedEncoded = store.read(id)
+            val updated = try { toDocument(DocumentPayloadCodec.decode(updatedEncoded), id) } finally { updatedEncoded.fill(0) }
+            updateIndex { it.upsert(updated) }
+            return updated
+        } finally {
+            payload.content.fill(0)
+        }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
@@ -118,19 +135,27 @@ internal class DocumentRepository(
         withVaultSession { saveReviewedOcrInternal(id, correctedText) }
 
     private fun saveReviewedOcrInternal(id: String, correctedText: String): ImportedDocument {
-        val payload = DocumentPayloadCodec.decode(store.read(id))
-        if (payload.ocrText == null) throw IOException("No OCR result exists for this document")
-        store.replace(
-            id,
-            DocumentPayloadCodec.encode(payload.copy(
+        val encoded = store.read(id)
+        val payload = try { DocumentPayloadCodec.decode(encoded) } finally { encoded.fill(0) }
+        try {
+            if (payload.ocrText == null) throw IOException("No OCR result exists for this document")
+            val replacement = DocumentPayloadCodec.encode(payload.copy(
                 ocrText = correctedText.take(MAX_OCR_CHARACTERS),
                 ocrReviewed = true,
                 ocrTruncated = correctedText.length > MAX_OCR_CHARACTERS
             ))
-        )
-        val updated = toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
-        updateIndex { it.upsert(updated) }
-        return updated
+            try {
+                store.replace(id, replacement)
+            } finally {
+                replacement.fill(0)
+            }
+            val updatedEncoded = store.read(id)
+            val updated = try { toDocument(DocumentPayloadCodec.decode(updatedEncoded), id) } finally { updatedEncoded.fill(0) }
+            updateIndex { it.upsert(updated) }
+            return updated
+        } finally {
+            payload.content.fill(0)
+        }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
