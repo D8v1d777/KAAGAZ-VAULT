@@ -60,6 +60,21 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("if (disposed) return", self.controller)
         self.assertIn("if (!disposed && accessEpoch == expectedEpoch)", self.controller)
 
+    def test_synchronous_auth_prompt_failures_clear_recovery_state(self):
+        setup_start = self.controller.index("fun beginSetup()")
+        setup_end = self.controller.index("fun beginUnlock()", setup_start)
+        setup_body = self.controller[setup_start:setup_end]
+        self.assertIn("clearPrompt()", setup_body)
+        self.assertIn("setupKey?.discardAbandonedSetup()", setup_body)
+
+        recovery_start = self.controller.index("fun recoverWithKey(")
+        recovery_end = self.controller.index("fun confirmRecoveryKeyStored(", recovery_start)
+        recovery_body = self.controller[recovery_start:recovery_end]
+        self.assertIn("pendingVek?.fill(0)", recovery_body)
+        self.assertIn("pendingVek = null", recovery_body)
+        self.assertIn("pendingRecoveryText = null", recovery_body)
+        self.assertIn("clearPrompt()", recovery_body)
+
     def test_background_reminder_worker_does_not_open_encrypted_database(self):
         worker_start = self.worker.index("internal class ReminderNotificationWorker")
         worker = self.worker[worker_start:]
