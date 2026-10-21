@@ -1,3 +1,13 @@
+## 2026-10-21 — Integration security hardening continuation
+
+- Candidate branch `agent/integration-security-hardening-candidate-2026-10-21`, PR #48, latest head before this progress update: `a49f05dd246c9c91e47a34be422327e2c638a83e`.
+- Cleared owned plaintext scratch buffers in document import streams, document serialization, OCR/reviewed-OCR reads and replacements, AES-GCM envelope operations, and settings-transfer crypto. Import tests cover plaintext buffer clearing on successful read-back and invalid signature rejection.
+- Controller disposal now marks the controller disposed, invalidates the active prompt purpose, clears retained wrapped-key bytes before cancelling the prompt, and suppresses late authentication/UI-state callbacks. Source-level regression coverage added.
+- Reminder cancellation coverage and lock-time UI metadata/settings-buffer cleanup remain part of the candidate. Migration retains legacy/staging data; no retirement or canonical merge was performed.
+- Exact-head full Android CI is required for the final head. At this entry, run #485 was queued on the prior head; verify the new run after this documentation commit. Device/emulator verification and independent human security review remain outstanding.
+
+---
+
 ## 2026-10-21 — Session-backed document store seam added to integration candidate
 
 - Added `DocumentPayloadCryptography` with legacy and session-backed implementations. The session-backed path holds `VaultSession` access across the full encrypted-store operation (including atomic file writes and deletion), and store recovery cleanup is deferred until a permitted operation rather than running at construction time.
@@ -681,20 +691,3 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Verify the final stable-SDK build configuration through GitHub Actions.
 2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
 3. Start the encrypted-storage prototype only after researching Android Keystore, SQLCipher, Room, and backup/key-lifecycle constraints; keep ADR-0001 Proposed until prototype evidence exists.
-
-
-## 2026-10-21 — Plaintext buffer lifetime hardening
-
-- `DocumentRepository.saveContent` now clears the consumed import byte array and serialized payload buffer in a `finally` block, including validation/storage failures. Regression tests cover success with authenticated read-back and invalid-signature rejection.
-- OCR and reviewed-OCR paths clear serialized store reads, encoded replacement buffers, and decoded content bytes after processing. The document payload codec wipes its output stream's internal buffer and temporary OCR UTF-8 bytes.
-- AES-GCM document envelope operations clear temporary IV/ciphertext/AAD arrays after use. Settings-transfer crypto clears temporary plaintext/ciphertext/IV/key byte arrays where ownership is local.
-- This is best-effort JVM memory hygiene, not a guarantee against provider/JIT copies or immutable strings. No user document data was used in tests; tests use synthetic bytes only.
-- New code/test head is `7d69425b08b6aafefb9481a627f689d06fd4c563`; documentation follow-up is separate. Full Android CI must pass on the final documentation head before this batch is called verified.
-
-
-## 2026-10-21 — Import stream and authentication-disposal hardening
-
-- Document import now uses a wiping stream accumulator and clears the reusable read buffer after each import attempt, including size/stream failures.
-- Controller disposal now marks the controller disposed, invalidates the active prompt purpose and clears wrapped-key bytes before cancelling authentication. Late biometric callbacks and late UI-state posts are ignored.
-- Added a source-level regression guard for disposal ordering and late callback/state suppression.
-- This code is on the integration candidate only; verify the final exact head with full Android CI. No merge, production-ready claim, or device-test claim is made.
