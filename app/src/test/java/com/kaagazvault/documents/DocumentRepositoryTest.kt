@@ -3,6 +3,9 @@ package com.kaagazvault.documents
 import com.kaagazvault.security.DocumentKeyProvider
 import com.kaagazvault.security.EncryptedDocumentStore
 import com.kaagazvault.security.MissingEncryptionKeyException
+import com.kaagazvault.security.SessionDocumentPayloadCryptography
+import com.kaagazvault.security.VaultLockedException
+import android.net.Uri
 import java.io.File
 import javax.crypto.KeyGenerator
 import org.junit.Assert.assertEquals
@@ -68,6 +71,25 @@ class DocumentRepositoryTest {
             setOf(unreadableId),
             searched.filterNot { it.isReadable }.map { it.id }.toSet()
         )
+    }
+
+    @Test
+    fun sessionBoundRepositoryRejectsAllKeyBearingOperationsWhileLocked() {
+        val directory = temporaryFolder.newFolder()
+        val session = com.kaagazvault.security.VaultSession()
+        val store = EncryptedDocumentStore(directory, SessionDocumentPayloadCryptography(session))
+        val repository = DocumentRepository(null, store, session = session)
+
+        assertThrows(VaultLockedException::class.java) { repository.list() }
+        assertThrows(VaultLockedException::class.java) { repository.search("private") }
+        assertThrows(VaultLockedException::class.java) { repository.delete("123e4567-e89b-12d3-a456-426614174000") }
+        assertThrows(VaultLockedException::class.java) {
+            repository.importBytes("synthetic.png", "image/png", byteArrayOf(1, 2, 3))
+        }
+        assertThrows(VaultLockedException::class.java) {
+            repository.saveReviewedOcr("123e4567-e89b-12d3-a456-426614174000", "sensitive text")
+        }
+        assertTrue(directory.listFiles()!!.isEmpty())
     }
 
     @Test
