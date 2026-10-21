@@ -1,3 +1,11 @@
+## 2026-10-21 — Combined candidate regression hardening
+
+- Expanded the integration candidate's CO-08 journal tests to cover all legacy v1 phase states and each document-step ordinal, and reject unknown v2 phase/document-step codes even when the CRC is recalculated correctly.
+- Replaced partial stable-code assertions with exact expected code sequences for every persisted phase and document step.
+- These additional regression tests are part of the live [draft integration PR #48](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48). Its current head's combined exact-head CI is the release gate; earlier CI runs apply only to their named SHAs.
+
+---
+
 ## 2026-10-21 — Combined integration candidate created
 
 - Combined CO-08, CO-04, CO-01 document-migration adapter, approved Biometric dependency, VaultSession primitive and CO-02 recovery envelope primitive onto one validation branch created from canonical SHA `6b30ceaf5ab09b2494d82356b08c4bebf7406521`.

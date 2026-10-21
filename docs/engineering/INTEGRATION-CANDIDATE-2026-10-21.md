@@ -2,8 +2,8 @@
 
 **Branch:** `agent/integration-security-hardening-candidate-2026-10-21`  
 **Canonical base SHA:** `6b30ceaf5ab09b2494d82356b08c4bebf7406521`  
-**Current integrated source SHA:** `83aa16a0c29a57962c65d547e1204d14688ddff8`  
-**Status:** validation candidate only; PR / combined exact-head CI not yet created.
+**Live candidate head / CI:** tracked in [draft PR #48](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48); use GitHub's current PR head SHA and its exact-head workflow run as authoritative evidence.  
+**Status:** draft validation PR #48 is open; exact-head combined CI is running. No merge is requested.
 
 ## What is combined
 
@@ -28,6 +28,10 @@ This branch composes independently tested, current-base changes into one integra
 ## Cross-PR compatibility check
 
 The migration crash-injection test now exercises one coordinator-owned verification failure point after staging, matching the CO-08 sequence. The adapter independently authenticates staged content during its stage operation and rechecks at publication. The combined CI run must verify this assumption.
+
+## Additional migration-journal regression coverage
+
+Before the latest exact-head gate, the v1-reader tests were expanded to round-trip all journal phase states and every document migration step under the legacy ordinal encoding. New negative tests mutate v2 phase/document-step codes to unknown values and recalculate the CRC so rejection is tested independently of checksum mismatch. Stable-code tests now assert the complete explicit code sequences for both enums.
 
 ## Required next work
 
