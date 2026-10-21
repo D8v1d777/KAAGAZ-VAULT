@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
+import com.kaagazvault.security.MigrationVekKeyAccess
 import androidx.sqlite.db.SupportSQLiteDatabase
 import net.zetetic.database.Logger
 import net.zetetic.database.NoopTarget
@@ -16,17 +17,20 @@ internal abstract class VaultDatabase : RoomDatabase() {
     abstract fun reminderDao(): ReminderDao
 }
 
-internal class VaultDatabaseProvider(context: Context) {
+internal class VaultDatabaseProvider(context: Context, private val vekKeyAccess: MigrationVekKeyAccess? = null) {
     private val appContext = context.applicationContext
     @Volatile private var instance: VaultDatabase? = null
     private var databaseKey: ByteArray? = null
 
     @Synchronized
     fun get(): VaultDatabase {
+        // A cached Room handle must not be handed out after a VEK-wrapped key requires a session.
+        // Protected DAO operations must still be enclosed in a session operation by their caller.
+        vekKeyAccess?.withKey { }
         instance?.let { return it }
         System.loadLibrary("sqlcipher")
         Logger.setTarget(NoopTarget())
-        val key = DatabaseKeyManager(appContext).getOrCreateKey()
+        val key = DatabaseKeyManager(appContext, vekKeyAccess).getOrCreateKey()
         try {
             val created = Room.databaseBuilder(
                 appContext, VaultDatabase::class.java,

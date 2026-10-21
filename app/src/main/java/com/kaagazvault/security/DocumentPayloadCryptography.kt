@@ -64,3 +64,9 @@ internal class SessionDocumentPayloadCryptography(
             operation(cipher)
         }
 }
+
+/** Adapts the active in-memory VEK session to migration/database key operations. */
+internal class SessionMigrationVekKeyAccess(private val session: VaultSession) : MigrationVekKeyAccess {
+    override fun <T> withKey(block: (SecretKey) -> T): T =
+        session.withKey { vekBytes -> block(SecretKeySpec(vekBytes, "AES")) }
+}
