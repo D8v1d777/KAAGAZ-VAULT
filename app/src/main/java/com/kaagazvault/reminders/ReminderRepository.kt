@@ -3,6 +3,7 @@ package com.kaagazvault.reminders
 import android.content.Context
 import com.kaagazvault.database.ReminderEntity
 import com.kaagazvault.database.VaultDatabaseProvider
+import com.kaagazvault.security.VaultSession
 import java.util.UUID
 
 /**
@@ -11,38 +12,41 @@ import java.util.UUID
  */
 internal class ReminderRepository(
     context: Context,
-    private val databaseProvider: VaultDatabaseProvider
+    private val databaseProvider: VaultDatabaseProvider,
+    private val session: VaultSession? = null
 ) {
     private val appContext = context.applicationContext
 
-    fun list(): List<ReminderEntity> = databaseProvider.get().reminderDao().listAll()
+    private fun <T> withVaultSession(operation: () -> T): T =
+        session?.withKey { operation() } ?: operation()
 
-    fun create(title: String, dueAtEpochMillis: Long, linkedDocumentId: String? = null): ReminderEntity {
-        val safeTitle = ReminderPolicy.normalizeTitle(title)
-        ReminderPolicy.requireFutureDueTime(dueAtEpochMillis, System.currentTimeMillis())
-        val reminder = ReminderEntity(
-            id = UUID.randomUUID().toString(),
-            title = safeTitle,
-            dueAtEpochMillis = dueAtEpochMillis,
-            linkedDocumentId = linkedDocumentId,
-            createdAtEpochMillis = System.currentTimeMillis()
-        )
-        val dao = databaseProvider.get().reminderDao()
-        dao.upsert(reminder)
-        try {
-            ReminderScheduler.schedule(appContext, reminder.id, reminder.dueAtEpochMillis)
-        } catch (error: Exception) {
-            // Do not leave a reminder that the UI reported as failed to schedule.
-            dao.deleteById(reminder.id)
-            throw error
-        }
-        return reminder
+    fun list(): List<ReminderEntity> = withVaultSession {
+        databaseProvider.withDatabase { it.reminderDao().listAll() }
     }
 
-    fun delete(id: String) {
-        // Remove the encrypted source-of-truth row first so a racing worker can no-op.
-        databaseProvider.get().reminderDao().deleteById(id)
+    fun create(title: String, dueAtEpochMillis: Long, linkedDocumentId: String? = null): ReminderEntity =
+        withVaultSession {
+            val safeTitle = ReminderPolicy.normalizeTitle(title)
+            ReminderPolicy.requireFutureDueTime(dueAtEpochMillis, System.currentTimeMillis())
+            val reminder = ReminderEntity(
+                id = UUID.randomUUID().toString(),
+                title = safeTitle,
+                dueAtEpochMillis = dueAtEpochMillis,
+                linkedDocumentId = linkedDocumentId,
+                createdAtEpochMillis = System.currentTimeMillis()
+            )
+            databaseProvider.withDatabase { it.reminderDao().upsert(reminder) }
+            try {
+                ReminderScheduler.schedule(appContext, reminder.id, reminder.dueAtEpochMillis)
+            } catch (error: Exception) {
+                databaseProvider.withDatabase { it.reminderDao().deleteById(reminder.id) }
+                throw error
+            }
+            reminder
+        }
+
+    fun delete(id: String) = withVaultSession {
+        databaseProvider.withDatabase { it.reminderDao().deleteById(id) }
         ReminderScheduler.cancel(appContext, id)
     }
-
 }

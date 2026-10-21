@@ -19,6 +19,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.kaagazvault.MainActivity
 import com.kaagazvault.database.VaultDatabaseProvider
+import com.kaagazvault.security.VaultLockedException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -103,6 +104,9 @@ internal class ReminderNotificationWorker(
             Result.success()
         } catch (_: SecurityException) {
             // Permission can change between the permission check and notify().
+            Result.success()
+        } catch (_: VaultLockedException) {
+            // C1: background work cannot open a VEK-wrapped DB while the app is locked.
             Result.success()
         } catch (_: Exception) {
             Result.retry()

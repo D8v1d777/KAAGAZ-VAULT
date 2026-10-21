@@ -6,6 +6,7 @@ import com.kaagazvault.database.EncryptedMetadataIndex
 import com.kaagazvault.database.EncryptedMetadataIndexProvider
 import com.kaagazvault.ocr.OfflineOcrEngine
 import com.kaagazvault.security.EncryptedDocumentStore
+import com.kaagazvault.security.VaultSession
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.security.GeneralSecurityException
@@ -17,8 +18,11 @@ import java.security.GeneralSecurityException
 internal class DocumentRepository(
     private val resolver: ContentResolver?,
     private val store: EncryptedDocumentStore,
-    private val metadataIndexProvider: EncryptedMetadataIndexProvider? = null
+    private val metadataIndexProvider: EncryptedMetadataIndexProvider? = null,
+    private val session: VaultSession? = null
 ) {
+    private fun <T> withVaultSession(operation: () -> T): T =
+        session?.withKey { operation() } ?: operation()
     @Volatile
     var encryptedSearchAvailable: Boolean = false
         private set
@@ -33,7 +37,9 @@ internal class DocumentRepository(
             .getOrNull()
     }
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun import(uri: Uri): ImportedDocument {
+    fun import(uri: Uri): ImportedDocument = withVaultSession { importInternal(uri) }
+
+    private fun importInternal(uri: Uri): ImportedDocument {
         val contentResolver = resolver ?: throw IOException("Document import is unavailable")
         val mimeType = contentResolver.getType(uri)?.lowercase()
             ?: throw IOException("Could not determine the selected file type")
@@ -60,7 +66,7 @@ internal class DocumentRepository(
 
     @Throws(IOException::class, GeneralSecurityException::class)
     fun importBytes(displayName: String, mimeType: String, content: ByteArray): ImportedDocument =
-        saveContent(displayName, mimeType.lowercase(), content)
+        withVaultSession { saveContent(displayName, mimeType.lowercase(), content) }
 
     @Throws(IOException::class, GeneralSecurityException::class)
     private fun saveContent(displayName: String, mimeType: String, content: ByteArray): ImportedDocument {
@@ -81,7 +87,10 @@ internal class DocumentRepository(
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun recognizeDocument(id: String, engine: OfflineOcrEngine): ImportedDocument {
+    fun recognizeDocument(id: String, engine: OfflineOcrEngine): ImportedDocument =
+        withVaultSession { recognizeDocumentInternal(id, engine) }
+
+    private fun recognizeDocumentInternal(id: String, engine: OfflineOcrEngine): ImportedDocument {
         val payload = DocumentPayloadCodec.decode(store.read(id))
         val result = when {
             payload.mimeType.startsWith("image/") -> engine.recognizeImage(payload.content)
@@ -105,7 +114,10 @@ internal class DocumentRepository(
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun saveReviewedOcr(id: String, correctedText: String): ImportedDocument {
+    fun saveReviewedOcr(id: String, correctedText: String): ImportedDocument =
+        withVaultSession { saveReviewedOcrInternal(id, correctedText) }
+
+    private fun saveReviewedOcrInternal(id: String, correctedText: String): ImportedDocument {
         val payload = DocumentPayloadCodec.decode(store.read(id))
         if (payload.ocrText == null) throw IOException("No OCR result exists for this document")
         store.replace(
@@ -122,7 +134,9 @@ internal class DocumentRepository(
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun list(): List<ImportedDocument> {
+    fun list(): List<ImportedDocument> = withVaultSession { listInternal() }
+
+    private fun listInternal(): List<ImportedDocument> {
         val documents = store.listIds()
             .map(::readDocumentOrUnreadablePlaceholder)
             .sortedWith(
@@ -136,7 +150,9 @@ internal class DocumentRepository(
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun search(query: String): List<ImportedDocument> {
+    fun search(query: String): List<ImportedDocument> = withVaultSession { searchInternal(query) }
+
+    private fun searchInternal(query: String): List<ImportedDocument> {
         // Reconcile every stored ciphertext before applying a query. Otherwise a corrupt item that
         // does not match its old indexed name could disappear silently from search results.
         val allDocuments = list()
@@ -186,7 +202,9 @@ internal class DocumentRepository(
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun delete(id: String) {
+    fun delete(id: String) { withVaultSession { deleteInternal(id) } }
+
+    private fun deleteInternal(id: String) {
         store.delete(id)
         updateIndex { it.delete(id) }
     }
