@@ -29,7 +29,7 @@ internal class SqlCipherDatabaseMigrationActions(
 
     override fun verifyDatabaseIntegrity() {
         activeProvider.close()
-        val verificationProvider = VaultDatabaseProvider(appContext, vekKeyAccess)
+        val verificationProvider = VaultDatabaseProvider(appContext, session)
         try {
             session.withKey {
                 val database = verificationProvider.get()

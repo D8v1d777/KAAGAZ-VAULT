@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import com.kaagazvault.security.MigrationVekKeyAccess
+import com.kaagazvault.security.VaultSession
 import androidx.sqlite.db.SupportSQLiteDatabase
 import net.zetetic.database.Logger
 import net.zetetic.database.NoopTarget
@@ -17,16 +18,24 @@ internal abstract class VaultDatabase : RoomDatabase() {
     abstract fun reminderDao(): ReminderDao
 }
 
-internal class VaultDatabaseProvider(context: Context, private val vekKeyAccess: MigrationVekKeyAccess? = null) {
+internal class VaultDatabaseProvider(context: Context, private val session: VaultSession? = null) {
+    private val vekKeyAccess = session?.let(::SessionMigrationVekKeyAccess)
+    private val lockListener: () -> Unit = { close() }
+    @Volatile private var lockListenerRegistered = false
     private val appContext = context.applicationContext
     @Volatile private var instance: VaultDatabase? = null
     private var databaseKey: ByteArray? = null
 
+    init {
+        ensureLockListenerRegistered()
+    }
+
     @Synchronized
     fun get(): VaultDatabase {
-        // A cached Room handle must not be handed out after a VEK-wrapped key requires a session.
-        // Protected DAO operations must still be enclosed in a session operation by their caller.
-        vekKeyAccess?.withKey { }
+        ensureLockListenerRegistered()
+        // Validate access even if this provider already has a cached Room instance.
+        // DAO operations must still run inside a session operation at their call sites.
+        session?.withKey { }
         instance?.let { return it }
         System.loadLibrary("sqlcipher")
         Logger.setTarget(NoopTarget())
@@ -56,6 +65,18 @@ internal class VaultDatabaseProvider(context: Context, private val vekKeyAccess:
             instance = null
             databaseKey?.fill(0)
             databaseKey = null
+            if (lockListenerRegistered) {
+                session?.removeLockListener(lockListener)
+                lockListenerRegistered = false
+            }
+        }
+    }
+
+    @Synchronized
+    private fun ensureLockListenerRegistered() {
+        if (session != null && !lockListenerRegistered) {
+            session.addLockListener(lockListener)
+            lockListenerRegistered = true
         }
     }
 

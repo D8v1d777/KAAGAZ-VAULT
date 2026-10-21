@@ -1,5 +1,6 @@
 package com.kaagazvault.security
 
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -19,8 +20,18 @@ import kotlin.concurrent.write
 internal class VaultSession {
     private val lock = ReentrantReadWriteLock()
     private var vek: ByteArray? = null
+    private val lockListeners = CopyOnWriteArrayList<() -> Unit>()
 
     fun isUnlocked(): Boolean = lock.read { vek != null }
+
+    /** Registers a resource closer that runs after active key operations drain but before lock returns. */
+    fun addLockListener(listener: () -> Unit) {
+        lockListeners.addIfAbsent(listener)
+    }
+
+    fun removeLockListener(listener: () -> Unit) {
+        lockListeners.remove(listener)
+    }
 
     /**
      * Installs a verified 256-bit VEK once per locked session.
@@ -52,9 +63,23 @@ internal class VaultSession {
      * This guarantees no operation using this session key copy remains active after lock returns.
      */
     fun lock() {
+        var closeFailure: Exception? = null
         lock.write {
+            // The write lock prevents new withKey operations and waits for all active ones.
+            // Close registered database/resource handles before clearing the session key.
+            lockListeners.forEach { listener ->
+                try {
+                    listener()
+                } catch (failure: Exception) {
+                    if (closeFailure == null) closeFailure = failure
+                    else closeFailure?.addSuppressed(failure)
+                }
+            }
             vek?.fill(0)
             vek = null
+        }
+        closeFailure?.let {
+            throw IllegalStateException("A protected vault resource failed to close during lock", it)
         }
     }
 

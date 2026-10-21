@@ -103,6 +103,23 @@ class VaultSessionTest {
     }
 
     @Test
+    fun lockClosesRegisteredResourcesAndStillClearsSessionIfACloserFails() {
+        val session = VaultSession()
+        session.installVerifiedKey(ByteArray(32) { 6 })
+        var closeCalled = false
+        session.addLockListener { closeCalled = true }
+        session.addLockListener { throw IllegalStateException("synthetic close failure") }
+
+        assertThrows(IllegalStateException::class.java) { session.lock() }
+
+        assertTrue(closeCalled)
+        assertFalse(session.isUnlocked())
+        assertThrows(VaultLockedException::class.java) {
+            session.withKey { it.size }
+        }
+    }
+
+    @Test
     fun lockWaitsForActiveKeyUseAndRejectsNewUsesAfterCompletion() {
         val session = VaultSession()
         session.installVerifiedKey(ByteArray(32) { 7 })
