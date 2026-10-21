@@ -1,0 +1,58 @@
+"""Regression guards for production vault access wiring.
+
+These source-level checks complement (not replace) Kotlin unit tests and Android
+instrumentation. They prevent accidental bypasses when the UI is refactored.
+"""
+from pathlib import Path
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+MAIN = ROOT / "app/src/main/java/com/kaagazvault/MainActivity.kt"
+CONTROLLER = ROOT / "app/src/main/java/com/kaagazvault/security/VaultAccessController.kt"
+REMINDER_WORKER = ROOT / "app/src/main/java/com/kaagazvault/reminders/ReminderScheduler.kt"
+
+
+class VaultAccessWiringTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.main = MAIN.read_text(encoding="utf-8")
+        cls.controller = CONTROLLER.read_text(encoding="utf-8")
+        cls.worker = REMINDER_WORKER.read_text(encoding="utf-8")
+
+    def test_production_activity_uses_biometric_compatible_host_and_controller(self):
+        self.assertIn("class MainActivity : FragmentActivity()", self.main)
+        self.assertIn("VaultAccessController(this, VaultSession())", self.main)
+        self.assertIn("LaunchedEffect(Unit) { controller.initialize() }", self.main)
+        self.assertIn("WindowManager.LayoutParams.FLAG_SECURE", self.main)
+
+    def test_document_home_is_only_created_for_ready_state(self):
+        state_switch = self.main.index("when (val state = accessState)")
+        ready_branch = self.main.index("is VaultAccessUiState.Ready ->", state_switch)
+        home_creation = self.main.index("VaultHomeScreen(", ready_branch)
+        fallback = self.main.index("else -> VaultAccessScreen", ready_branch)
+        self.assertLess(ready_branch, home_creation)
+        self.assertLess(home_creation, fallback)
+        self.assertNotIn("EncryptedDocumentStore(", self.main[:self.main.index("private fun VaultHomeScreen(")])
+
+    def test_lock_invalidates_pending_migration_and_closes_database_after_session_lock(self):
+        lock_start = self.controller.index("fun lockNow(")
+        lock_end = self.controller.index("fun onActivityStopped(", lock_start)
+        lock_body = self.controller[lock_start:lock_end]
+        self.assertIn("accessEpoch += 1", lock_body)
+        self.assertIn("runtime.also { runtime = null }", lock_body)
+        self.assertLess(lock_body.index("session.lock()"), lock_body.index("previousRuntime?.databaseProvider?.close()"))
+        self.assertIn("migrationEpoch != accessEpoch || !session.isUnlocked()", self.controller)
+        self.assertIn("postStateIfEpoch(VaultAccessUiState.Ready(next), migrationEpoch)", self.controller)
+
+    def test_background_reminder_worker_does_not_open_encrypted_database(self):
+        worker_start = self.worker.index("internal class ReminderNotificationWorker")
+        worker = self.worker[worker_start:]
+        self.assertNotIn("VaultDatabaseProvider", worker)
+        self.assertNotIn("ReminderRepository", worker)
+        self.assertIn('"You have a reminder in Kaagaz Vault."', worker)
+        self.assertNotIn("reminder.title", worker)
+        self.assertNotIn("documentName", worker)
+
+
+if __name__ == "__main__":
+    unittest.main()
