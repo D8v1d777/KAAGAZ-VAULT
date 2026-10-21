@@ -23,8 +23,8 @@ The combined candidate now has a `SessionDocumentPayloadCryptography` adapter th
 
 ## What this candidate does not establish
 
-- **CO-01 is still OPEN / P0.** `MainActivity` and the protected document/database/provider/worker paths are not yet enforced behind a successful auth-per-use CryptoObject operation and a single session boundary. The isolated `VaultSession` class does not authenticate callers.
-- **CO-02 is still OPEN / P0.** Recovery is a cryptographic primitive, not a durable end-to-end recovery lifecycle. Persistent envelope storage, first-time setup, one-time display, safe-storage confirmation, recovery UI/state machine, process-death tests and device behavior remain outstanding.
+- **CO-01 remains OPEN / P0 pending verification.** `MainActivity` now gates home-screen creation on the controller's `Ready` state and the controller uses an auth-per-use CryptoObject, but end-to-end enforcement across every repository/provider, OCR/import/search/export/share path and cached handle still needs review and regression coverage. The background reminder worker no longer opens SQLCipher and emits only generic notification text; stale/deleted reminder behavior still needs explicit verification.
+- **CO-02 remains OPEN / P0 pending verification.** The controller now includes persistent envelope storage, first-time setup, one-time recovery-key display with exact re-entry confirmation, and recovery UI/state transitions. Process-death, interruption, malformed-state, device/instrumentation tests and real recovery behavior remain outstanding.
 - The document migration backend is not wired into production repository construction or the active storage root. It does not implement a real SQLCipher database-key rewrap, close/reopen, integrity-check collaborator, nor active-root cutover.
 - Legacy ciphertext/key retirement remains prohibited until authenticated read-back, real SQLCipher reopen/integrity verification and durable journal completion are proven.
 - Device/emulator instrumentation and independent human security review are not present.
@@ -43,6 +43,6 @@ Before the latest exact-head gate, the v1-reader tests were expanded to round-tr
 1. Run full exact-head CI on the combined branch.
 2. Inspect any compile/test failures and fix only reproduced integration issues.
 3. Inspect the full changed-file diff and confirm canonical README/HANDOFF were preserved.
-4. Implement and test the real auth/session boundary plus SQLCipher/legacy document migration cutover without destructive key replacement.
-5. Finish recovery lifecycle and device/instrumentation coverage.
+4. Review and test all access paths and lock/close ordering, then verify the SQLCipher/legacy document migration cutover without destructive key replacement.
+5. Add process-death, interruption and device/instrumentation coverage for recovery and background locking.
 6. Obtain independent human security review before release.
