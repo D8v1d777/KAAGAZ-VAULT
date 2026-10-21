@@ -41,8 +41,10 @@ internal interface VaultDatabaseMigrationActions {
  * into a distinct published root and authenticated again. Staging and legacy copies remain after
  * publication so journal replay does not depend on a destructive rename.
  *
- * This class is not wired to the app's production paths. The caller must exclude concurrent
- * repository writes and supply a MigrationVekKeyAccess backed by VaultSession before integration.
+ * Production integration: VaultAccessController runs this backend before publishing the
+ * authenticated runtime, while the document UI has no repository handles. The controller supplies
+ * VaultSession-backed key access and keeps legacy/staging copies; legacy retirement is intentionally
+ * out of scope. The caller must continue to exclude concurrent legacy repository writes.
  */
 internal class EncryptedDocumentMigrationBackend(
     private val legacyDirectory: File,
