@@ -189,12 +189,14 @@ internal class VaultAccessController(
     }
 
     fun lockNow(message: String? = null) {
-        // Invalidate pending publication atomically with dropping the UI's runtime reference.
-        synchronized(this) {
+        // Invalidate pending publication atomically with detaching the current runtime.
+        val previousRuntime = synchronized(this) {
             accessEpoch += 1
-            runtime = null
+            runtime.also { runtime = null }
         }
+        // Wait for active session-bound operations to finish before closing SQLCipher.
         try { session.lock() } catch (_: Exception) { }
+        try { previousRuntime?.databaseProvider?.close() } catch (_: Exception) { }
         pendingVek?.fill(0)
         pendingVek = null
         pendingRecoveryText = null
