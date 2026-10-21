@@ -18,8 +18,6 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.kaagazvault.MainActivity
-import com.kaagazvault.database.VaultDatabaseProvider
-import com.kaagazvault.security.VaultLockedException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -63,10 +61,9 @@ internal class ReminderNotificationWorker(
             ?: return Result.failure()
         if (runCatching { UUID.fromString(reminderId) }.isFailure) return Result.failure()
 
-        val provider = VaultDatabaseProvider(applicationContext)
+        // Background work must not open SQLCipher while the interactive vault session is locked.
+        // The only persisted work input is an opaque UUID; notification text is always generic.
         return try {
-            // Deleted reminders become harmless no-ops; notification content stays generic.
-            val reminder = provider.get().reminderDao().findById(reminderId) ?: return Result.success()
             if (Build.VERSION.SDK_INT >= 33 &&
                 ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) return Result.success()
@@ -105,13 +102,8 @@ internal class ReminderNotificationWorker(
         } catch (_: SecurityException) {
             // Permission can change between the permission check and notify().
             Result.success()
-        } catch (_: VaultLockedException) {
-            // C1: background work cannot open a VEK-wrapped DB while the app is locked.
-            Result.success()
         } catch (_: Exception) {
             Result.retry()
-        } finally {
-            provider.close()
         }
     }
 
