@@ -19,10 +19,8 @@ class VaultMigrationJournalTest {
 
     @Test
     fun migrationCodesAreExplicitAndStable() {
-        assertEquals(10, VaultMigrationPhase.NOT_STARTED.code)
-        assertEquals(60, VaultMigrationPhase.COMPLETE.code)
-        assertEquals(10, DocumentMigrationStep.PENDING.code)
-        assertEquals(40, DocumentMigrationStep.PUBLISHED.code)
+        assertEquals(listOf(10, 20, 30, 40, 50, 60, 70), VaultMigrationPhase.entries.map { it.code })
+        assertEquals(listOf(10, 20, 30, 40), DocumentMigrationStep.entries.map { it.code })
     }
 
     @Test
