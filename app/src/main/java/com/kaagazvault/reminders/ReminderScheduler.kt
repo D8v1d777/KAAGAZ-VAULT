@@ -132,10 +132,10 @@ internal class ReminderNotificationWorker(
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .build()
-            val delivered = ReminderScheduler.deliverIfNotCancelled(reminderId) {
+            ReminderScheduler.deliverIfNotCancelled(reminderId) {
                 NotificationManagerCompat.from(applicationContext).notify(reminderId.hashCode(), notification)
             }
-            if (delivered) Result.success() else Result.success()
+            Result.success()
         } catch (_: SecurityException) {
             // Permission can change between the permission check and notify().
             Result.success()
