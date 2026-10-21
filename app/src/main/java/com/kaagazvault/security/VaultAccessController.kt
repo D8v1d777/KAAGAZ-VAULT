@@ -363,6 +363,9 @@ internal class VaultAccessController(
                     if (VaultMigrationCoordinator(journal, backend).resume().phase != VaultMigrationPhase.COMPLETE) {
                         throw IOException("Migration did not reach the durable COMPLETE state")
                     }
+                    // The legacy provider is not session-bound; close it before exposing the new runtime.
+                    oldProvider?.close()
+                    oldProvider = null
                 }
                 if (journal.load()?.phase != VaultMigrationPhase.COMPLETE) throw IOException("No durable COMPLETE checkpoint exists")
                 val provider = VaultDatabaseProvider(activity.applicationContext, session)
@@ -388,8 +391,11 @@ internal class VaultAccessController(
                 postStateIfEpoch(VaultAccessUiState.Ready(next), migrationEpoch)
             } catch (failure: Exception) {
                 try { session.lock() } catch (_: Exception) { }
-                runtime = null
+                synchronized(this) {
+                    if (migrationEpoch == accessEpoch) runtime = null
+                }
                 try { newProvider?.close() } catch (_: Exception) { }
+                try { oldProvider?.close() } catch (_: Exception) { }
                 postStateIfEpoch(
                     VaultAccessUiState.Locked("Migration could not be verified; legacy files and old wrappers remain. Unlock to resume. " + safeFailure(failure)),
                     migrationEpoch
