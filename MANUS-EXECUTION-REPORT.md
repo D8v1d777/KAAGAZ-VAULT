@@ -4,7 +4,8 @@
 **Agent / environment:** Manus Sandbox; `/home/ubuntu/KAAGAZ-VAULT-manus`
 **Repository:** https://github.com/D8v1d777/KAAGAZ-VAULT
 **Canonical base SHA:** `6b30ceaf5ab09b2494d82356b08c4bebf7406521`
-**Task branch / final SHA:** `agent/CO-08-stable-migration-codes` / `c44f774a452eb09595e254454c0efc3a2bb020e3`
+**Task branch / implementation SHA:** `agent/CO-08-stable-migration-codes` / `c44f774a452eb09595e254454c0efc3a2bb020e3`
+**Final documentation SHA:** `4ceaad7eb5ca6fefa876c55cef64231c4839df90`
 **Draft PR:** https://github.com/D8v1d777/KAAGAZ-VAULT/pull/43
 **Overall status:** PARTIAL — CO-08 delivered and verified; P0 CO-01/CO-02 remain incomplete.
 
@@ -16,11 +17,11 @@ The first implementation commit failed exact-head CI because Kotlin enum constru
 
 | Condition | Status | Evidence |
 |---|---|---|
-| Exact-head gate status refreshed | PASS | PRs #37–#43 polled live; changed head `c44f774…` matched run #39540043969. |
+| Exact-head gate status refreshed | PASS | PRs #37–#43 polled live; implementation head `c44f774…` and final docs head `4ceaad7…` each have exact green runs. |
 | Full configured build/test/lint/manifest gate | PASS in CI / NOT RUN locally | [CI run #39540043969](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39540043969). |
 | P0 session/auth path improved | NOT DONE | No CO-01 production wiring was attempted; current canonical access paths remain ungated. |
 | Recovery lifecycle improved | NOT DONE | No CO-02 production setup/restore path was attempted. |
-| Exact-head CI for changed SHA | PASS | `c44f774…` → run #39540043969, SUCCESS. |
+| Exact-head CI for changed SHAs | PASS | `c44f774…` → run #39540043969; final docs head `4ceaad7…` → run #39540639480; both SUCCESS. |
 | Repository documentation updated | PASS | `HANDOFF.md`, `docs/engineering/progress.md`, `docs/agent/CORRECTION-ORDERS.md`, this report. |
 
 ## B. Baseline and environment
@@ -56,7 +57,7 @@ PRs #37–#42 all target stale base `789816fece4b90bb981b9e9cb3a5954f1eebd514`, 
 | #40 | `0c043dfd0d35dad0c5d5a6b915d3f84b5b1bbb0c` | AndroidX Biometric decision record; documentation, not device proof. | SUCCESS, [run #39411753892](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39411753892); preserve approved dependency rationale. |
 | #41 | `3406185e55b4a717252804e79cd06aa3e5a39f38` | Approved Biometric dependency addition; no CryptoObject/API behavior proof. | SUCCESS, [run #39412891444](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39412891444); do not merge without exact-base review and device evidence. |
 | #42 | `2c6a1d694e7adbf21fd226be0b69748fe6ec6282` | Non-destructive migration backend adapter; delegates SQLCipher rewrap/reopen/integrity to collaborator. | SUCCESS, [run #39536144943](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39536144943); port only as a scoped, current-base change. |
-| #43 | `c44f774a452eb09595e254454c0efc3a2bb020e3` | This session’s CO-08 correction; base is current canonical; ahead/behind `0/3`. | SUCCESS, [run #39540043969](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39540043969); remains draft pending review. |
+| #43 | `c44f774a452eb09595e254454c0efc3a2bb020e3` (implementation), `4ceaad7eb5ca6fefa876c55cef64231c4839df90` (docs) | This session’s CO-08 correction; base is current canonical; ahead/behind `0/3` at implementation head. | SUCCESS on implementation [run #39540043969](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39540043969) and final docs [run #39540639480](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39540639480); remains draft pending review. |
 
 ## E. Security data-flow and access-path matrix
 
@@ -117,7 +118,7 @@ One P2 correctness order was completed with exact-head CI evidence. This is a re
 
 ## Reviewer handoff to GPT-6
 
-- **Review first:** [PR #43](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/43), final commit `c44f774a452eb09595e254454c0efc3a2bb020e3`, and [exact-head CI run #39540043969](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39540043969).
+- **Review first:** [PR #43](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/43), implementation commit `c44f774a452eb09595e254454c0efc3a2bb020e3`, final docs head `4ceaad7eb5ca6fefa876c55cef64231c4839df90`, and [exact-head CI run #39540043969](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39540043969) plus [final docs run #39540639480](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39540639480).
 - **Specific question 1:** Is the v2 stable-code format and strict v1 reader sufficient for the project’s actual journal compatibility and crash-replay requirements?
 - **Specific question 2:** Does removing the first post-stage verification preserve all intended crash-point guarantees, given the subsequent durable `STAGED` checkpoint and single verification before publish?
 - **Claim that must not be treated as verified:** The app is not yet authentication-gated end to end, recovery is not yet production-wired, and no emulator or physical-device evidence was obtained.
