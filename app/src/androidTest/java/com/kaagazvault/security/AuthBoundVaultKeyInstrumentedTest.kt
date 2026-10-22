@@ -33,7 +33,7 @@ class AuthBoundVaultKeyInstrumentedTest {
                 "Auth-per-use Keystore must reject use until authentication; got no denial",
                 unauthenticatedFailure != null
             )
-            val causeChain = generateSequence(unauthenticatedFailure) { it.cause }
+            val causeChain = generateSequence<Throwable>(unauthenticatedFailure) { it.cause }
                 .joinToString(" | ") { "${it.javaClass.name}: ${it.message.orEmpty()}" }
             assertTrue(
                 "Expected a Keystore user-authentication denial, got: $causeChain",
