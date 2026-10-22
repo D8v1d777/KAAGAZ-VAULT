@@ -42,6 +42,14 @@ internal class DatabaseKeyManager(
                 ?: throw IOException("VEK-wrapped database-key artifact could not be recovered")
         }
 
+        // A session-bound provider is used after authenticated migration. If its VEK wrapper
+        // has disappeared, never fall back to the legacy Keystore wrapper: that would bypass the
+        // post-migration VEK boundary. The migration collaborator uses rewrapLegacyKeyUnderVek()
+        // explicitly and does not depend on this ordinary-open fallback.
+        if (vekKeyAccess != null && keyFile.exists()) {
+            throw IOException("VEK-wrapped database key is missing; refusing legacy-key fallback in an authenticated session")
+        }
+
         if (keyFile.exists()) return readLegacyKey()
         if (databaseArtifactsExist()) {
             throw IOException("Database exists but its wrapped key is missing; refusing to replace the key")
