@@ -102,8 +102,6 @@ The photographs are open-licensed works, but *Jujutsu Kaisen*, Satoru Gojo, asso
 
 <div align="center">
 
-**Visual refresh by Tommy.**
-
 <sub>Built with the belief that some things should never leave your pocket.</sub>
 
 </div>
