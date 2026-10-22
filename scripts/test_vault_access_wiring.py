@@ -76,6 +76,20 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("clearPrompt()", recovery_body)
         self.assertIn("recoveryWrappingKey?.discardAbandonedSetup()", recovery_body)
 
+    def test_stale_migration_failure_cannot_lock_a_newer_authenticated_session(self):
+        migration_start = self.controller.index("private fun migrate()")
+        catch_start = self.controller.index("} catch (failure: Exception) {", migration_start)
+        catch_end = self.controller.index("try { newProvider?.close()", catch_start)
+        failure_cleanup = self.controller[catch_start:catch_end]
+        self.assertIn("synchronized(this)", failure_cleanup)
+        self.assertIn("if (migrationEpoch == accessEpoch)", failure_cleanup)
+        self.assertLess(
+            failure_cleanup.index("if (migrationEpoch == accessEpoch)"),
+            failure_cleanup.index("session.lock()"),
+        )
+        self.assertIn("synchronized(this) {\\n                if (disposed) throw VaultLockedException()", self.controller)
+        self.assertIn("synchronized(this) {\\n                if (disposed) throw VaultLockedException()\\n                if (!session.isUnlocked()) session.installVerifiedKey(vek)", self.controller)
+
     def test_background_reminder_worker_does_not_open_encrypted_database(self):
         worker_start = self.worker.index("internal class ReminderNotificationWorker")
         worker = self.worker[worker_start:]
