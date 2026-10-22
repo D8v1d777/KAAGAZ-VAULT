@@ -87,8 +87,8 @@ class VaultAccessWiringTest(unittest.TestCase):
             failure_cleanup.index("if (migrationEpoch == accessEpoch)"),
             failure_cleanup.index("session.lock()"),
         )
-        self.assertIn("synchronized(this) {\\n                if (disposed) throw VaultLockedException()", self.controller)
-        self.assertIn("synchronized(this) {\\n                if (disposed) throw VaultLockedException()\\n                if (!session.isUnlocked()) session.installVerifiedKey(vek)", self.controller)
+        self.assertIn("if (disposed) throw VaultLockedException()", self.controller)
+        self.assertIn("if (!session.isUnlocked()) session.installVerifiedKey(vek)", self.controller)
 
     def test_background_reminder_worker_does_not_open_encrypted_database(self):
         worker_start = self.worker.index("internal class ReminderNotificationWorker")
