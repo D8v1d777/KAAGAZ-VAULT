@@ -1,3 +1,17 @@
+## 2026-10-22 — Emulator secure-lockscreen bootstrap and synthetic SQLCipher test
+
+### Changes prepared on this candidate
+- Run [#525](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39727573230) passed standard CI and compiled the instrumentation APK, but the emulator test failed because Android Keystore refused an auth-per-use key while no secure lock screen was configured.
+- The pinned emulator job now sets a disposable CI-only PIN (`2468`) immediately before `:app:connectedDebugAndroidTest` and uses an EXIT trap to clear it. This changes only ephemeral emulator state; production key policy and app code are untouched.
+- Added `SqlCipherMigrationInstrumentedTest` as a synthetic cache-fixture test: creates a synthetic Room/SQLCipher database and row, wraps its random DB key with an in-memory legacy test key using the real AES-GCM envelope, re-wraps with the production `VekWrappedDatabaseKeyStore`, reopens SQLCipher, validates the row and `PRAGMA integrity_check`, and requires durable journal COMPLETE with legacy-wrapper bytes preserved.
+- This test deliberately does **not** call `DatabaseKeyManager` or the production Keystore alias; those remain a distinct unverified integration seam. It deletes only its UUID-named cache fixture, and never touches the app's default DB/noBackup paths or user data.
+
+### Verification gate
+- New exact-head CI is pending after this commit. Run #525 proves emulator boot and test execution, but fails the auth-bound key generation prerequisite described above; it is not a passing instrumentation result.
+- Keep the test untrusted until exact-head emulator CI passes. Activity background/screen-off/process-death, biometric enrollment change, production `DatabaseKeyManager`/Keystore wrapping, and independent human security review remain open.
+
+---
+
 ## 2026-10-22 — Emulator launcher profile compatibility repair
 
 ### Reproduced
@@ -5,13 +19,10 @@
 - The separate emulator job failed before boot/test execution. The pinned runner's AVD creation reported `Error: No device found matching --device Pixel 6`; no instrumentation assertions ran on this attempt.
 - Reviewed the runner's pinned README: the optional `profile` input expects an SDK hardware-profile ID (for example `pixel_7_pro`), not the display label `Pixel 6`. Removed the profile input so AVD creation can use the SDK's default hardware configuration; did not alter assertions or test scope.
 
-### Current gate
-- A corrective commit is being prepared; the next exact-head CI result will be the evidence for emulator setup and instrumentation. Prior run #524 cannot be described as a test pass.
-- App manifest/offline policy, production key policy/aliases, SQLCipher format, Room schema, and canonical branch remain unchanged.
-
-### Next
-- Verify that the emulator boots and `:app:connectedDebugAndroidTest` actually runs.
-- If launched, diagnose test results from exact run logs. Then continue to isolated synthetic SQLCipher rewrap/reopen/integrity evidence; background/process death and human security review remain open.
+### Follow-up result
+- Correction commit `7d376082dcb316af9826ef04a14e1a7c0727dcd3` removed `profile: Pixel 6`. Run [#525](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39727573230) then provisioned the emulator and executed the instrumented tests.
+- The auth-bound-key test failed at key generation because the emulator had no secure lock screen (`Secure lock screen must be enabled to create keys requiring user authentication`). This was a genuine emulator prerequisite failure; it was not an assertion against the key-authentication policy.
+- Next correction configures a disposable PIN in the emulator runner script and clears it with an EXIT trap before the job ends. No PIN is set on any user or production device.
 
 ---
 

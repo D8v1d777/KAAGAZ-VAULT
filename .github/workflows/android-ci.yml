@@ -90,4 +90,10 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
+          # Configure a secure PIN only on this disposable CI emulator; remove it on every exit path.
+          script: |
+            set -eu
+            test_pin=2468
+            adb shell locksettings set-pin "$test_pin"
+            trap 'status=$?; adb shell locksettings clear --old "$test_pin" >/dev/null || status=1; exit "$status"' EXIT
+            ./gradlew --no-daemon :app:connectedDebugAndroidTest

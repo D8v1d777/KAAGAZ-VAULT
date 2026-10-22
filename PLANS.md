@@ -42,3 +42,9 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 - Run #524 standard job passed on `760f3a3fa738037334739e2ea2db3356e1b77034`; emulator setup failed before executing tests because `avdmanager` did not recognize `--device Pixel 6`.
 - Pinned emulator runner documentation says `profile` expects an SDK hardware-profile ID and is optional. Workflow now omits the profile so the SDK default can be used.
 - Pending: new exact-head CI must prove emulator provisioning and actual test execution; no claim is made from the failed setup attempt.
+
+## Emulator secure-lockscreen prerequisite and synthetic SQLCipher instrumentation — 2026-10-22
+- Run #525 standard job passed on exact SHA `7d376082dcb316af9826ef04a14e1a7c0727dcd3`; emulator booted but KeyStore generation of an auth-bound key failed because no secure lock screen was configured. This is not an application authentication-policy failure nor a passing test.
+- Emulator runner script now installs a disposable PIN using `adb shell locksettings set-pin` and removes it on every script exit with `locksettings clear --old`. The command only runs on the isolated emulator inside the pinned action.
+- New synthetic SQLCipher test exercises Room/SQLCipher row preservation, production VEK-wrapped DB-key envelope store, real migration journal/coordinator durable COMPLETE, PRAGMA integrity, and preservation of synthetic legacy-wrapper bytes using only a UUID-named cache fixture and random in-memory keys.
+- Explicit scope limit: the test intentionally does not invoke `DatabaseKeyManager` or the app's fixed legacy Keystore alias. Production legacy-wrapper read/rewrap integration is still unverified. The exact-head emulator run for this commit is pending.
