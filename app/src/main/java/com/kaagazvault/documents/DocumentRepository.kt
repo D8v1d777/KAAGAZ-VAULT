@@ -119,7 +119,7 @@ internal class DocumentRepository(
                 ocrTruncated = result.truncated || result.text.length > MAX_OCR_CHARACTERS,
                 ocrSource = result.source,
                 ocrLanguages = result.languages,
-                structuredFields = StructuredFieldExtractor.extract(result.text)
+                structuredFields = StructuredFieldExtractor.extract(result.text.take(MAX_OCR_CHARACTERS))
             ))
             try {
                 store.replace(id, replacement)
