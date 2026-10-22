@@ -1,3 +1,31 @@
+## 2026-10-22 — Exact-head CI #559 green; OCR boundary and migration crash recovery verified
+
+### Exact-head evidence
+- Candidate SHA `acbe7d8e5092d762d89f202d0d2ad02ef1d60afa`, [Android CI run #559](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39753800533): standard job passed (debug/release builds, JVM tests, lint, Python policy guards, offline merged-manifest gate); emulator job passed with 11 instrumentation tests and `BUILD SUCCESSFUL in 4m 18s`.
+- The prior run #551 on `9fa31012ab0915fc37a4592cd753bb73bad89a3a` was fully green for its six-test emulator suite; run #559 validates the later candidate with the additional SQLCipher crash-point test.
+
+### New bounded OCR extraction guard
+- A new policy assertion failed first on commit `56c2a13456207c718a3346aec8c861653b12dabf`: initial OCR suggestions were extracted from unbounded `result.text`, while only `result.text.take(MAX_OCR_CHARACTERS)` was persisted.
+- Commit `c8d01817871a22f6c28f5fb433657deb511595cd` now bounds initial and corrected OCR extraction to the exact text prefix persisted in the encrypted payload. The regression policy suite passed on run #559.
+- Structured-field edits visibly mark the original excerpt as potentially mismatched and clear the field's accepted flag.
+
+### SQLCipher migration interruption coverage
+- Commit `acbe7d8e5092d762d89f202d0d2ad02ef1d60afa` adds `sqlCipherRewrapSideEffectBeforeJournalCheckpointIsIdempotentOnResume`.
+- The emulator test injects interruption after a synthetic DB key has been create-once wrapped under the VEK but before the journal checkpoint is persisted. It checks RECOVERY_REQUIRED, VEK wrapper survival, byte-identical legacy wrapper, fresh-coordinator resume, preserved SQLCipher row, `PRAGMA integrity_check`, and durable COMPLETE.
+- The fixture uses a UUID-named cache path and synthetic random keys; it does not touch the production database-key alias or default database path.
+
+### Separate dependency-verification gate
+- PR #49 commit `b2ad797238ed89759edefd04348a97b5f68c44b2` adds 10 generated component entries for the approved AndroidX Test dependency graph. The temporary capture run's delta check reported 10 new components and verified no existing trusted checksum entries changed or were removed.
+- The temporary metadata-capture workflow was removed in the same commit. Standard CI now includes `assembleDebugAndroidTest` with ordinary dependency verification enabled.
+- Exact-head run #561 is pending: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39755053774. The earlier run #558 failure specifically listed 10 missing AAR/POM artifacts; do not count the metadata fix green until run #561 completes.
+
+### Remaining release blockers
+- Synthetic SQLCipher coverage does not prove the production `DatabaseKeyManager` fixed-alias migration path.
+- Actual OS-driven screen-off/background delivery, process death/restart, biometric enrollment change, physical-device testing, and authenticated recovery success remain unverified.
+- Independent human security review and G2 approval for the fail-closed legacy-key fallback guard remain open. `docs/agent/REVIEW.md` is missing (404); manual review is not a substitute for an independent reviewer.
+- PRs #48 and #49 remain draft/unmerged. Canonical branch untouched. Completion estimate remains unchanged until weighted objectives and release gates are re-evaluated.
+---
+ 
 ## 2026-10-22 — CI #534 passed; synthetic migration-interruption recovery coverage added
 
 ### Verified on the shared candidate

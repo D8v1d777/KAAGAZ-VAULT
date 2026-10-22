@@ -1,23 +1,24 @@
 # HANDOFF.md
 
 <handoff schema="1">
-updated: 2026-10-22
+updated: 2026-10-22 15:15 Asia/Kolkata
 author: GPT-6 via connected GitHub tools
 branch: agent/integration-security-hardening-candidate-2026-10-21
 task: Continue CO-01/CO-02 integration hardening; preserve vault data and keep canonical branch untouched
-state: RUN_534_STANDARD_AND_EMULATOR_GREEN — SIX_INSTRUMENTATION_TESTS_PASSED — SQLCIPHER_DURABLE_RECOVERY_INJECTION_ADDED_NEXT — EXACT_HEAD_CI_PENDING — OS_LIFECYCLE_PROCESS_DEATH_AND_G2_APPROVAL_OPEN
+state: RUN_559_STANDARD_AND_EMULATOR_GREEN — ELEVEN_INSTRUMENTATION_TESTS_PASSED — OCR_TEXT_BOUNDARY_GUARDED — SQLCIPHER_REWRAP_CRASH_RECOVERY_VERIFIED — PR49_METADATA_CI_PENDING — OS_PROCESS_DEATH_AND_G2_REVIEW_OPEN
 canonical_branch: feat/durable-vault-migration-journal
 candidate_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48
-candidate_head_sha: a35be52a870e1c94fe971607dd4d0dc16251f559 passed run #534; new SQLCipher recovery-injection commit requires exact-head CI
+candidate_head_sha: acbe7d8e5092d762d89f202d0d2ad02ef1d60afa passed exact-head run #559; this documentation refresh will create a docs-only follow-up head requiring final exact-head CI.
 environment:
   repository_checkout_in_active_execution_environment: NOT_AVAILABLE — GitHub connector used for branch edits
   android_sdk_in_active_execution_environment: NOT_AVAILABLE
   local_gradle_build: NOT_RUN
   independent_reviewer_subagent: NOT_AVAILABLE
 current_release_gate:
-  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39736421084
-  last_completed_source_test_sha: a35be52a870e1c94fe971607dd4d0dc16251f559
-  observed_status_when_handoff_written: Both standard and Android emulator jobs passed. Emulator test summary: six instrumented tests started and finished; Gradle reported BUILD SUCCESSFUL. Covered auth-per-use denial, missing-alias no-change, synthetic SQLCipher/row-preservation/integrity/journal COMPLETE, deterministic controller stop callback cleanup, and screen-off receiver lock. This commit adds a failure injection after VEK database-key rewrap followed by durable journal recovery and SQLCipher integrity verification. New exact-head CI is pending.
+  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39753800533
+  last_completed_source_test_sha: acbe7d8e5092d762d89f202d0d2ad02ef1d60afa
+  observed_status_when_handoff_written: Both standard and Android emulator jobs passed. The emulator ran 11 instrumentation tests and Gradle reported BUILD SUCCESSFUL in 4m 18s. Coverage includes auth-per-use denial, missing-alias fail-closed behavior, controller/receiver lock paths, SQLCipher row preservation/integrity and durable journal recovery, including interruption after the VEK wrapper is written but before the DB-key-rewrapped checkpoint. This remains synthetic-fixture evidence, not proof of production DatabaseKeyManager alias behavior or OS-driven process death.
+  separate_dependency_gate: PR #49 head b2ad797238ed89759edefd04348a97b5f68c44b2; run #561 is pending at https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39755053774
   prior_green_run_policy: Older green runs do not verify a later head
 scope_guard:
   - No changes to canonical branch or merge performed.
@@ -31,21 +32,24 @@ verified_in_candidate_source:
   - MainActivity creates the vault home only for VaultAccessUiState.Ready and uses VaultAccessController/VaultSession.
   - Migration controller runs journal/backend before runtime publication, and legacy provider cleanup is handled on success/failure.
   - Reminder worker does not open SQLCipher and uses generic notification text; cancellation and delivery-gate tests are present.
-  - Import/repository/OCR/payload/AES-GCM/settings-transfer code now clears owned temporary plaintext or key byte arrays where possible; tests cover import-buffer clearing on success/failure.
-  - Controller disposal invalidates late authentication callbacks and suppresses late state publication; prompt failures clear pending recovery state and remove only uncommitted wrapper aliases, with JVM tests plus source-level regression guards. This commit adds source guards for Activity onStop/onDestroy and recovery-confirmation cleanup on foreground loss.
-  - README.md and AGENTS.md remain unchanged; HANDOFF.md is updated on this candidate branch to record current release gates.
+  - Import/repository/OCR/payload/AES-GCM/settings-transfer code clears owned temporary plaintext or key byte arrays where possible; tests cover import-buffer clearing on success/failure.
+  - Initial OCR extraction and corrected OCR extraction now use the same MAX_OCR_CHARACTERS prefix as persisted text. Source policy regression test reproduced the initial-path mismatch before the fix; exact-head standard CI passed after the fix.
+  - Edited structured fields clear acceptance and visibly warn that the original OCR excerpt may not match the edited value.
+  - SQLCipher instrumentation covers the durable recovery checkpoint after the create-once VEK wrapper side effect, with unchanged legacy wrapper, fresh coordinator resume, row preservation, PRAGMA integrity_check, and COMPLETE.
+  - README, PLANS and progress are being refreshed to record current evidence; PR #48 remains draft/unmerged.
 unverified:
-  - Run #527 standard job passed. Emulator ran 3 instrumentation tests after successfully setting the temporary PIN, with one failure caused by the auth-denial test requiring a specific top-level exception class. The underlying Keystore cause states 'Key user not authenticated'. The next source corrects this expectation and adds Activity lifecycle instrumentation; new exact-head CI is required.
-  - Authenticated CryptoObject completion/recovery, screen-off/background locking, picker return flows, process death, biometric enrollment change and interrupted migration are not yet instrumented.
-  - The synthetic SQLCipher test exercises real Room/SQLCipher, VEK wrapper store and durable journal, but deliberately does not exercise `DatabaseKeyManager`'s fixed production Keystore alias. That production integration remains unverified.
-  - Independent human security review remains mandatory.
+  - The synthetic SQLCipher fixture does not exercise DatabaseKeyManager's fixed production Keystore alias or production database migration entry point.
+  - Actual OS-driven screen-off/background delivery, true process death/restart, biometric enrollment changes, physical-device behavior, and authenticated CryptoObject recovery success remain unverified.
+  - The separate PR #49 dependency-verification update must pass exact-head CI before its metadata is integrated into a combined candidate.
+  - Independent human security review remains mandatory; G2 approval for the fail-closed legacy-key fallback guard remains open.
 next_actions:
-  - Validate the SQLCipher failure-injection recovery path on exact-head emulator CI: durable RECOVERY_REQUIRED, surviving VEK wrapper, unchanged legacy wrapper, fresh-coordinator resume, row preservation, integrity and COMPLETE.
-  - Consider further migration crash points only after the new real-SQLCipher recovery path is green.
-  - Keep OS-driven screen-off/stop and true process-death restart explicitly unverified; do not claim Android lifecycle certification from direct callback tests.
-  - Integrate PR #49 dependency-verification metadata with reviewed hashes for the AndroidX Test dependencies before any combined release candidate.
-  - Obtain explicit G2 owner decision on the fail-closed legacy-key fallback guard. Keep PR #48 draft/unmerged until P0 gates and independent human review pass.
-independent_review: NOT_AVAILABLE — no fresh-context reviewer sub-agent is available through this execution environment; human security review remains a release gate.
+  - Poll PR #49 run #561 for exact SHA b2ad797238ed89759edefd04348a97b5f68c44b2. If green, integrate the verified dependency metadata and assembleDebugAndroidTest CI gate into PR #48 as an explicit integration commit, then run exact-head CI.
+  - Add OS-level process-death/background/screen-off evidence and production DatabaseKeyManager migration coverage only after the current gates pass; retain synthetic-only scope labels.
+  - Obtain the explicit G2 owner decision on the fail-closed legacy-key fallback guard.
+  - Conduct an independent human security review. Do not treat a manual self-review as an independent reviewer.
+independent_review: NOT_AVAILABLE — no fresh-context reviewer sub-agent is available; human security review remains a release gate.
+conflicts:
+  - AGENTS.md W5 says "Self-review the diff with docs/agent/REVIEW.md section quick"; docs/agent/REVIEW.md is absent at this candidate SHA (GitHub returned 404). I performed a manual cold review using AGENTS.md and the secure-storage-cryptography/testing-quality skills, but independent review remains unavailable.
 </handoff>
 
 

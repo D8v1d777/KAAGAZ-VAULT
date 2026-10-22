@@ -9,6 +9,8 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 ## Current verified evidence
 - PR #48 recovery-alias cleanup commit `621eca27ed3f41a3bc5aa7ac84901af93cd734bc` passed exact-head Android CI run #522: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39724232188
 - PR #49 build-integrity head `7b41ffe9c4d845dacf6a945c4ad167e67d40449b` passed exact-head Android CI run #521: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39723726808
+- PR #48 exact head `acbe7d8e5092d762d89f202d0d2ad02ef1d60afa` passed both standard and emulator jobs in run #559: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39753800533. Eleven emulator tests completed; synthetic SQLCipher crash-before-checkpoint recovery, row preservation, integrity and journal COMPLETE passed.
+- PR #49 metadata candidate `b2ad797238ed89759edefd04348a97b5f68c44b2` is under exact-head CI run #561: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39755053774. The generated metadata delta added 10 components without changing/removing existing trusted hashes; the permanent CI task now includes `assembleDebugAndroidTest` with verification enabled.
 - CI verifies JVM tests, debug/release builds, lint, source-policy tests and merged-manifest offline policy. It does not establish device lifecycle or real SQLCipher migration behavior.
 - Local Android SDK/repository checkout is unavailable in this execution session. Use exact-head GitHub Actions runs for compile/test evidence.
 
@@ -24,7 +26,7 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 - Approved test-only dependencies: AndroidX Test core 1.7.0, runner 1.7.0, and ext.junit 1.3.0. Official stable versions: https://developer.android.com/jetpack/androidx/releases/test (AndroidX Test project uses Apache-2.0).
 - Approved emulator action: `ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d` (v2.38.0, immutable commit pin; release: https://github.com/ReactiveCircus/android-emulator-runner/releases/tag/v2.38.0; Apache-2.0).
 - Implementation adds `AndroidJUnitRunner`, a separate API 36 Google APIs x86_64 emulator job, and two Android Keystore instrumentation checks. The action only provisions a test emulator; CI network activity is limited to normal SDK/Maven/model/build downloads. The app manifest/offline policy remains unchanged.
-- Exact-head CI for the new instrumentation commit is pending. Do not count the baseline CI pass as validation of the new work.
+- PR #48 exact-head run #559 passed the standard job and 11 emulator tests. PR #49 dependency-verification run #561 is pending; do not count it green until it completes.
 
 ## Guardrails
 - Never weaken/skip dependency verification or offline-manifest gates to make CI green.
@@ -35,7 +37,7 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 
 ## CO-02 instrumentation scope boundary — 2026-10-22
 - Implemented first slice: unauthenticated auth-per-use Keystore operation must fail; absent unique alias must fail closed while a synthetic cache envelope remains byte-identical.
-- Still open: authenticated CryptoObject completion/recovery, biometric enrollment invalidation where supported, Activity background/screen-off/process-death restart, and real SQLCipher rewrap/reopen/PRAGMA integrity on isolated synthetic data. Existing JVM migration crash tests use a fake database collaborator.
+- Still open: actual OS-driven screen-off/background delivery, true process-death restart, biometric enrollment invalidation where supported, authenticated CryptoObject recovery success, production `DatabaseKeyManager` fixed-alias migration, and independent human security review. The synthetic SQLCipher rewrap/reopen/PRAGMA integrity and pre-checkpoint crash-recovery tests pass on run #559 but do not establish production-alias behavior.
 - Human security review and exact-head CI for every final documentation/code head remain release blockers.
 
 ## Emulator profile compatibility correction — 2026-10-22
