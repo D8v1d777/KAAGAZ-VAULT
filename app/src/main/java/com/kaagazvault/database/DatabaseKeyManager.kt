@@ -21,14 +21,21 @@ import java.security.SecureRandom
  */
 internal class DatabaseKeyManager(
     context: Context,
-    private val vekKeyAccess: MigrationVekKeyAccess? = null
+    private val vekKeyAccess: MigrationVekKeyAccess? = null,
+    keyStorageDirectoryOverride: File? = null,
+    databaseFileOverride: File? = null,
+    wrappingKeyAlias: String = WRAPPING_KEY_ALIAS
 ) {
     private val appContext = context.applicationContext
-    private val keyFile = File(appContext.noBackupFilesDir, WRAPPED_KEY_FILE)
-    private val vekKeyFile = File(appContext.noBackupFilesDir, VEK_WRAPPED_KEY_FILE)
-    private val vekPendingFile = File(appContext.noBackupFilesDir, ".${VEK_WRAPPED_KEY_FILE}.pending")
-    private val databaseFile = appContext.getDatabasePath(DATABASE_NAME)
-    private val wrapperKeyProvider = AndroidKeystoreDocumentKeyProvider(WRAPPING_KEY_ALIAS) {
+    // Internal injection seams keep integration tests isolated from the user's vault and fixed alias.
+    // Production callers omit these overrides and continue to use the app's no-backup directory,
+    // default database path, and stable wrapping-key alias.
+    private val keyStorageDirectory = keyStorageDirectoryOverride ?: appContext.noBackupFilesDir
+    private val keyFile = File(keyStorageDirectory, WRAPPED_KEY_FILE)
+    private val vekKeyFile = File(keyStorageDirectory, VEK_WRAPPED_KEY_FILE)
+    private val vekPendingFile = File(keyStorageDirectory, ".${VEK_WRAPPED_KEY_FILE}.pending")
+    private val databaseFile = databaseFileOverride ?: appContext.getDatabasePath(DATABASE_NAME)
+    private val wrapperKeyProvider = AndroidKeystoreDocumentKeyProvider(wrappingKeyAlias) {
         keyFile.exists() || databaseArtifactsExist() || vekKeyFile.exists() || vekPendingFile.exists()
     }
     private val envelope = AesGcmEnvelope()
