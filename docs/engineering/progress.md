@@ -1,3 +1,23 @@
+## 2026-10-22 — CO-06 build integrity complete on exact-head run #565
+
+### Exact-head evidence
+- Validated source SHA `bbea1eb7a697d89c06f27fbc725dbfa175ee50e5`, [Android CI run #565](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39758879722): both standard and Android emulator jobs passed.
+- Standard job passed debug/release builds, `assembleDebugAndroidTest`, JVM tests, lint, Python policy guards, offline merged-manifest policy, normal dependency verification, and the separate `prepareOcrModels UP-TO-DATE` assertion.
+- Emulator job ran 11 instrumentation tests and reported `BUILD SUCCESSFUL in 4m 36s`.
+
+### CO-06 implementation
+- OCR model pins now include SHA-256 in addition to the existing Git-blob SHA-1 checks for the three models at the pinned tessdata revision. The download task declares revision/hash inputs and model-file outputs, removes unconditional always-run behavior, retries transient failures with bounded backoff, verifies both hashes, and installs from a temporary file.
+- Tesseract4Android and SQLCipher dependency literals are moved into the version catalog without changing versions or SQLCipher's AAR-only/non-transitive behavior.
+- Dependency verification metadata includes AndroidX Test, AndroidX Biometric, and candidate transitive artifacts. The generated delta comparison preserved all existing trusted checksums; temporary capture workflows were removed. Standard CI now compiles `assembleDebugAndroidTest` with verification enabled.
+- README documents the build-time network requirement, offline runtime OCR, and exact verified model-file pre-seeding for offline builds.
+
+### Remaining release blockers
+- The SQLCipher interruption test uses a synthetic database/key; production `DatabaseKeyManager` fixed-alias migration is not yet exercised.
+- Actual OS-driven screen-off/background delivery, true process-death/restart, biometric enrollment changes, authenticated recovery success, and physical-device behavior remain unverified.
+- Independent human security review and G2 approval for the fail-closed legacy-key fallback remain open. `docs/agent/REVIEW.md` is missing (404); manual review is not independent.
+- PRs #48 and #49 remain draft/unmerged; canonical branch untouched. Overall completion estimate remains 41% pending weighted tracker review.
+---
+
 ## 2026-10-22 — Exact-head CI #559 green; OCR boundary and migration crash recovery verified
 
 ### Exact-head evidence
@@ -24,6 +44,8 @@
 - Actual OS-driven screen-off/background delivery, process death/restart, biometric enrollment change, physical-device testing, and authenticated recovery success remain unverified.
 - Independent human security review and G2 approval for the fail-closed legacy-key fallback guard remain open. `docs/agent/REVIEW.md` is missing (404); manual review is not a substitute for an independent reviewer.
 - PRs #48 and #49 remain draft/unmerged. Canonical branch untouched. Completion estimate remains unchanged until weighted objectives and release gates are re-evaluated.
+- superseded_by: 2026-10-22 CO-06 completion entry above; the validated source is now bbea1eb7a697d89c06f27fbc725dbfa175ee50e5 (run #565).
+
 ---
  
 ## 2026-10-22 — CI #534 passed; synthetic migration-interruption recovery coverage added

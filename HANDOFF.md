@@ -1,25 +1,26 @@
 # HANDOFF.md
 
 <handoff schema="1">
-updated: 2026-10-22 15:15 Asia/Kolkata
+updated: 2026-10-22 16:20 Asia/Kolkata
 author: GPT-6 via connected GitHub tools
 branch: agent/integration-security-hardening-candidate-2026-10-21
-task: Continue CO-01/CO-02 integration hardening; preserve vault data and keep canonical branch untouched
-state: RUN_559_STANDARD_AND_EMULATOR_GREEN — ELEVEN_INSTRUMENTATION_TESTS_PASSED — OCR_TEXT_BOUNDARY_GUARDED — SQLCIPHER_REWRAP_CRASH_RECOVERY_VERIFIED — PR49_METADATA_CI_PENDING — OS_PROCESS_DEATH_AND_G2_REVIEW_OPEN
+task: CO-01/CO-02 integration hardening and CO-06 build integrity; preserve vault data and keep canonical branch untouched
+state: CO-06_IMPLEMENTED_AND_CI_GREEN — RUN_565_BOTH_JOBS_PASS — ELEVEN_TESTS_PASS — CO-02_OS_LIFECYCLE_AND_G2_REVIEW_OPEN
 canonical_branch: feat/durable-vault-migration-journal
 candidate_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48
-candidate_head_sha: acbe7d8e5092d762d89f202d0d2ad02ef1d60afa passed exact-head run #559; this documentation refresh will create a docs-only follow-up head requiring final exact-head CI.
+validated_source_sha: bbea1eb7a697d89c06f27fbc725dbfa175ee50e5
+validated_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39758879722
+documentation_commit_note: This handoff refresh is docs-only; runtime source tree at validated_source_sha is unchanged.
 environment:
   repository_checkout_in_active_execution_environment: NOT_AVAILABLE — GitHub connector used for branch edits
   android_sdk_in_active_execution_environment: NOT_AVAILABLE
   local_gradle_build: NOT_RUN
   independent_reviewer_subagent: NOT_AVAILABLE
 current_release_gate:
-  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39753800533
-  last_completed_source_test_sha: acbe7d8e5092d762d89f202d0d2ad02ef1d60afa
-  observed_status_when_handoff_written: Both standard and Android emulator jobs passed. The emulator ran 11 instrumentation tests and Gradle reported BUILD SUCCESSFUL in 4m 18s. Coverage includes auth-per-use denial, missing-alias fail-closed behavior, controller/receiver lock paths, SQLCipher row preservation/integrity and durable journal recovery, including interruption after the VEK wrapper is written but before the DB-key-rewrapped checkpoint. This remains synthetic-fixture evidence, not proof of production DatabaseKeyManager alias behavior or OS-driven process death.
-  separate_dependency_gate: PR #49 head b2ad797238ed89759edefd04348a97b5f68c44b2; run #561 is pending at https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39755053774
-  prior_green_run_policy: Older green runs do not verify a later head
+  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39758879722
+  observed_status: Both standard and Android emulator jobs passed on validated_source_sha. Standard gate passed dependency verification, debug/release builds, JVM tests, lint, Python policy guards, offline-manifest policy, assembleDebugAndroidTest, and the separate prepareOcrModels UP-TO-DATE assertion. Emulator ran 11 tests and reported BUILD SUCCESSFUL in 4m 36s.
+  dependency_metadata_baseline: PR #49 source b2ad797238ed89759edefd04348a97b5f68c44b2 passed run #561; its reviewed metadata is integrated here with six candidate-specific components and one additional SavedState AAR hash. Delta generation reported no existing trusted hashes changed or removed.
+  previous_code_gate: SHA acbe7d8e5092d762d89f202d0d2ad02ef1d60afa passed run #564 with 11 tests before the CO-06 model-task update.
 scope_guard:
   - No changes to canonical branch or merge performed.
   - Do not retire legacy ciphertext, staging copies, or old key wrappers until authenticated read-back, SQLCipher reopen/integrity verification, durable migration completion, and independent review are recorded.
@@ -29,27 +30,26 @@ owner_approved_decision:
   - B2: independent random 256-bit recovery key with authenticated envelope, one-time display and exact re-entry confirmation; no server/cloud copy.
   - C1: lock on explicit lock, screen-off, app foreground loss and process restart; no inactivity timer without separate approval.
 verified_in_candidate_source:
-  - MainActivity creates the vault home only for VaultAccessUiState.Ready and uses VaultAccessController/VaultSession.
-  - Migration controller runs journal/backend before runtime publication, and legacy provider cleanup is handled on success/failure.
-  - Reminder worker does not open SQLCipher and uses generic notification text; cancellation and delivery-gate tests are present.
-  - Import/repository/OCR/payload/AES-GCM/settings-transfer code clears owned temporary plaintext or key byte arrays where possible; tests cover import-buffer clearing on success/failure.
-  - Initial OCR extraction and corrected OCR extraction now use the same MAX_OCR_CHARACTERS prefix as persisted text. Source policy regression test reproduced the initial-path mismatch before the fix; exact-head standard CI passed after the fix.
-  - Edited structured fields clear acceptance and visibly warn that the original OCR excerpt may not match the edited value.
-  - SQLCipher instrumentation covers the durable recovery checkpoint after the create-once VEK wrapper side effect, with unchanged legacy wrapper, fresh coordinator resume, row preservation, PRAGMA integrity_check, and COMPLETE.
-  - README, PLANS and progress are being refreshed to record current evidence; PR #48 remains draft/unmerged.
+  - MainActivity publishes vault repositories only in VaultAccessUiState.Ready after auth-per-use unwrap and durable migration COMPLETE.
+  - OCR extraction for initial and corrected text is bounded to the same MAX_OCR_CHARACTERS prefix that is persisted; structured-field edits clear acceptance and warn that the original excerpt may not match the edited value.
+  - SQLCipher instrumentation covers interruption after a synthetic DB key is create-once wrapped under the VEK but before the journal checkpoint; fresh-coordinator resume preserves the legacy wrapper, row, PRAGMA integrity_check and durable COMPLETE.
+  - Dependency verification metadata covers AndroidX Test, AndroidX Biometric and candidate transitive artifacts; existing trusted checksum entries were preserved. Standard CI compiles assembleDebugAndroidTest with verification enabled.
+  - OCR model files retain their pinned Git-blob SHA-1 checks and now also have SHA-256 pins. Gradle inputs/outputs are declared, unconditional always-run behavior is removed, download retries/backoff are bounded, and the CI second invocation proves prepareOcrModels is UP-TO-DATE.
+  - Tesseract4Android and SQLCipher dependencies are in the version catalog; SQLCipher remains AAR-only and non-transitive.
+  - README documents build-time network requirements, runtime offline behavior, and pre-seeding exact verified model files for an offline build.
 unverified:
-  - The synthetic SQLCipher fixture does not exercise DatabaseKeyManager's fixed production Keystore alias or production database migration entry point.
-  - Actual OS-driven screen-off/background delivery, true process death/restart, biometric enrollment changes, physical-device behavior, and authenticated CryptoObject recovery success remain unverified.
-  - The separate PR #49 dependency-verification update must pass exact-head CI before its metadata is integrated into a combined candidate.
+  - Synthetic SQLCipher fixture does not exercise DatabaseKeyManager's fixed production Keystore alias or production database migration entry point.
+  - Actual OS-driven screen-off/background delivery, true process-death/restart, biometric enrollment changes, physical-device behavior, and authenticated CryptoObject recovery success remain unverified.
   - Independent human security review remains mandatory; G2 approval for the fail-closed legacy-key fallback guard remains open.
 next_actions:
-  - Poll PR #49 run #561 for exact SHA b2ad797238ed89759edefd04348a97b5f68c44b2. If green, integrate the verified dependency metadata and assembleDebugAndroidTest CI gate into PR #48 as an explicit integration commit, then run exact-head CI.
-  - Add OS-level process-death/background/screen-off evidence and production DatabaseKeyManager migration coverage only after the current gates pass; retain synthetic-only scope labels.
+  - Improve lifecycle instrumentation so tests invoke MainActivity.onStop itself rather than directly calling controller callbacks; keep the explicit limitation that this is not OS-level process-death evidence.
+  - Add a safe test-only seam to exercise production DatabaseKeyManager migration with synthetic keys and isolated database paths; never use or clear the real production alias in tests.
   - Obtain the explicit G2 owner decision on the fail-closed legacy-key fallback guard.
-  - Conduct an independent human security review. Do not treat a manual self-review as an independent reviewer.
+  - Conduct independent human security review; do not treat manual self-review as independent review.
+  - Continue remaining P0 migration/recovery and OS lifecycle gates before any release decision.
 independent_review: NOT_AVAILABLE — no fresh-context reviewer sub-agent is available; human security review remains a release gate.
 conflicts:
-  - AGENTS.md W5 says "Self-review the diff with docs/agent/REVIEW.md section quick"; docs/agent/REVIEW.md is absent at this candidate SHA (GitHub returned 404). I performed a manual cold review using AGENTS.md and the secure-storage-cryptography/testing-quality skills, but independent review remains unavailable.
+  - AGENTS.md W5 says "Self-review the diff with docs/agent/REVIEW.md section quick"; docs/agent/REVIEW.md is absent at this source SHA (GitHub returned 404). Manual cold review used AGENTS.md and available security/testing skills, but independent review remains unavailable.
 </handoff>
 
 

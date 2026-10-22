@@ -9,8 +9,8 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 ## Current verified evidence
 - PR #48 recovery-alias cleanup commit `621eca27ed3f41a3bc5aa7ac84901af93cd734bc` passed exact-head Android CI run #522: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39724232188
 - PR #49 build-integrity head `7b41ffe9c4d845dacf6a945c4ad167e67d40449b` passed exact-head Android CI run #521: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39723726808
-- PR #48 exact head `acbe7d8e5092d762d89f202d0d2ad02ef1d60afa` passed both standard and emulator jobs in run #559: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39753800533. Eleven emulator tests completed; synthetic SQLCipher crash-before-checkpoint recovery, row preservation, integrity and journal COMPLETE passed.
-- PR #49 metadata candidate `b2ad797238ed89759edefd04348a97b5f68c44b2` is under exact-head CI run #561: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39755053774. The generated metadata delta added 10 components without changing/removing existing trusted hashes; the permanent CI task now includes `assembleDebugAndroidTest` with verification enabled.
+- PR #48 validated source `bbea1eb7a697d89c06f27fbc725dbfa175ee50e5` passed both standard and emulator jobs in run #565: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39758879722. Eleven emulator tests completed; standard gate verified dependency hashes, `assembleDebugAndroidTest`, and `prepareOcrModels UP-TO-DATE`.
+- PR #49 metadata baseline `b2ad797238ed89759edefd04348a97b5f68c44b2` passed run #561: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39755053774. Its reviewed metadata is integrated into PR #48 along with six candidate-specific components and one SavedState AAR hash; the combined candidate's run #565 passed.
 - CI verifies JVM tests, debug/release builds, lint, source-policy tests and merged-manifest offline policy. It does not establish device lifecycle or real SQLCipher migration behavior.
 - Local Android SDK/repository checkout is unavailable in this execution session. Use exact-head GitHub Actions runs for compile/test evidence.
 
@@ -27,6 +27,15 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 - Approved emulator action: `ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d` (v2.38.0, immutable commit pin; release: https://github.com/ReactiveCircus/android-emulator-runner/releases/tag/v2.38.0; Apache-2.0).
 - Implementation adds `AndroidJUnitRunner`, a separate API 36 Google APIs x86_64 emulator job, and two Android Keystore instrumentation checks. The action only provisions a test emulator; CI network activity is limited to normal SDK/Maven/model/build downloads. The app manifest/offline policy remains unchanged.
 - PR #48 exact-head run #559 passed the standard job and 11 emulator tests. PR #49 dependency-verification run #561 is pending; do not count it green until it completes.
+
+## CO-06 build integrity — implemented and CI-verified
+
+- Exact validated source SHA: `bbea1eb7a697d89c06f27fbc725dbfa175ee50e5`; [run #565](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39758879722) passed both jobs.
+- Three OCR models are pinned with SHA-256 plus existing Git-blob SHA-1. Gradle task inputs/outputs are declared, unconditional always-run behavior removed, and the task uses bounded retry/backoff with validated temporary-file installation.
+- Tesseract4Android and SQLCipher are version-catalog dependencies with versions unchanged; SQLCipher remains AAR-only/non-transitive.
+- Combined dependency-verification metadata includes AndroidX Test, Biometric and transitive artifacts. Generated delta preserved baseline hashes; no existing trusted hashes changed or were removed.
+- CI runs `assembleDebugAndroidTest` under normal verification and explicitly checks `:app:prepareOcrModels` is `UP-TO-DATE` on the second invocation. README documents the build-time network requirement, offline runtime OCR, and exact-file pre-seeding.
+- CO-06 is complete at this source SHA. It does not close CO-02 lifecycle/recovery or independent security-review gates.
 
 ## Guardrails
 - Never weaken/skip dependency verification or offline-manifest gates to make CI green.
@@ -60,8 +69,8 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 ## Run #527 emulator instrumentation — result and follow-up
 - Run #527 (`bcf27b1a0a59a4ed7ae5902e9438b61e4b706718`) standard job succeeded and the instrumented step executed 3 tests after PIN setup worked.
 - One failure: auth-per-use test asserted top-level `UserNotAuthenticatedException`, but Android 16 surfaced `IllegalBlockSizeException` with nested Keystore denial `Key user not authenticated`. The updated test checks the cause chain, preserving the invariant that unauthenticated key use must fail.
-- The absent-alias fail-closed and synthetic SQLCipher/journal test were not reported as failed. Exact-head CI for the revised assertion and MainActivity lifecycle tests is pending.
-- Metadata integration caution: PR #49's dependency verification metadata is not yet on this branch and does not list AndroidX Test components. Before any merge/release, review the combined diff and add verified hashes for all three approved AndroidX Test dependencies.
+- The absent-alias fail-closed and synthetic SQLCipher/journal test were not reported as failed. superseded_by: run #565 passed on source SHA bbea1eb7a697d89c06f27fbc725dbfa175ee50e5; actual OS lifecycle delivery remains unverified.
+- superseded_by: CO-06 build-integrity section above; verified metadata is integrated and run #565 passed.
 
 
 ## Run #532 lifecycle instrumentation diagnosis and fix
