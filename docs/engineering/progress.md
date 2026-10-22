@@ -710,3 +710,17 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Trigger/obtain Android CI for the current PR head and fix any failures on the resulting exact SHA.
 2. Add a deterministic concurrency regression test proving stale migration failure cannot lock a newer session, beyond the source-level guard.
 3. Verify lock/unlock, recovery confirmation, app backgrounding, disposal, and interrupted migration on emulator/device; request independent security review.
+
+
+## 2026-10-22 — Exact-head Android CI verified for authentication race-fix candidate
+
+### Verification update
+- GitHub Actions run [39716369173](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39716369173) completed with conclusion **success** for exact candidate head `eba41b870f142f85365855f647fcf4ae1ca320ec`.
+- Job `Build, test tasks, lint, and offline manifest gate` passed all listed steps: Android SDK setup, offline manifest helper tests, debug/release build + unit tests + lint, and merged-manifest offline policy enforcement.
+- This raises confidence in build/integration gates only. The source-level race regression guard ran within CI, but it does not constitute a deterministic concurrency test of the stale-migration/new-session interleaving.
+- No emulator or physical-device lifecycle test or independent security review is evidenced by this run. Do not merge or declare full security sign-off on CI alone.
+
+### Remaining gates
+1. Add a deterministic concurrency regression test for stale migration failure versus a newer authenticated session, preferably by extracting the epoch-guarded publication/cleanup decision into a small unit-testable collaborator or injecting migration/session dependencies.
+2. Run Android emulator/device checks for setup, unlock, recovery confirmation, app backgrounding, disposal/late callbacks, and interrupted migration.
+3. Obtain independent security review and re-check CI on the final reviewed PR head before merge.
