@@ -13,8 +13,9 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Exercises MainActivity's actual stop callback using synthetic controller/session state in the
- * disposable instrumentation app process. It never installs a real Keystore key or opens a vault.
+ * Invokes MainActivity.onStop itself using synthetic controller/session state in the
+ * disposable instrumentation app process. This verifies callback wiring, not OS-driven lifecycle delivery or
+ * process death. It never installs a real Keystore key or opens a vault.
  */
 @RunWith(AndroidJUnit4::class)
 class MainActivityLifecycleInstrumentedTest {
@@ -38,10 +39,9 @@ class MainActivityLifecycleInstrumentedTest {
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             scenario.onActivity { activity ->
-                // Invoke the same controller callback wired by MainActivity.onStop. ActivityScenario's
-                // CREATED transition is unreliable in this emulator runner, so OS lifecycle delivery
-                // remains a separate release check.
-                controllerOf(activity).onActivityStopped()
+                // Invoke the production Activity callback itself. This verifies MainActivity.onStop wiring;
+                // it does not simulate OS-driven stop delivery or process death.
+                invokeMainActivityOnStop(activity)
             }
 
             scenario.onActivity { activity ->
@@ -83,9 +83,9 @@ class MainActivityLifecycleInstrumentedTest {
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
             scenario.onActivity { activity ->
-                // Exercise the production cleanup callback deterministically. Real OS Activity
-                // stop delivery remains a separate, currently-unverified release check.
-                controllerOf(activity).onActivityStopped()
+                // Invoke the production Activity callback itself. Real OS Activity stop delivery and
+                // process-death behavior remain separate, currently-unverified release checks.
+                invokeMainActivityOnStop(activity)
             }
 
             scenario.onActivity { activity ->
@@ -163,6 +163,12 @@ class MainActivityLifecycleInstrumentedTest {
             android.os.SystemClock.sleep(50)
         }
         assertTrue("VaultAccessController did not finish initial state discovery", initialized)
+    }
+
+    private fun invokeMainActivityOnStop(activity: MainActivity) {
+        val method = MainActivity::class.java.getDeclaredMethod("onStop")
+        method.isAccessible = true
+        method.invoke(activity)
     }
 
     private fun controllerOf(activity: MainActivity): VaultAccessController {
