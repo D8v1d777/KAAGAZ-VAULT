@@ -46,6 +46,15 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.number == 49
         run: ./gradlew --no-daemon --refresh-dependencies --write-verification-metadata sha256 help
 
+      - name: Upload refreshed Gradle verification metadata (CO-06)
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 49
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: co06-gradle-verification-metadata
+          path: gradle/verification-metadata.xml
+          if-no-files-found: error
+          retention-days: 1
+
 
       - name: Test offline manifest policy helpers
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
@@ -63,14 +72,7 @@ jobs:
       - name: Enforce offline merged-manifest policy
         run: python3 scripts/check_offline_manifest.py
 
-      - name: Upload refreshed Gradle verification metadata (CO-06)
-        if: github.event_name == 'pull_request' && github.event.pull_request.number == 49
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: co06-gradle-verification-metadata
-          path: gradle/verification-metadata.xml
-          if-no-files-found: error
-          retention-days: 1
+
 
   # Temporary CO-06 repair only; remove after the refreshed metadata is committed.
   commit-verification-metadata:
