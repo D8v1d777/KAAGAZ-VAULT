@@ -38,17 +38,17 @@ class VaultAccessWiringTest(unittest.TestCase):
         lock_start = self.controller.index("fun lockNow(")
         lock_end = self.controller.index("fun onActivityStopped(", lock_start)
         lock_body = self.controller[lock_start:lock_end]
-        self.assertIn("accessEpoch += 1", lock_body)
+        self.assertIn("accessEpochGate.invalidate", lock_body)
         self.assertIn("runtime.also { runtime = null }", lock_body)
         self.assertLess(lock_body.index("session.lock()"), lock_body.index("previousRuntime?.databaseProvider?.close()"))
-        self.assertIn("migrationEpoch != accessEpoch || !session.isUnlocked()", self.controller)
+        self.assertIn("migrationEpoch != currentEpoch || !session.isUnlocked()", self.controller)
         self.assertIn("postStateIfEpoch(VaultAccessUiState.Ready(next), migrationEpoch)", self.controller)
 
     def test_migration_closes_legacy_provider_on_success_and_all_providers_on_failure(self):
         self.assertIn("oldProvider?.close()", self.controller)
         self.assertIn("oldProvider = null", self.controller)
         self.assertIn("newProvider?.close()", self.controller)
-        self.assertIn("synchronized(this)", self.controller)
+        self.assertIn("accessEpochGate.withLock", self.controller)
 
     def test_dispose_invalidates_late_authentication_callbacks_and_clears_wrapped_key(self):
         dispose_start = self.controller.index("fun dispose()")
@@ -58,7 +58,7 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("clearPrompt()", dispose_body)
         self.assertLess(dispose_body.index("clearPrompt()"), dispose_body.index("prompt.cancelAuthentication()"))
         self.assertIn("if (disposed) return", self.controller)
-        self.assertIn("if (!disposed && accessEpoch == expectedEpoch)", self.controller)
+        self.assertIn("if (!disposed && accessEpochGate.currentEpoch() == expectedEpoch)", self.controller)
 
     def test_synchronous_auth_prompt_failures_clear_recovery_state(self):
         setup_start = self.controller.index("fun beginSetup()")
@@ -81,10 +81,10 @@ class VaultAccessWiringTest(unittest.TestCase):
         catch_start = self.controller.index("} catch (failure: Exception) {", migration_start)
         catch_end = self.controller.index("try { newProvider?.close()", catch_start)
         failure_cleanup = self.controller[catch_start:catch_end]
-        self.assertIn("synchronized(this)", failure_cleanup)
-        self.assertIn("if (migrationEpoch == accessEpoch)", failure_cleanup)
+        self.assertIn("accessEpochGate.ifCurrent(migrationEpoch)", failure_cleanup)
+        self.assertIn("accessEpochGate.ifCurrent(migrationEpoch)", failure_cleanup)
         self.assertLess(
-            failure_cleanup.index("if (migrationEpoch == accessEpoch)"),
+            failure_cleanup.index("accessEpochGate.ifCurrent(migrationEpoch)"),
             failure_cleanup.index("session.lock()"),
         )
         self.assertIn("if (disposed) throw VaultLockedException()", self.controller)
