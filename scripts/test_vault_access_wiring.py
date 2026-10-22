@@ -152,6 +152,19 @@ class VaultAccessWiringTest(unittest.TestCase):
             lock_body.index("previousRuntime?.databaseProvider?.close()"),
         )
 
+    def test_recovery_confirmation_does_not_zero_the_vek_being_transferred(self):
+        start = self.controller.index("private fun prepareRecoveryConfirmation(")
+        end = self.controller.index("private fun installAndMigrate(", start)
+        body = self.controller[start:end]
+
+        # finishRecoveryRewrap passes pendingVek itself into this method. Wiping the
+        # old pending reference unconditionally would zero the same VEK before the
+        # user confirms it, then persist a zeroed key into the authenticated session.
+        self.assertIn("val previousPendingVek = pendingVek", body)
+        self.assertIn("if (previousPendingVek !== vek) previousPendingVek?.fill(0)", body)
+        self.assertIn("if (pendingVek === vek) pendingVek = null", body)
+        self.assertIn("pendingVek = vek", body)
+
     def test_recovery_rewrap_prompt_failure_discards_uncommitted_keystore_alias(self):
         failure_start = self.controller.index("private fun onPromptFailure(")
         failure_end = self.controller.index("private fun clearPrompt(", failure_start)
