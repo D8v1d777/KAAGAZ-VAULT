@@ -18,41 +18,44 @@ val tessdataModels = mapOf(
     "hin.traineddata" to "a8f0aaec09378115b12a2c6287c57695d082aea2",
     "tel.traineddata" to "ee8a33b0f658fc75b8cbfe8c10413eac4f41e6ad"
 )
+val tessdataModelsSha256 = mapOf(
+    "eng.traineddata" to "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+    "hin.traineddata" to "4c73ffc59d497c186b19d1e90f5d721d678ea6b2e277b719bee4e2af12271825",
+    "tel.traineddata" to "d10691fddd5b67802e1c12800ebb321d3b8bcd8d24a2ac3ff206f93188c04ab5"
+)
 
-android {
-    namespace = "com.kaagazvault"
-    compileSdk = 36
-    defaultConfig {
-        applicationId = "com.kaagazvault"
-        minSdk = 24
-        targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
-    }
-    buildFeatures { compose = true }
-    sourceSets.getByName("main").assets.srcDir(generatedOcrAssets.get().asFile)
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
+fun sha256Hex(bytes: ByteArray): String =
+    MessageDigest.getInstance("SHA-256").digest(bytes)
+        .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+
+fun gitBlobSha1(bytes: ByteArray): String {
+    val digest = MessageDigest.getInstance("SHA-1")
+    digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
+    digest.update(bytes)
+    return digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
 }
-kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
 val prepareOcrModels by tasks.registering {
     val modelOutputs = tessdataModels.keys.map { name -> generatedOcrAssets.map { it.file("tessdata/$name") } }
+    inputs.property("tessdataRevision", tessdataRevision)
+    inputs.property(
+        "tessdataGitBlobSha1Pins",
+        tessdataModels.toSortedMap().entries.joinToString("|") { "${it.key}:${it.value}" }
+    )
+    inputs.property(
+        "tessdataSha256Pins",
+        tessdataModelsSha256.toSortedMap().entries.joinToString("|") { "${it.key}:${it.value}" }
+    )
     outputs.files(modelOutputs)
-    outputs.upToDateWhen { false }
     doLast {
         val outputDirectory = generatedOcrAssets.get().file("tessdata").asFile
         if (!outputDirectory.exists() && !outputDirectory.mkdirs()) throw GradleException("Could not create generated OCR model directory")
         tessdataModels.forEach { (name, expectedGitBlobSha) ->
+            val expectedSha256 = tessdataModelsSha256.getValue(name)
             val destination = File(outputDirectory, name)
             val validExisting = destination.isFile && run {
                 val bytes = destination.readBytes()
-                val digest = MessageDigest.getInstance("SHA-1")
-                digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
-                digest.update(bytes)
-                digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) } == expectedGitBlobSha
+                gitBlobSha1(bytes) == expectedGitBlobSha && sha256Hex(bytes) == expectedSha256
             }
             if (validExisting) return@forEach
             val temporary = File(outputDirectory, "$name.download")
@@ -65,16 +68,9 @@ val prepareOcrModels by tasks.registering {
                 connection.inputStream.use { input -> temporary.outputStream().use { output -> input.copyTo(output) } }
             } finally { connection.disconnect() }
             val bytes = temporary.readBytes()
-            // Temporary CO-06 hash discovery: CI logs a digest only after fetching the pinned
-            // bytes; the existing Git-blob SHA-1 check below still fails the build on mismatch.
-            val diagnosticSha256 = MessageDigest.getInstance("SHA-256").digest(bytes)
-                .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
-            println("TESSDATA_SHA256_DIAGNOSTIC $name $diagnosticSha256")
-            val digest = MessageDigest.getInstance("SHA-1")
-            digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
-            digest.update(bytes)
-            val actualGitBlobSha = digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
-            if (actualGitBlobSha != expectedGitBlobSha) {
+            val actualGitBlobSha = gitBlobSha1(bytes)
+            val actualSha256 = sha256Hex(bytes)
+            if (actualGitBlobSha != expectedGitBlobSha || actualSha256 != expectedSha256) {
                 temporary.delete()
                 throw GradleException("Pinned OCR model integrity check failed for $name")
             }
@@ -92,7 +88,7 @@ val prepareOcrModels by tasks.registering {
 tasks.named("preBuild").configure { dependsOn(prepareOcrModels) }
 
 dependencies {
-    implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
+    implementation(libs.tesseract4android)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.sqlite)
@@ -100,7 +96,13 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
-    implementation("net.zetetic:sqlcipher-android:4.19.1@aar")
+    implementation(libs.sqlcipher.android) {
+        isTransitive = false
+        artifact {
+            name = "sqlcipher-android"
+            type = "aar"
+        }
+    }
     implementation(libs.pdfium.android)
     implementation(libs.androidx.work.runtime)
     ksp(libs.androidx.room.compiler)

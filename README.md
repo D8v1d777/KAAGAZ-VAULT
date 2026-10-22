@@ -86,7 +86,11 @@ The app is not release-approved yet. Secure deletion is not guaranteed, physical
 - compileSdk / targetSdk 36 · provisional minSdk 24
 - Compose BOM 2026.04.01
 
-The Gradle wrapper is checked in. The configured CI sequence runs the script tests, Android build, JVM unit tests, lint, and the offline-manifest check. Never claim a build or test pass without a completed run.
+The Gradle wrapper is checked in. The configured CI sequence runs the script tests, Android build, JVM unit tests, lint, the OCR model task up-to-date check, and the offline-manifest check. Gradle dependency artifacts are verified against the committed SHA-256 metadata in `gradle/verification-metadata.xml`.
+
+The app's runtime OCR path is local/offline, but a fresh build needs network access once to retrieve the three pinned Tesseract model files at the fixed revision. The build validates both SHA-256 and Git-blob SHA-1 before adding a downloaded model to generated assets. This is a build-time network requirement, not an app INTERNET permission or a runtime cloud OCR dependency.
+
+For an offline build after the Gradle dependencies are already cached, pre-seed the exact validated files as `app/build/generated/ocr-assets/tessdata/eng.traineddata`, `hin.traineddata`, and `tel.traineddata`, then run `./gradlew --no-daemon :app:assembleDebug` without `clean`. The task checks both pinned hashes for existing files; invalid or mismatched files fail closed or are replaced by a validated download. Running `clean` removes those generated/pre-seeded outputs. Never commit model binaries. Never claim a build or test pass without a completed run.
 
 ```bash
 git clone https://github.com/D8v1d777/KAAGAZ-VAULT.git
