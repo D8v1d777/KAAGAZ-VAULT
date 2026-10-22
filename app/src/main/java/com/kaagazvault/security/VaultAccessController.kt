@@ -476,6 +476,9 @@ internal class VaultAccessController(
                 pendingVek?.fill(0)
                 pendingVek = null
                 pendingRecoveryText = null
+                // The replacement alias is not committed to the key record until re-wrap succeeds.
+                // A cancelled/failed prompt must not accumulate orphaned auth-bound aliases.
+                try { key?.discardAbandonedSetup() } catch (_: Exception) { }
                 state(VaultAccessUiState.RecoveryRequired(message + " Enter the recovery key again to retry."))
             }
             else -> state(VaultAccessUiState.Locked(message))

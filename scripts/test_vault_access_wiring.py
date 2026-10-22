@@ -97,6 +97,20 @@ class VaultAccessWiringTest(unittest.TestCase):
             lock_body.index("previousRuntime?.databaseProvider?.close()"),
         )
 
+    def test_recovery_rewrap_prompt_failure_discards_uncommitted_keystore_alias(self):
+        failure_start = self.controller.index("private fun onPromptFailure(")
+        failure_end = self.controller.index("private fun clearPrompt(", failure_start)
+        failure_body = self.controller[failure_start:failure_end]
+        recovery_start = failure_body.index("Purpose.RECOVERY_REWRAP ->")
+        recovery_end = failure_body.index("else -> state(", recovery_start)
+        recovery_failure = failure_body[recovery_start:recovery_end]
+
+        self.assertIn("key?.discardAbandonedSetup()", recovery_failure)
+        self.assertLess(
+            recovery_failure.index("pendingVek?.fill(0)"),
+            recovery_failure.index("key?.discardAbandonedSetup()"),
+        )
+
     def test_stale_migration_failure_cannot_lock_a_newer_authenticated_session(self):
         migration_start = self.controller.index("private fun migrate()")
         catch_start = self.controller.index("} catch (failure: Exception) {", migration_start)

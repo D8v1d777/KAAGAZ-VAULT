@@ -743,3 +743,12 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Add a deterministic concurrency regression test for stale migration failure versus a newer authenticated session, preferably by extracting the epoch-guarded publication/cleanup decision into a small unit-testable collaborator or injecting migration/session dependencies.
 2. Run Android emulator/device checks for setup, unlock, recovery confirmation, app backgrounding, disposal/late callbacks, and interrupted migration.
 3. Obtain independent security review and re-check CI on the final reviewed PR head before merge.
+
+
+### 2026-10-22 — Recovery prompt cancellation cleanup (PR #48)
+
+- Work window: started at 10:13 IST after the user's continuation request; ended at the commit timestamp recorded by GitHub for this patch.
+- Code review finding: when `BiometricPrompt` returns an asynchronous cancellation/error during `Purpose.RECOVERY_REWRAP`, `onPromptFailure()` clears the pending VEK/text but previously left the newly generated, uncommitted replacement alias in Android Keystore. The synchronous `recoverWithKey()` failure path already cleaned this alias.
+- Fix: on the recovery re-wrap failure path, zero pending VEK state and then best-effort delete only the attempt's new alias via `discardAbandonedSetup()`. This alias is not persisted in the active vault-key record until successful authenticated re-wrap; no existing VEK, wrapper record, or document ciphertext is replaced by cancellation cleanup.
+- Added a source-wiring regression guard and JVM tests proving the cleanup primitive removes only the requested alias and is safe when already absent.
+- Validation status at patch time: Android CI run #521 for PR #49 was still running on exact head `7b41ffe9c4d845dacf6a945c4ad167e67d40449b`; PR #48's regression commit must be verified by a new exact-head CI run. Device/emulator validation remains unperformed.
