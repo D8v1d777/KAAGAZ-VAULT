@@ -5,7 +5,7 @@ updated: 2026-10-22
 author: GPT-6 via connected GitHub tools
 branch: agent/integration-security-hardening-candidate-2026-10-21
 task: Continue CO-01/CO-02 integration hardening; preserve vault data and keep canonical branch untouched
-state: EMULATOR_BOOT_CONFIRMED — RUN_525_AUTH_KEY_SETUP_FAILED_WITHOUT_SECURE_LOCK_SCREEN — TEST_ONLY_PIN_AND_SYNTHETIC_SQLCIPHER_GATE_ADDED — EXACT_HEAD_CI_PENDING — LIFECYCLE_AND_PRODUCTION_KEY_MANAGER_REVIEW_OPEN
+state: RUN_526_EMULATOR_SCRIPT_SCOPE_FAILED_BEFORE_GRADLE — ONE_SHELL_PIN_BOOTSTRAP_FIX_ADDED — SYNTHETIC_SQLCIPHER_TEST_ADDED — EXACT_HEAD_CI_PENDING — LIFECYCLE_AND_PRODUCTION_KEY_MANAGER_REVIEW_OPEN
 canonical_branch: feat/durable-vault-migration-journal
 candidate_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48
 candidate_head_sha: resolve the live PR #48 head after the secure-lockscreen/test update commit
@@ -15,9 +15,9 @@ environment:
   local_gradle_build: NOT_RUN
   independent_reviewer_subagent: NOT_AVAILABLE
 current_release_gate:
-  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39727573230
-  last_completed_source_test_sha: 7d376082dcb316af9826ef04a14e1a7c0727dcd3
-  observed_status_when_handoff_written: Standard CI passed on exact SHA 7d376082dcb316af9826ef04a14e1a7c0727dcd3 (debug/release build, JVM tests, lint, source/policy tests, offline manifest gate). The emulator booted and compiled/ran the instrumented tests. AuthBoundVaultKeyInstrumentedTest failed before its assertion because Android Keystore requires a secure lock screen and the emulator had none configured. This commit adds a test-only ephemeral PIN with an EXIT cleanup trap and a synthetic cache-only SQLCipher/journal integration test. Its exact-head CI result is pending.
+  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39728903631
+  last_completed_source_test_sha: 52906c18a8d567d0c152d06e3a8e6ff249477f2e
+  observed_status_when_handoff_written: Standard CI passed on exact SHA 52906c18a8d567d0c152d06e3a8e6ff249477f2e. Emulator booted, but no Gradle/test command ran: the pinned action launches each script line in a separate shell, so the PIN variable was not retained across lines and `locksettings set-pin` received an empty argument (Android NPE). This commit collapses PIN setup, cleanup trap and Gradle invocation into one folded shell command. New exact-head CI is pending.
   prior_green_run_policy: Older green runs do not verify a later head
 scope_guard:
   - No changes to canonical branch or merge performed.
@@ -35,15 +35,15 @@ verified_in_candidate_source:
   - Controller disposal invalidates late authentication callbacks and suppresses late state publication; prompt failures clear pending recovery state and remove only uncommitted wrapper aliases, with JVM tests plus source-level regression guards. This commit adds source guards for Activity onStop/onDestroy and recovery-confirmation cleanup on foreground loss.
   - README.md and AGENTS.md remain unchanged; HANDOFF.md is updated on this candidate branch to record current release gates.
 unverified:
-  - Run #525's standard job passed and the emulator launched; instrumentation failed while generating an auth-bound test key because the emulator had no secure lock screen. The next commit configures a test-only emulator PIN and adds cache-isolated SQLCipher/journal coverage; its exact-head CI remains pending.
+  - Run #526 standard job passed but emulator job failed before Gradle because the action executes script lines separately and the PIN variable was empty. The next one-shell correction has pending exact-head CI. No instrumentation tests ran in #526.
   - Authenticated CryptoObject completion/recovery, screen-off/background locking, picker return flows, process death, biometric enrollment change and interrupted migration are not yet instrumented.
   - The synthetic SQLCipher test exercises real Room/SQLCipher, VEK wrapper store and durable journal, but deliberately does not exercise `DatabaseKeyManager`'s fixed production Keystore alias. That production integration remains unverified.
   - Independent human security review remains mandatory.
 next_actions:
-  - Verify the test-only emulator PIN is set/cleared reliably and exact-head run passes both Keystore and synthetic SQLCipher instrumentation.
-  - Diagnose any test failures from logs without weakening auth/key invariants.
-  - Extend instrumentation to Activity background/screen-off/process death, cancellation/late callbacks and recovery where the emulator supports them.
-  - Review the boundary to the production `DatabaseKeyManager`/legacy Android Keystore wrapper without creating/deleting the production alias in tests.
+  - Verify the folded single-shell command sets the disposable PIN, executes connected tests and clears the PIN regardless of Gradle result.
+  - Diagnose any instrumentation build/assertion failures from the exact run logs without weakening auth/key invariants.
+  - Run the prepared MainActivity lifecycle instrumentation only after the current test slice compiles/executes.
+  - Review the boundary to production `DatabaseKeyManager`/legacy Android Keystore wrapper; do not create/delete the production alias in tests.
   - Independent reviewer sub-agent is unavailable; human security review is still required. Keep PR #48 draft and unmerged until all P0 gates pass.
 independent_review: NOT_AVAILABLE — no fresh-context reviewer sub-agent is available through this execution environment; human security review remains a release gate.
 </handoff>
@@ -72,3 +72,10 @@ independent_review: NOT_AVAILABLE — no fresh-context reviewer sub-agent is ava
 - The emulator workflow sets a test-only PIN immediately before the instrumentation command and clears it via an EXIT trap. This is scoped to an ephemeral CI emulator.
 - Added the cache-isolated SQLCipher/journal test described in `docs/engineering/progress.md`. It never calls the production database-key manager, uses no production alias, and deletes only the UUID-named test cache fixture.
 - New exact-head CI is pending; #525 remains a failed run and cannot be counted green.
+
+
+## Runner script scope root cause — 2026-10-22
+
+- Run #526 standard job passed, but emulator setup terminated before Gradle/test execution.
+- Raw logs show separate shell invocations for each script line; `test_pin=2468` was a process-local assignment. The following command received an empty parameter and Android's `locksettings set-pin` failed.
+- The next workflow stores setup, EXIT cleanup and Gradle invocation in one YAML folded shell command. The test PIN is ephemeral and only used inside the disposable emulator.

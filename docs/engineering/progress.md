@@ -1,14 +1,31 @@
+## 2026-10-22 — Emulator runner shell-isolation correction
+
+### Reproduced
+- Exact-head run [#526](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39728903631) passed the standard build/debug+release/unit/lint/offline-manifest job.
+- Emulator booted, but no Gradle command or Android tests ran. The pinned emulator action executed each script line in its own `/usr/bin/sh -c` process. The `test_pin=2468` variable was local to its own process, so `adb shell locksettings set-pin "$test_pin"` received no PIN and Android's command failed with a NullPointerException. This is a runner-script scope error, not an Android application/test assertion.
+- Fix: YAML folded scalar (`script: >-`) with PIN set, EXIT cleanup trap, and `:app:connectedDebugAndroidTest` in one single shell expression. Uses fixed disposable test credential `2468`, avoids cross-line variables, and always attempts to clear the credential after Gradle exits.
+
+### Current gate
+- Exact-head run after the one-shell correction is pending. Run #526 is a failed setup attempt, not an instrumentation test result.
+- No production key policy/alias, SQLCipher format/schema, app manifest permission, user data path or canonical branch changed.
+
+### Next
+- Verify the command accepts PIN 2468, executes Gradle, and clears the PIN when the script exits.
+- Then debug actual test compilation/assertions, including synthetic SQLCipher row preservation, wrapper retention, `PRAGMA integrity_check`, and durable journal COMPLETE.
+- Lifecycle/restart, production `DatabaseKeyManager`/Keystore integration, biometric enrollment change, and independent security review remain open.
+
+---
+
 ## 2026-10-22 — Emulator secure-lockscreen bootstrap and synthetic SQLCipher test
 
 ### Changes prepared on this candidate
-- Run [#525](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39727573230) passed standard CI and compiled the instrumentation APK, but the emulator test failed because Android Keystore refused an auth-per-use key while no secure lock screen was configured.
-- The pinned emulator job now sets a disposable CI-only PIN (`2468`) immediately before `:app:connectedDebugAndroidTest` and uses an EXIT trap to clear it. This changes only ephemeral emulator state; production key policy and app code are untouched.
-- Added `SqlCipherMigrationInstrumentedTest` as a synthetic cache-fixture test: creates a synthetic Room/SQLCipher database and row, wraps its random DB key with an in-memory legacy test key using the real AES-GCM envelope, re-wraps with the production `VekWrappedDatabaseKeyStore`, reopens SQLCipher, validates the row and `PRAGMA integrity_check`, and requires durable journal COMPLETE with legacy-wrapper bytes preserved.
-- This test deliberately does **not** call `DatabaseKeyManager` or the production Keystore alias; those remain a distinct unverified integration seam. It deletes only its UUID-named cache fixture, and never touches the app's default DB/noBackup paths or user data.
+- Run [#525](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39727573230) proved that the emulator boots and tests execute, but auth-bound key generation failed because the emulator had no secure lock screen.
+- The PIN/bootstrap follow-up was attempted in run [#526](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39728903631). Standard CI passed; emulator setup failed before Gradle because the pinned runner executes each script line in a separate shell. The PIN variable did not persist, `set-pin` received an empty argument and Android threw a NullPointerException. No Android tests ran in #526.
+- The new cache-only `SqlCipherMigrationInstrumentedTest` remains as described above: it exercises the real Room/SQLCipher engine, VEK wrapper store, row preservation, `PRAGMA integrity_check`, durable journal COMPLETE, and synthetic legacy-wrapper retention while never calling `DatabaseKeyManager` or touching the production alias/default database.
 
 ### Verification gate
-- New exact-head CI is pending after this commit. Run #525 proves emulator boot and test execution, but fails the auth-bound key generation prerequisite described above; it is not a passing instrumentation result.
-- Keep the test untrusted until exact-head emulator CI passes. Activity background/screen-off/process-death, biometric enrollment change, production `DatabaseKeyManager`/Keystore wrapping, and independent human security review remain open.
+- The next run must prove the one-shell folded command sets/clears the disposable PIN and actually executes the test APK. Do not count #525 or #526 as passing instrumentation.
+- Production `DatabaseKeyManager`/Keystore integration, activity lifecycle/process-death, biometric enrollment changes, and independent human review remain open.
 
 ---
 

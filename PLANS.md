@@ -48,3 +48,8 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 - Emulator runner script now installs a disposable PIN using `adb shell locksettings set-pin` and removes it on every script exit with `locksettings clear --old`. The command only runs on the isolated emulator inside the pinned action.
 - New synthetic SQLCipher test exercises Room/SQLCipher row preservation, production VEK-wrapped DB-key envelope store, real migration journal/coordinator durable COMPLETE, PRAGMA integrity, and preservation of synthetic legacy-wrapper bytes using only a UUID-named cache fixture and random in-memory keys.
 - Explicit scope limit: the test intentionally does not invoke `DatabaseKeyManager` or the app's fixed legacy Keystore alias. Production legacy-wrapper read/rewrap integration is still unverified. The exact-head emulator run for this commit is pending.
+
+## Emulator runner script scope correction — 2026-10-22
+- Run #526 standard job passed. Emulator booted, but its script failed before Gradle because the pinned action executed each multiline script line in a distinct `/usr/bin/sh -c`; the local PIN variable did not persist and Android's `locksettings set-pin` received no PIN.
+- Workflow correction uses a single folded shell command: set PIN 2468, install EXIT cleanup trap to clear it, then run `:app:connectedDebugAndroidTest` in the same shell.
+- Exact-head rerun required; no test result may be inferred from #526.
