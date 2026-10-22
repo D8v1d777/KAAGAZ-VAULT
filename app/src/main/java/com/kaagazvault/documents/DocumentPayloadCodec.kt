@@ -18,7 +18,8 @@ internal object DocumentPayloadCodec {
     private const val PAYLOAD_MAGIC = 0x4b475044 // KGPD
     private const val LEGACY_PAYLOAD_VERSION = 1
     private const val VERSION_WITH_OCR_SOURCE = 3
-    private const val PAYLOAD_VERSION = VERSION_WITH_OCR_SOURCE
+    private const val VERSION_WITH_STRUCTURED_FIELDS = 4
+    private const val PAYLOAD_VERSION = VERSION_WITH_STRUCTURED_FIELDS
 
     fun encode(payload: ImportedPayload): ByteArray {
         require(payload.content.size in 1..MAX_CONTENT_BYTES) {
@@ -47,6 +48,15 @@ internal object DocumentPayloadCodec {
                 data.writeUTF(payload.ocrLanguages.orEmpty().take(64))
                 data.writeInt(text?.size ?: -1)
                 if (text != null) data.write(text)
+                data.writeInt(payload.structuredFields.size.coerceAtMost(8))
+                payload.structuredFields.take(8).forEach { field ->
+                    data.writeUTF(field.type.take(24))
+                    data.writeUTF(field.value.take(120))
+                    data.writeUTF(field.sourceExcerpt.take(180))
+                    data.writeUTF(field.method.take(64))
+                    data.writeBoolean(field.uncertain)
+                    data.writeBoolean(field.accepted)
+                }
                 return output.copyAndClear()
             } finally {
                 output.clear()
@@ -60,7 +70,7 @@ internal object DocumentPayloadCodec {
         DataInputStream(ByteArrayInputStream(encoded)).use { data ->
             if (data.readInt() != PAYLOAD_MAGIC) throw IOException("Unsupported imported document payload")
             val version = data.readInt()
-            if (version !in LEGACY_PAYLOAD_VERSION..VERSION_WITH_OCR_SOURCE) {
+            if (version !in LEGACY_PAYLOAD_VERSION..VERSION_WITH_STRUCTURED_FIELDS) {
                 throw IOException("Unsupported imported document payload version")
             }
             val name = data.readUTF()
@@ -96,6 +106,21 @@ internal object DocumentPayloadCodec {
                     textBytes.fill(0)
                 }
             } else null
+            val fields = if (version >= VERSION_WITH_STRUCTURED_FIELDS) {
+                val count = data.readInt()
+                if (count !in 0..8) throw IOException("Invalid structured field count")
+                List(count) {
+                    StructuredField(
+                        type = data.readUTF().take(24),
+                        value = data.readUTF().take(120),
+                        sourceExcerpt = data.readUTF().take(180),
+                        method = data.readUTF().take(64),
+                        uncertain = data.readBoolean(),
+                        accepted = data.readBoolean()
+                    )
+                }
+            } else emptyList()
+            if (data.available() != 0) throw IOException("Unexpected structured payload data")
             return ImportedPayload(
                 displayName = name,
                 mimeType = mime,
@@ -105,7 +130,8 @@ internal object DocumentPayloadCodec {
                 ocrReviewed = reviewed,
                 ocrTruncated = truncated,
                 ocrSource = source,
-                ocrLanguages = languages
+                ocrLanguages = languages,
+                structuredFields = fields
             )
         }
     }

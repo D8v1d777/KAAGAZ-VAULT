@@ -118,7 +118,8 @@ internal class DocumentRepository(
                 ocrReviewed = false,
                 ocrTruncated = result.truncated || result.text.length > MAX_OCR_CHARACTERS,
                 ocrSource = result.source,
-                ocrLanguages = result.languages
+                ocrLanguages = result.languages,
+                structuredFields = StructuredFieldExtractor.extract(result.text)
             ))
             try {
                 store.replace(id, replacement)
@@ -138,6 +139,28 @@ internal class DocumentRepository(
     @Throws(IOException::class, GeneralSecurityException::class)
     fun saveReviewedOcr(id: String, correctedText: String): ImportedDocument =
         withVaultSession { saveReviewedOcrInternal(id, correctedText) }
+
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun saveReviewedFields(id: String, fields: List<StructuredField>): ImportedDocument =
+        withVaultSession { saveReviewedFieldsInternal(id, fields) }
+
+    private fun saveReviewedFieldsInternal(id: String, fields: List<StructuredField>): ImportedDocument {
+        val encoded = store.read(id)
+        val payload = try { DocumentPayloadCodec.decode(encoded) } finally { encoded.fill(0) }
+        try {
+            if (payload.ocrText == null) throw IOException("No OCR result exists for this document")
+            val bounded = fields.take(8).map { field ->
+                field.copy(value = field.value.trim().take(120), accepted = field.accepted && field.value.isNotBlank())
+            }.filter { it.value.isNotBlank() }
+            val replacement = DocumentPayloadCodec.encode(payload.copy(structuredFields = bounded))
+            try { store.replace(id, replacement) } finally { replacement.fill(0) }
+            val updatedEncoded = store.read(id)
+            val updatedPayload = try { DocumentPayloadCodec.decode(updatedEncoded) } finally { updatedEncoded.fill(0) }
+            val updated = try { toDocument(updatedPayload, id) } finally { updatedPayload.content.fill(0) }
+            updateIndex { it.upsert(updated) }
+            return updated
+        } finally { payload.content.fill(0) }
+    }
 
     private fun saveReviewedOcrInternal(id: String, correctedText: String): ImportedDocument {
         val encoded = store.read(id)
@@ -250,7 +273,8 @@ internal class DocumentRepository(
         ocrReviewed = payload.ocrReviewed,
         ocrTruncated = payload.ocrTruncated,
         ocrSource = payload.ocrSource,
-        ocrLanguages = payload.ocrLanguages
+        ocrLanguages = payload.ocrLanguages,
+        structuredFields = payload.structuredFields
     )
 
     private fun queryDisplayName(uri: Uri, contentResolver: ContentResolver): String {

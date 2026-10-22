@@ -68,6 +68,7 @@ import androidx.core.content.ContextCompat
 import com.kaagazvault.camera.CameraCaptureScreen
 import com.kaagazvault.documents.DocumentRepository
 import com.kaagazvault.documents.ImportedDocument
+import com.kaagazvault.documents.StructuredField
 import com.kaagazvault.ocr.OfflineOcrEngine
 import com.kaagazvault.reminders.ReminderRepository
 import com.kaagazvault.reminders.ReminderSection
@@ -674,6 +675,7 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: 
         return
     }
     var editedOcr by remember(document.id, document.ocrText) { mutableStateOf(document.ocrText.orEmpty()) }
+    val editedFields = remember(document.id, document.structuredFields) { mutableStateListOf(*document.structuredFields.toTypedArray()) }
     var showReview by remember(document.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember(document.id) { mutableStateOf(false) }
     val view = LocalView.current
@@ -690,6 +692,25 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: 
                     OutlinedTextField(editedOcr, { editedOcr = it }, Modifier.fillMaxWidth(), label = { Text("Review extracted text") }, minLines = 3, maxLines = 8, enabled = !busy, shape = RoundedCornerShape(16.dp))
                     SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { error -> mainHandler.post { onDone(documentFailureMessage(error, "Could not save OCR corrections. Existing data was left untouched.")) } } } }, enabled = !busy, simplified = simplified, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
                     TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); showReview = false }, enabled = !busy) { Text("Hide extracted text") }
+                    if (editedFields.isNotEmpty()) {
+                        Text("Suggested fields — confirm each value before relying on it", style = MaterialTheme.typography.labelMedium)
+                        editedFields.forEachIndexed { index, field ->
+                            OutlinedTextField(
+                                value = field.value,
+                                onValueChange = { value -> editedFields[index] = field.copy(value = value, accepted = false) },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(field.type.replaceFirstChar { it.uppercase() }) },
+                                supportingText = { Text("Source: ${field.sourceExcerpt}\nMethod: ${field.method}${if (field.uncertain) " • uncertain" else ""}") },
+                                enabled = !busy,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(checked = field.accepted, onCheckedChange = { accepted -> editedFields[index] = field.copy(accepted = accepted) }, enabled = !busy)
+                                Text("I confirm this value", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedFields(document.id, editedFields.toList()) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Field review saved inside encrypted document storage.") } }.onFailure { error -> mainHandler.post { onDone(documentFailureMessage(error, "Could not save field review. Existing data was left untouched.")) } } } }, enabled = !busy, simplified = simplified, label = "Save confirmed fields")
+                    }
                 } else {
                     Text("Extracted text is hidden until you choose to review it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SoftButton(onClick = { showReview = true }, enabled = !busy, simplified = simplified, label = "Review extracted text")

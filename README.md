@@ -51,6 +51,7 @@ Kaagaz Vault keeps the experience quiet and tactile. Import or scan a paper, let
 - User-selected PDF/image import with no broad storage permission.
 - Offline Tesseract OCR for English, Hindi, and Telugu with pinned model files and integrity checks.
 - Human-editable OCR text and an explicit review state stored with the encrypted payload.
+- Bounded offline suggestions for dates, amounts, labelled identifiers, and names, shown with source excerpts and uncertainty labels; values remain unaccepted until the user edits and confirms them, and reviewed fields stay inside the encrypted payload.
 - SQLCipher-backed metadata search with encrypted-index and in-memory fallback paths.
 - User-initiated CameraX capture with in-memory JPEG handling and direct encrypted import.
 - Calm motion, restrained haptics, accessibility-aware typography, simplified mode, and privacy-safe app-switcher surfaces.
