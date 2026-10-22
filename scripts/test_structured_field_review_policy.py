@@ -16,6 +16,14 @@ class StructuredFieldReviewPolicyTest(unittest.TestCase):
             source,
         )
 
+    def test_initial_ocr_extraction_uses_the_same_bounded_text_as_storage(self):
+        source = REPOSITORY.read_text(encoding="utf-8")
+        self.assertIn("ocrText = result.text.take(MAX_OCR_CHARACTERS)", source)
+        self.assertIn(
+            "StructuredFieldExtractor.extract(result.text.take(MAX_OCR_CHARACTERS))",
+            source,
+        )
+
     def test_editing_a_suggestion_clears_confirmation_and_warns_about_old_provenance(self):
         source = ACTIVITY.read_text(encoding="utf-8")
         self.assertIn("accepted = false", source)
