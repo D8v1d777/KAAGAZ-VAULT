@@ -165,6 +165,42 @@ class DatabaseKeyManagerInstrumentedTest {
         }
     }
 
+    @Test
+    fun productionKeystoreWrappingRoundTripRejectsTamperedEnvelope() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val fixture = File(context.cacheDir, "database-key-manager-tamper-${UUID.randomUUID()}")
+        val storage = File(fixture, "key-storage")
+        assertTrue("Could not create isolated key-manager fixture", storage.mkdirs())
+        val databaseFile = File(fixture, "synthetic-vault-metadata.db")
+        val alias = "kaagaz.vault.database-key-wrap.test.${UUID.randomUUID().toString().replace("-", "")}"
+
+        try {
+            val manager = DatabaseKeyManager(
+                context = context,
+                keyStorageDirectoryOverride = storage,
+                databaseFileOverride = databaseFile,
+                wrappingKeyAlias = alias
+            )
+            val original = manager.getOrCreateKey()
+            original.fill(0)
+
+            val wrapper = File(storage, LEGACY_WRAPPER_FILE)
+            val tampered = wrapper.readBytes()
+            tampered[tampered.lastIndex] = (tampered.last().toInt() xor 1).toByte()
+            wrapper.writeBytes(tampered)
+            tampered.fill(0)
+
+            assertThrows(IOException::class.java) { manager.getOrCreateKey() }
+        } finally {
+            try {
+                val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+                if (keyStore.containsAlias(alias)) keyStore.deleteEntry(alias)
+            } finally {
+                fixture.deleteRecursively()
+            }
+        }
+    }
+
     private companion object {
         const val KEY_BYTES = 32
         const val LEGACY_WRAPPER_FILE = "vault-database-key.wrap"

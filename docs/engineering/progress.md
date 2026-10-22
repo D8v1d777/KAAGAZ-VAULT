@@ -897,3 +897,22 @@ This log records repository work and evidence. It distinguishes documentation ch
 - Fix: on the recovery re-wrap failure path, zero pending VEK state and then best-effort delete only the attempt's new alias via `discardAbandonedSetup()`. This alias is not persisted in the active vault-key record until successful authenticated re-wrap; no existing VEK, wrapper record, or document ciphertext is replaced by cancellation cleanup.
 - Added a source-wiring regression guard and JVM tests proving the cleanup primitive removes only the requested alias and is safe when already absent.
 - Validation status at patch time: Android CI run #521 for PR #49 was still running on exact head `7b41ffe9c4d845dacf6a945c4ad167e67d40449b`; PR #48's regression commit must be verified by a new exact-head CI run. Device/emulator validation remains unperformed.
+
+
+## 2026-10-22 — Android Keystore AES-GCM IV compatibility fix prepared
+
+### Work claim and scope
+- Start: 2026-10-22 13:24 Asia/Kolkata. Branch: `pr-48`, starting SHA `32fb058e0cf5448fef41bafd4c3ff85b8bd2b2e5`.
+- Workstream A: fix the release-blocking `InvalidAlgorithmParameterException: Caller-provided IV not permitted` failure without weakening randomized encryption, and add production-key instrumentation coverage for round-trip and tamper rejection.
+- Acceptance: Android Keystore generates the AES-GCM nonce; the existing version-1 envelope remains readable; synthetic instrumentation covers authenticated round-trip and tamper failure; exact-head CI is rerun before any release conclusion.
+
+### Implemented
+- `AesGcmEnvelope` now initializes AES-GCM encryption without caller-supplied parameters, copies the provider-generated `Cipher.iv`, validates the existing 12-byte envelope nonce size, and persists that nonce in the unchanged version-1 envelope format.
+- Added `DatabaseKeyManagerInstrumentedTest.productionKeystoreWrappingRoundTripRejectsTamperedEnvelope`, using only a UUID-named cache fixture and an ephemeral Android Keystore alias.
+
+### Verification boundary
+- `python3 -m unittest discover -s scripts -p 'test_*.py'`: **PASS** (26 tests).
+- `git diff --check`: **PASS**.
+- Local Gradle unit test was **BLOCKED** before compilation because this sandbox has no Android SDK (`SDK location not found`); no unit-test pass is claimed.
+- Android emulator instrumentation and exact-head CI are **PENDING** for the resulting commit. Earlier run #538 applies only to SHA `32fb058e0cf5448fef41bafd4c3ff85b8bd2b2e5` and remains a failure.
+- Product feature workstream selection and independent human security review remain open; PR #48 stays draft/unmerged.

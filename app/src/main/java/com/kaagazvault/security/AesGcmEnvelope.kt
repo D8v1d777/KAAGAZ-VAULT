@@ -4,7 +4,6 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.GeneralSecurityException
-import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
@@ -12,22 +11,27 @@ import javax.crypto.spec.GCMParameterSpec
 /**
  * Versioned authenticated-encryption envelope for one bounded document payload.
  *
- * Format: 4-byte magic, 1-byte version, 12-byte random IV, then AES-GCM ciphertext
+ * Format: 4-byte magic, 1-byte version, 12-byte provider-generated IV, then AES-GCM ciphertext
  * including its 128-bit authentication tag. The caller-supplied context is authenticated
- * as additional data and is not stored in the envelope.
+ * as additional data and is not stored in the envelope. The provider-generated IV is important
+ * for Android Keystore keys, whose randomized-encryption policy rejects caller-provided IVs.
  */
-internal class AesGcmEnvelope(
-    private val random: SecureRandom = SecureRandom()
-) {
+internal class AesGcmEnvelope {
     @Throws(GeneralSecurityException::class)
     fun encrypt(plaintext: ByteArray, key: SecretKey, context: ByteArray): ByteArray {
         require(plaintext.size <= MAX_PLAINTEXT_BYTES) { "Document payload exceeds the supported size limit" }
-        val iv = ByteArray(IV_LENGTH).also(random::nextBytes)
+        var iv: ByteArray? = null
         var ciphertext: ByteArray? = null
         var aad: ByteArray? = null
         try {
             val cipher = Cipher.getInstance(TRANSFORMATION)
-            cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
+            // Do not provide GCM parameters for encryption. Android Keystore must generate the
+            // nonce itself when randomized encryption is required. The resulting nonce is
+            // returned by Cipher#getIV and persisted in the envelope for authenticated decrypt.
+            cipher.init(Cipher.ENCRYPT_MODE, key)
+            val generatedIv = cipher.iv.copyOf()
+            require(generatedIv.size == IV_LENGTH) { "Provider returned an unsupported AES-GCM IV length" }
+            iv = generatedIv
             aad = associatedData(context)
             cipher.updateAAD(aad)
             ciphertext = cipher.doFinal(plaintext)
@@ -36,11 +40,11 @@ internal class AesGcmEnvelope(
                 .order(ByteOrder.BIG_ENDIAN)
                 .put(MAGIC)
                 .put(FORMAT_VERSION)
-                .put(iv)
+                .put(generatedIv)
                 .put(ciphertext)
                 .array()
         } finally {
-            iv.fill(0)
+            iv?.fill(0)
             ciphertext?.fill(0)
             aad?.fill(0)
         }
