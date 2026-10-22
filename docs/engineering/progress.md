@@ -1,3 +1,20 @@
+## 2026-10-22 — Emulator launcher profile compatibility repair
+
+### Reproduced
+- Exact-head CI run [#524](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39726598625) passed the standard build/unit/lint and offline merged-manifest gate on `760f3a3fa738037334739e2ea2db3356e1b77034`.
+- The separate emulator job failed before boot/test execution. The pinned runner's AVD creation reported `Error: No device found matching --device Pixel 6`; no instrumentation assertions ran on this attempt.
+- Reviewed the runner's pinned README: the optional `profile` input expects an SDK hardware-profile ID (for example `pixel_7_pro`), not the display label `Pixel 6`. Removed the profile input so AVD creation can use the SDK's default hardware configuration; did not alter assertions or test scope.
+
+### Current gate
+- A corrective commit is being prepared; the next exact-head CI result will be the evidence for emulator setup and instrumentation. Prior run #524 cannot be described as a test pass.
+- App manifest/offline policy, production key policy/aliases, SQLCipher format, Room schema, and canonical branch remain unchanged.
+
+### Next
+- Verify that the emulator boots and `:app:connectedDebugAndroidTest` actually runs.
+- If launched, diagnose test results from exact run logs. Then continue to isolated synthetic SQLCipher rewrap/reopen/integrity evidence; background/process death and human security review remain open.
+
+---
+
 ## 2026-10-22 — CO-02 Android Keystore instrumentation slice added
 
 ### Implemented

@@ -89,6 +89,5 @@ jobs:
           api-level: 36
           target: google_apis
           arch: x86_64
-          profile: Pixel 6
           disable-animations: true
           script: ./gradlew --no-daemon :app:connectedDebugAndroidTest

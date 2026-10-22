@@ -37,3 +37,8 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 - Implemented first slice: unauthenticated auth-per-use Keystore operation must fail; absent unique alias must fail closed while a synthetic cache envelope remains byte-identical.
 - Still open: authenticated CryptoObject completion/recovery, biometric enrollment invalidation where supported, Activity background/screen-off/process-death restart, and real SQLCipher rewrap/reopen/PRAGMA integrity on isolated synthetic data. Existing JVM migration crash tests use a fake database collaborator.
 - Human security review and exact-head CI for every final documentation/code head remain release blockers.
+
+## Emulator profile compatibility correction — 2026-10-22
+- Run #524 standard job passed on `760f3a3fa738037334739e2ea2db3356e1b77034`; emulator setup failed before executing tests because `avdmanager` did not recognize `--device Pixel 6`.
+- Pinned emulator runner documentation says `profile` expects an SDK hardware-profile ID and is optional. Workflow now omits the profile so the SDK default can be used.
+- Pending: new exact-head CI must prove emulator provisioning and actual test execution; no claim is made from the failed setup attempt.
