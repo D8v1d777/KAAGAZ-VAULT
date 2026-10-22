@@ -668,3 +668,11 @@ This log records repository work and evidence. It distinguishes documentation ch
 - The OCR build task now validates pinned Git-blob SHA-1 and SHA-256, declares its inputs, and is tested for normal Gradle up-to-date behavior. Static tests now pin exact model revision/hash values and validate the committed dependency-verification file.
 - Separate auth-race source guard commit `185d8c138c54328ef92b62b66f4db8f4fead118b` passed PR #48 CI run #513.
 - Remaining release blockers: physical-device/emulator auth, background lifecycle and migration validation; independent security review. No release-readiness claim is made.
+
+
+### 2026-10-22 — CO-06 dependency-verification repair
+
+- Exact cleanup-head CI run #516 failed during Gradle configuration, before compilation, because the committed metadata omitted three plugin-classpath metadata artifacts: `com.google.guava:guava-parent:33.3.1-jre` POM, `org.junit:junit-bom:5.11.0-M2` module metadata, and `org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.8.0` POM.
+- This is a real verification-metadata completeness failure, not evidence that those dependencies are malicious. The checksum gate remains enabled; do not disable it or add wildcard trusted artifacts.
+- Temporary PR-49-only repair step now runs Gradle's metadata bootstrap with `--refresh-dependencies --write-verification-metadata sha256 help`, then validates and commits the resulting metadata. After a successful run, remove the bootstrap/upload/write-permission job and rerun CI with committed metadata only.
+- Exact-head run #516: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39722439276 . Its Python regression step passed; Gradle dependency verification then failed on the three missing entries above.
