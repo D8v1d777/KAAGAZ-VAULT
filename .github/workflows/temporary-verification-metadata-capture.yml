@@ -34,10 +34,64 @@ jobs:
       - name: Install required Android SDK packages
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
 
+      - name: Fetch baseline metadata revision for comparison
+        run: git fetch --depth=1 origin 7b41ffe9c4d845dacf6a945c4ad167e67d40449b
+
       # TEMPORARY: this workflow only captures checksums for a human-reviewed metadata update.
       # It is not a release gate and must be deleted after the resulting XML is reviewed/committed.
       - name: Resolve build and instrumentation dependencies while writing SHA-256 metadata
         run: ./gradlew --no-daemon --write-verification-metadata sha256 clean assembleDebug assembleRelease assembleDebugAndroidTest testDebugUnitTest lint
+
+      - name: Summarize metadata delta and reject changes to existing hashes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          import xml.etree.ElementTree as ET
+
+          NS = {"v": "https://schema.gradle.org/dependency-verification"}
+          base_bytes = subprocess.check_output([
+              "git", "show", "7b41ffe9c4d845dacf6a945c4ad167e67d40449b:gradle/verification-metadata.xml"
+          ])
+          base = ET.fromstring(base_bytes)
+          current = ET.parse("gradle/verification-metadata.xml").getroot()
+
+          def components(root):
+              result = {}
+              for component in root.findall(".//v:component", NS):
+                  key = tuple(component.attrib[name] for name in ("group", "name", "version"))
+                  artifacts = {}
+                  for artifact in component.findall("v:artifact", NS):
+                      artifacts[artifact.attrib["name"]] = {
+                          checksum.tag.rsplit("}", 1)[-1]: checksum.attrib["value"]
+                          for checksum in artifact
+                      }
+                  result[key] = artifacts
+              return result
+
+          old = components(base)
+          new = components(current)
+          changed = []
+          for key in sorted(old.keys() & new.keys()):
+              for artifact, checksums in old[key].items():
+                  if artifact not in new[key] or new[key][artifact] != checksums:
+                      changed.append((key, artifact, checksums, new[key].get(artifact)))
+          removed = sorted(old.keys() - new.keys())
+          if changed or removed:
+              print("ERROR: generated metadata changed or removed existing trusted entries")
+              print("changed:", changed)
+              print("removed components:", removed)
+              raise SystemExit(1)
+
+          print(f"Baseline components: {len(old)}; generated components: {len(new)}")
+          print(f"Existing entries preserved; new components: {len(new.keys() - old.keys())}")
+          for key in sorted(new.keys() - old.keys()):
+              print("NEW_COMPONENT", ":".join(key), new[key])
+          for key in sorted(old.keys() & new.keys()):
+              for artifact, checksums in new[key].items():
+                  if artifact not in old[key]:
+                      print("NEW_ARTIFACT", ":".join(key), artifact, checksums)
+          PY
 
       - name: Upload generated metadata for review
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
