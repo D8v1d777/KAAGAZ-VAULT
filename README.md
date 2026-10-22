@@ -86,7 +86,7 @@ The app is not release-approved yet. Secure deletion is not guaranteed, physical
 - compileSdk / targetSdk 36 · provisional minSdk 24
 - Compose BOM 2026.04.01
 
-The Gradle wrapper is checked in. The configured CI sequence runs the script tests, Android build, JVM unit tests, lint, the OCR model task up-to-date check, and the offline-manifest check. Gradle dependency artifacts are verified against the committed SHA-256 metadata in `gradle/verification-metadata.xml`.
+The Gradle wrapper is checked in. The configured CI sequence runs the script tests, Android build, JVM unit tests, lint, the OCR model task up-to-date check, and the offline-manifest check. Gradle dependency verification is a merge gate for CO-06, but the verification metadata is not yet committed. PR #49 temporarily generates a reviewable SHA-256 metadata artifact after dependency resolution; review and commit that metadata, then remove the one-off bootstrap steps before treating dependency verification as enforced.
 
 The app's runtime OCR path is local/offline, but a fresh build needs network access once to retrieve the three pinned Tesseract model files at the fixed revision. The build validates both SHA-256 and Git-blob SHA-1 before adding a downloaded model to generated assets. This is a build-time network requirement, not an app INTERNET permission or a runtime cloud OCR dependency.
 
