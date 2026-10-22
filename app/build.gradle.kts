@@ -12,6 +12,25 @@ plugins {
 }
 
 val generatedOcrAssets = layout.buildDirectory.dir("generated/ocr-assets")
+android {
+    namespace = "com.kaagazvault"
+    compileSdk = 36
+    defaultConfig {
+        applicationId = "com.kaagazvault"
+        minSdk = 24
+        targetSdk = 36
+        versionCode = 1
+        versionName = "0.1.0"
+    }
+    buildFeatures { compose = true }
+    sourceSets.getByName("main").assets.srcDir(generatedOcrAssets.get().asFile)
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
+
 val tessdataRevision = "87416418657359cb625c412a48b6e1d6d41c29bd"
 val tessdataModels = mapOf(
     "eng.traineddata" to "bbef4675053b5b468cdb477053e28b1c698ba08e",
