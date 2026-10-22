@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MAIN = ROOT / "app/src/main/java/com/kaagazvault/MainActivity.kt"
 CONTROLLER = ROOT / "app/src/main/java/com/kaagazvault/security/VaultAccessController.kt"
 REMINDER_WORKER = ROOT / "app/src/main/java/com/kaagazvault/reminders/ReminderScheduler.kt"
+WORKFLOW = ROOT / ".github/workflows/android-ci.yml"
 
 
 class VaultAccessWiringTest(unittest.TestCase):
@@ -18,6 +19,22 @@ class VaultAccessWiringTest(unittest.TestCase):
         cls.main = MAIN.read_text(encoding="utf-8")
         cls.controller = CONTROLLER.read_text(encoding="utf-8")
         cls.worker = REMINDER_WORKER.read_text(encoding="utf-8")
+        cls.workflow = WORKFLOW.read_text(encoding="utf-8")
+
+
+    def test_emulator_pin_setup_and_cleanup_stay_in_one_shell(self):
+        job_start = self.workflow.index("  android-instrumented-tests:")
+        job = self.workflow[job_start:]
+        marker = "          script: >-\n"
+        script_start = job.index(marker) + len(marker)
+        script = job[script_start:].strip()
+
+        # android-emulator-runner executes each newline-delimited script line in a
+        # separate shell, so state setup, its EXIT cleanup trap, and Gradle must be one line.
+        self.assertNotIn("\n", script)
+        self.assertIn("adb shell locksettings set-pin 2468", script)
+        self.assertIn("trap 'status=$?; adb shell locksettings clear --old 2468", script)
+        self.assertIn("&& ./gradlew --no-daemon :app:connectedDebugAndroidTest", script)
 
     def test_production_activity_uses_biometric_compatible_host_and_controller(self):
         self.assertIn("class MainActivity : FragmentActivity()", self.main)

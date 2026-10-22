@@ -1,8 +1,8 @@
 package com.kaagazvault.security
 
-import android.security.keystore.UserNotAuthenticatedException
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import java.security.GeneralSecurityException
 import java.util.UUID
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
@@ -23,9 +23,24 @@ class AuthBoundVaultKeyInstrumentedTest {
         try {
             val cipher = key.prepareSetupCipher()
             assertTrue("setup must create its unique test alias", key.hasWrappingKeyAlias())
-            assertThrows(UserNotAuthenticatedException::class.java) {
+            val unauthenticatedFailure = try {
                 cipher.doFinal(plaintext)
+                null
+            } catch (failure: GeneralSecurityException) {
+                failure
             }
+            assertTrue(
+                "Auth-per-use Keystore must reject use until authentication; got no denial",
+                unauthenticatedFailure != null
+            )
+            val causeChain = generateSequence(unauthenticatedFailure) { it.cause }
+                .joinToString(" | ") { "${it.javaClass.name}: ${it.message.orEmpty()}" }
+            assertTrue(
+                "Expected a Keystore user-authentication denial, got: $causeChain",
+                causeChain.contains("Key user not authenticated", ignoreCase = true) ||
+                    causeChain.contains("KEY_USER_NOT_AUTHENTICATED", ignoreCase = true) ||
+                    causeChain.contains("UserNotAuthenticatedException", ignoreCase = true)
+            )
         } finally {
             plaintext.fill(0)
             key.discardAbandonedSetup()

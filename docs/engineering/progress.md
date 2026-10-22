@@ -1,3 +1,24 @@
+## 2026-10-22 — Auth-per-use denial assertion correction and lifecycle instrumentation
+
+### Verified from run #527
+- Exact candidate `bcf27b1a0a59a4ed7ae5902e9438b61e4b706718`, run [#527](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39729721807), passed the standard debug/release build, JVM tests, lint, source-policy and offline-manifest job.
+- The emulator runner successfully set temporary PIN `2468`, reached `:app:connectedDebugAndroidTest`, and ran 3 instrumentation tests.
+- Exactly one test failure was reported: `AuthBoundVaultKeyInstrumentedTest.generatedWrappingKeyRejectsCryptographicUseBeforeAuthentication`. Android 16 raised `IllegalBlockSizeException`, with a nested Keystore error `Key user not authenticated`; this is the expected denial signal but the test had required the top-level type to be `UserNotAuthenticatedException`.
+- The missing-alias fail-closed test and synthetic SQLCipher/journal test were the other two tests; neither was reported as failed.
+
+### Follow-up changes included in the next candidate
+- Replaced the brittle concrete-exception assertion with a check that the cryptographic operation fails and its cause chain contains the platform's user-not-authenticated denial.
+- Added `MainActivityLifecycleInstrumentedTest`: drive the real `MainActivity.onStop()` path with synthetic session/recovery state; require the session to lock and pending recovery key/text to be zeroed/dropped. The tests never create a production key alias or open the vault.
+- Added a Python source guard ensuring emulator PIN setup, EXIT cleanup and Gradle invocation remain one folded-shell command.
+- Both lifecycle tests wait for initial Compose/controller setup to become idle before installing synthetic test state.
+
+### Verification boundary
+- These follow-up additions have not yet run on CI. The previous #527 head remains red due to the exception-type expectation; do not transfer that run to the updated source.
+- `DatabaseKeyManager`'s fixed production Keystore alias, screen-off/process death/real prompt recovery, biometric enrollment change and independent human security review remain open.
+- PR #48 does not yet include PR #49's dependency-verification metadata. The eventual combined candidate must verify hashes for the approved AndroidX Test dependencies before release.
+
+---
+
 ## 2026-10-22 — Emulator runner shell-isolation correction
 
 ### Reproduced

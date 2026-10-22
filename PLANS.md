@@ -53,3 +53,10 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 - Run #526 standard job passed. Emulator booted, but its script failed before Gradle because the pinned action executed each multiline script line in a distinct `/usr/bin/sh -c`; the local PIN variable did not persist and Android's `locksettings set-pin` received no PIN.
 - Workflow correction uses a single folded shell command: set PIN 2468, install EXIT cleanup trap to clear it, then run `:app:connectedDebugAndroidTest` in the same shell.
 - Exact-head rerun required; no test result may be inferred from #526.
+
+
+## Run #527 emulator instrumentation — result and follow-up
+- Run #527 (`bcf27b1a0a59a4ed7ae5902e9438b61e4b706718`) standard job succeeded and the instrumented step executed 3 tests after PIN setup worked.
+- One failure: auth-per-use test asserted top-level `UserNotAuthenticatedException`, but Android 16 surfaced `IllegalBlockSizeException` with nested Keystore denial `Key user not authenticated`. The updated test checks the cause chain, preserving the invariant that unauthenticated key use must fail.
+- The absent-alias fail-closed and synthetic SQLCipher/journal test were not reported as failed. Exact-head CI for the revised assertion and MainActivity lifecycle tests is pending.
+- Metadata integration caution: PR #49's dependency verification metadata is not yet on this branch and does not list AndroidX Test components. Before any merge/release, review the combined diff and add verified hashes for all three approved AndroidX Test dependencies.
