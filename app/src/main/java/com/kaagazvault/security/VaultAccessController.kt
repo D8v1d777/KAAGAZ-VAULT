@@ -341,11 +341,15 @@ internal class VaultAccessController(
                 }
                 text
             }
-            pendingVek?.fill(0)
+            // Recovery re-wrap may pass the exact array already owned by pendingVek.
+            // Do not wipe that same array before transferring ownership into confirmation state.
+            val previousPendingVek = pendingVek
+            if (previousPendingVek !== vek) previousPendingVek?.fill(0)
             pendingVek = vek
             pendingRecoveryText = display
             state(VaultAccessUiState.ConfirmRecoveryKey(display))
         } catch (failure: Exception) {
+            if (pendingVek === vek) pendingVek = null
             vek.fill(0)
             state(VaultAccessUiState.Locked("Recovery setup could not be persisted. Unlock again to retry."))
         }
