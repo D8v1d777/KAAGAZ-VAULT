@@ -1,3 +1,22 @@
+## 2026-10-22 — CO-02 lifecycle wiring regression guards
+
+### Goal and changes
+- Added source-level regression checks for `MainActivity.onStop()` calling the vault lifecycle hook before `super.onStop()`, and `onDestroy()` disposing the access controller/shutting down I/O before superclass teardown.
+- Added a guard that Ready/Migrating states are locked on foreground loss and that an unconfirmed recovery-key buffer is zeroed/cleared before the UI becomes Locked.
+- This is static wiring coverage only; it is not an Activity instrumentation test and does not prove runtime lifecycle behavior.
+
+### Evidence
+- Previous exact-head CI run #522 passed on `621eca27ed3f41a3bc5aa7ac84901af93cd734bc`: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39724232188
+- This commit adds static lifecycle guards and planning/handoff updates. Its own exact-head CI result is pending and must be checked before these new guards are called green.
+- PR #48 remains draft/open/unmerged. No emulator/device validation or independent human security review is evidenced.
+
+### Next
+- Complete CO-02 P0 by adding an Android instrumented-test source set and a pinned emulator CI gate after explicit approval for new AndroidX Test dependencies and the external emulator action (G3).
+- Exercise real KeyStore auth-per-use operations, Activity background/process restart behavior, and SQLCipher rewrap/reopen/integrity on disposable synthetic data. Keep untested biometric-enrollment/recovery cases explicitly open.
+- Preserve legacy ciphertext, old wrappers, and migration staging files until real authenticated read-back, durable journal COMPLETE, SQLCipher integrity, and reviewer evidence are recorded.
+
+---
+
 ## 2026-10-22 — Concurrent migration-cleanup/authentication ordering regression
 
 ### Implemented

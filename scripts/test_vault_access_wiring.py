@@ -25,6 +25,44 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("LaunchedEffect(Unit) { controller.initialize() }", self.main)
         self.assertIn("WindowManager.LayoutParams.FLAG_SECURE", self.main)
 
+    def test_activity_stop_locks_before_super_and_destroy_disposes_controller(self):
+        stop_start = self.main.index("override fun onStop()")
+        destroy_start = self.main.index("override fun onDestroy()", stop_start)
+        stop_body = self.main[stop_start:destroy_start]
+        destroy_end = self.main.index("\n    }", destroy_start) + len("\n    }")
+        destroy_body = self.main[destroy_start:destroy_end]
+
+        self.assertIn("accessController?.onActivityStopped()", stop_body)
+        self.assertLess(
+            stop_body.index("accessController?.onActivityStopped()"),
+            stop_body.index("super.onStop()"),
+        )
+        self.assertIn("accessController?.dispose()", destroy_body)
+        self.assertLess(
+            destroy_body.index("accessController?.dispose()"),
+            destroy_body.index("accessController = null"),
+        )
+        self.assertIn("ioExecutor.shutdownNow()", destroy_body)
+        self.assertLess(
+            destroy_body.index("ioExecutor.shutdownNow()"),
+            destroy_body.index("super.onDestroy()"),
+        )
+
+    def test_background_lock_clears_unconfirmed_recovery_material(self):
+        lifecycle_start = self.controller.index("fun onActivityStopped()")
+        lifecycle_end = self.controller.index("fun dispose()", lifecycle_start)
+        lifecycle_body = self.controller[lifecycle_start:lifecycle_end]
+
+        self.assertIn("is VaultAccessUiState.Ready, is VaultAccessUiState.Migrating", lifecycle_body)
+        self.assertIn("lockNow(", lifecycle_body)
+        confirmation_start = lifecycle_body.index("is VaultAccessUiState.ConfirmRecoveryKey")
+        confirmation_end = lifecycle_body.index("\n            else -> Unit", confirmation_start)
+        confirmation_body = lifecycle_body[confirmation_start:confirmation_end]
+        self.assertIn("pendingVek?.fill(0)", confirmation_body)
+        self.assertIn("pendingVek = null", confirmation_body)
+        self.assertIn("pendingRecoveryText = null", confirmation_body)
+        self.assertIn("VaultAccessUiState.Locked", confirmation_body)
+
     def test_document_home_is_only_created_for_ready_state(self):
         state_switch = self.main.index("when (val state = accessState)")
         ready_branch = self.main.index("is VaultAccessUiState.Ready ->", state_switch)
