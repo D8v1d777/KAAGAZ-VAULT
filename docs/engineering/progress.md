@@ -926,3 +926,27 @@ This log records repository work and evidence. It distinguishes documentation ch
 - Both jobs passed: standard build/unit-test/lint/offline-manifest gate, and Android emulator instrumentation (Keystore auth-per-use).
 - This supersedes the earlier **PENDING** CI statement in the preceding entry for this exact SHA. It does not supersede device-level lifecycle validation or independent human security review; PR #48 remains draft and unmerged.
 - Scope boundary: this closes the Android Keystore IV CI blocker only. A substantial additional user-visible feature remains unfinished; no overall product-completion percentage is claimed.
+
+
+## 2026-10-22 — Offline structured-field review and encrypted payload v4
+
+### Implemented on PR #48
+- Added bounded deterministic offline extraction for dates, amounts, labelled identifiers, and names.
+- Added source excerpts, extraction method, and uncertainty flags; fields are editable and require explicit per-field confirmation.
+- Persisted reviewed fields inside the authenticated encrypted document payload. Payload v4 retains decoding compatibility for versions 1–3.
+- Added repository APIs for saving confirmed fields through the existing vault-session boundary and deterministic extraction/encrypted round-trip tests.
+- Preserved the Android Keystore provider-generated AES-GCM nonce fix and its instrumentation coverage.
+- Implementation commit: `63efc305ebc48a763049fd99393f0660c8766522`.
+
+### Verification
+- Python policy tests: **PASS**, 26 tests.
+- `git diff --check`: **PASS**.
+- Local Gradle: **BLOCKED** in the sandbox because Android SDK is unavailable; no local Gradle pass is claimed.
+- Exact-head GitHub Actions run [#544](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39748249619) for the implementation commit: **PASS**. Standard build/release, JVM tests, lint, Python policy tests, offline merged-manifest gate, and Android emulator instrumentation all passed.
+- Earlier run [#543](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39747324819) failed on payload-boundary parsing; the subsequent implementation commit fixed that failure and exact-head run #544 passed.
+- PR #48 remains draft and unmerged.
+
+### Scope and remaining acceptance
+- Updated the weighted product tracker from 35% to a conservative 41%: this credits 6 of the 10 weighted percentage points for the structured-review objective, not the entire objective.
+- Remaining: richer provenance spans/page coordinates, calibrated confidence, downstream action integration, medical-action safeguards, physical-device lifecycle/process-death/screen-off/recovery checks, accessibility/performance, migration/device validation, and independent human security review.
+- This log update and the tracker correction are documentation commits after the verified implementation SHA. Re-run exact-head CI on the new branch head before treating the updated head as verified.
