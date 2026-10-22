@@ -173,7 +173,7 @@ internal class DocumentRepository(
                 ocrTruncated = correctedText.length > MAX_OCR_CHARACTERS,
                 // OCR edits invalidate old suggestions and any confirmations tied to them.
                 // Re-extract from the corrected text; every new suggestion starts unaccepted.
-                structuredFields = StructuredFieldExtractor.extract(correctedText)
+                structuredFields = StructuredFieldExtractor.extract(correctedText.take(MAX_OCR_CHARACTERS))
             ))
             try {
                 store.replace(id, replacement)
