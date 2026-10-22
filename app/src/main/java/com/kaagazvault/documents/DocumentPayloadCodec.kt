@@ -94,8 +94,8 @@ internal object DocumentPayloadCodec {
             val languages = if (version >= VERSION_WITH_OCR_SOURCE) data.readUTF().takeIf { it.isNotBlank() } else null
             val textLength = data.readInt()
             if (textLength < -1 || textLength > MAX_OCR_TEXT_BYTES ||
-                (textLength == -1 && data.available() != 0) ||
-                (textLength >= 0 && textLength != data.available())
+                (textLength == -1 && version < VERSION_WITH_STRUCTURED_FIELDS && data.available() != 0) ||
+                (textLength >= 0 && if (version >= VERSION_WITH_STRUCTURED_FIELDS) textLength > data.available() else textLength != data.available())
             ) throw IOException("Invalid encrypted OCR payload length")
             val text = if (textLength >= 0) {
                 val textBytes = ByteArray(textLength)
