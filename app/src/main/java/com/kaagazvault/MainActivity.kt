@@ -1,6 +1,10 @@
 package com.kaagazvault
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -88,6 +92,14 @@ import java.util.concurrent.Executors
 class MainActivity : FragmentActivity() {
     private val ioExecutor = Executors.newSingleThreadExecutor()
     private var accessController: VaultAccessController? = null
+    private var screenOffReceiverRegistered = false
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                accessController?.lockNow("Vault locked because the screen turned off.")
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,6 +108,15 @@ class MainActivity : FragmentActivity() {
 
         val controller = VaultAccessController(this, VaultSession())
         accessController = controller
+        // Activity stop does not cover every screen-off transition. Keep an explicit system
+        // receiver while this Activity exists, and lock synchronously on the main thread.
+        ContextCompat.registerReceiver(
+            this,
+            screenOffReceiver,
+            IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        screenOffReceiverRegistered = true
         setContent {
             val accessState by controller.uiState
             LaunchedEffect(Unit) { controller.initialize() }
@@ -125,6 +146,10 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onDestroy() {
+        if (screenOffReceiverRegistered) {
+            unregisterReceiver(screenOffReceiver)
+            screenOffReceiverRegistered = false
+        }
         accessController?.dispose()
         accessController = null
         ioExecutor.shutdownNow()
