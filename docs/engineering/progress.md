@@ -1,3 +1,22 @@
+## 2026-10-22 — Concurrent migration-cleanup/authentication ordering regression
+
+### Implemented
+- Added `staleMigrationCleanupCannotInterleaveWithNewAuthentication()` to `app/src/test/java/com/kaagazvault/security/VaultAccessEpochGateTest.kt`.
+- The test coordinates a stale cleanup thread and a competing authentication thread with latches. It verifies authentication cannot pass the epoch gate while the cleanup check/action is in progress, and that the newer authenticated state wins after serialization.
+- Code/test commit: `900e9bfedbe469f6c64745999a345354a2382c90`.
+
+### CI verification
+- GitHub Actions [run #506](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39717898077) passed on exact code/test SHA `900e9bfedbe469f6c64745999a345354a2382c90`.
+- Passed steps: Python policy tests; debug and release builds; JVM unit tests; lint; merged-manifest offline policy.
+- The review of this change was limited to the test diff and supporting epoch-gate implementation. No independent reviewer or human security sign-off is recorded.
+
+### Boundaries and next actions
+- This is a JVM regression test for the shared epoch-gate collaborator, not proof of Android Activity lifecycle or controller/device behavior.
+- Still unverified: biometric/device-credential compatibility, recovery UX, background/screen-off/process-death locking, picker/camera return flows, interrupted migration and SQLCipher reopen/integrity on a disposable vault, and independent security review.
+- PR #48 remains draft and unmerged. After this documentation-only refresh, verify the newest CI run against the new live PR head before relying on branch-head status.
+
+---
+
 ## 2026-10-21 — Integration security hardening continuation
 
 - Candidate branch `agent/integration-security-hardening-candidate-2026-10-21`, PR #48; consult the live PR head and matching workflow run because follow-up handoff/plan commits continue this documentation pass.

@@ -1,11 +1,11 @@
 # HANDOFF.md
 
 <handoff schema="1">
-updated: 2026-10-21
+updated: 2026-10-22
 author: GPT-6 via connected GitHub tools
 branch: agent/integration-security-hardening-candidate-2026-10-21
 task: Continue CO-01/CO-02 integration hardening; preserve vault data and keep canonical branch untouched
-state: INTEGRATION_CANDIDATE — EXACT_HEAD_CI_PENDING — DEVICE_VERIFICATION_REQUIRED
+state: INTEGRATION_CANDIDATE — CODE_TEST_CI_VERIFIED_AT_900e9bf — DEVICE_VERIFICATION_REQUIRED — HUMAN_REVIEW_REQUIRED
 canonical_branch: feat/durable-vault-migration-journal
 candidate_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48
 candidate_head_sha: resolve from the live PR #48 head after this handoff commit; do not trust a cached SHA here
@@ -15,9 +15,10 @@ environment:
   local_gradle_build: NOT_RUN
   independent_reviewer_subagent: NOT_AVAILABLE
 current_release_gate:
-  exact_head_ci_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions
-  observed_status_when_handoff_written: A fresh run is triggered by this handoff commit; inspect the latest PR #48 run and confirm its head SHA matches the live PR head
-  prior_green_run_policy: Older green runs do not verify the current head
+  exact_head_ci_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39717898077
+  verified_source_test_sha: 900e9bfedbe469f6c64745999a345354a2382c90
+  observed_status_when_handoff_written: Android CI run #506 completed successfully on exact source/test head 900e9bfedbe469f6c64745999a345354a2382c90. Python policy tests, debug/release builds, JVM unit tests, lint, and offline merged-manifest policy all passed. This handoff/progress refresh changes documentation only; check the live PR head and newest run before relying on branch-head status.
+  prior_green_run_policy: Older green runs do not verify a later head
 scope_guard:
   - No changes to canonical branch or merge performed.
   - Do not retire legacy ciphertext, staging copies, or old key wrappers until authenticated read-back, SQLCipher reopen/integrity verification, durable migration completion, and independent review are recorded.
@@ -34,12 +35,12 @@ verified_in_candidate_source:
   - Controller disposal invalidates late authentication callbacks and suppresses late state publication; synchronous prompt setup failures clear pending recovery state and remove only uncommitted wrapper aliases, with source-level regression guards.
   - README.md and AGENTS.md remain unchanged; HANDOFF.md is updated on this candidate branch to record current release gates.
 unverified:
-  - A fresh exact-head Android CI run is triggered by the latest source/test and handoff commits; no pass claim until the result matches the live PR #48 head SHA.
+  - The code/test head `900e9bfedbe469f6c64745999a345354a2382c90` passed exact-head Android CI run #506. This documentation refresh creates a newer branch head, so re-check the latest workflow against the live PR head before claiming current-head CI.
   - No physical-device/emulator instrumentation run for authenticator compatibility, recovery, screen-off/background locking, picker return flows, process death or interrupted migration.
   - SQLCipher rewrap/reopen/integrity behavior remains unverified on a disposable Android vault.
   - Independent human security review remains mandatory.
 next_actions:
-  - Check the newest run linked from PR #48 and confirm its head SHA matches the live PR head; fix only reproduced failures, then rerun CI on the final SHA.
+  - After this documentation-only refresh, inspect the newest run linked from PR #48 and confirm it matches the live PR head; fix only reproduced failures.
   - Run Android emulator/device tests for setup, unlock, recovery, app background/screen-off, external picker return, process death, and interrupted migration.
   - Validate SQLCipher rewrap/reopen/integrity and legacy/staging retention on a disposable test vault.
   - Perform a cold review of the final diff; independent reviewer sub-agent is unavailable, so human review is still required.
