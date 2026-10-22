@@ -44,8 +44,15 @@ jobs:
       - name: Test offline manifest policy helpers
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
-      - name: Build debug and release, run unit tests, and lint
-        run: ./gradlew --no-daemon clean assembleDebug assembleRelease testDebugUnitTest lint
+      - name: Bootstrap reviewed dependency verification metadata (temporary)
+        run: ./gradlew --no-daemon --write-verification-metadata sha256 clean assembleDebug assembleRelease assembleDebugAndroidTest testDebugUnitTest lint
+
+      - name: Upload generated verification metadata for review (temporary)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: androidx-test-verification-metadata
+          path: gradle/verification-metadata.xml
+          if-no-files-found: error
 
       - name: Verify OCR model preparation is up-to-date
         shell: bash
