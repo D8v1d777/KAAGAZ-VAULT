@@ -76,6 +76,27 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("clearPrompt()", recovery_body)
         self.assertIn("recoveryWrappingKey?.discardAbandonedSetup()", recovery_body)
 
+    def test_verified_key_installation_is_serialized_with_epoch_invalidation(self):
+        install_start = self.controller.index("private fun installAndMigrate(")
+        install_end = self.controller.index("private fun migrate()", install_start)
+        install_body = self.controller[install_start:install_end]
+        gate_start = install_body.index("accessEpochGate.withLock {")
+        key_install = install_body.index("session.installVerifiedKey(vek)")
+        gate_end = install_body.index("\n            }\n        } catch", gate_start)
+        self.assertLess(gate_start, key_install)
+        self.assertLess(key_install, gate_end)
+        self.assertIn("if (disposed) throw VaultLockedException()", install_body)
+
+        lock_start = self.controller.index("fun lockNow(")
+        lock_end = self.controller.index("fun onActivityStopped(", lock_start)
+        lock_body = self.controller[lock_start:lock_end]
+        self.assertIn("val previousRuntime = accessEpochGate.invalidate", lock_body)
+        self.assertIn("session.lock()", lock_body)
+        self.assertLess(
+            lock_body.index("accessEpochGate.invalidate"),
+            lock_body.index("previousRuntime?.databaseProvider?.close()"),
+        )
+
     def test_stale_migration_failure_cannot_lock_a_newer_authenticated_session(self):
         migration_start = self.controller.index("private fun migrate()")
         catch_start = self.controller.index("} catch (failure: Exception) {", migration_start)
