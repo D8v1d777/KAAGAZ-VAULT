@@ -60,7 +60,7 @@ internal class VaultAccessController(
     private var pendingVek: ByteArray? = null
     private var pendingRecoveryText: String? = null
     private var runtime: VaultRuntime? = null
-    @Volatile private var accessEpoch: Long = 0L
+    private val accessEpochGate = VaultAccessEpochGate()
     @Volatile private var disposed: Boolean = false
 
     private val prompt = BiometricPrompt(
@@ -202,7 +202,7 @@ internal class VaultAccessController(
             setup.markRecoveryConfirmed()
             pendingVek = null
             pendingRecoveryText = null
-            synchronized(this) {
+            accessEpochGate.withLock {
                 if (disposed) throw VaultLockedException()
                 session.installVerifiedKey(vek)
             }
@@ -218,8 +218,7 @@ internal class VaultAccessController(
     fun lockNow(message: String? = null) {
         if (disposed) return
         // Invalidate pending publication atomically with detaching the current runtime.
-        val previousRuntime = synchronized(this) {
-            accessEpoch += 1
+        val previousRuntime = accessEpochGate.invalidate {
             // Serialize key invalidation with verified-key installation and migration failure
             // cleanup so an older operation cannot invalidate a newer authenticated session.
             try { session.lock() } catch (_: Exception) { }
@@ -251,8 +250,7 @@ internal class VaultAccessController(
     fun dispose() {
         if (disposed) return
         disposed = true
-        val previousRuntime = synchronized(this) {
-            accessEpoch += 1
+        val previousRuntime = accessEpochGate.invalidate {
             try { session.lock() } catch (_: Exception) { }
             runtime.also { runtime = null }
         }
@@ -355,7 +353,7 @@ internal class VaultAccessController(
 
     private fun installAndMigrate(vek: ByteArray) {
         try {
-            synchronized(this) {
+            accessEpochGate.withLock {
                 if (disposed) throw VaultLockedException()
                 if (!session.isUnlocked()) session.installVerifiedKey(vek)
             }
@@ -372,7 +370,7 @@ internal class VaultAccessController(
     }
 
     private fun migrate() {
-        val migrationEpoch = accessEpoch
+        val migrationEpoch = accessEpochGate.currentEpoch()
         state(VaultAccessUiState.Migrating("Verifying the migration journal and protected data…"))
         executor.execute {
             var oldProvider: VaultDatabaseProvider? = null
@@ -414,8 +412,8 @@ internal class VaultAccessController(
                 val next = VaultRuntime(repository, OfflineOcrEngine(activity.applicationContext), ReminderRepository(activity.applicationContext, provider, session), provider)
                 // Background migration may finish after onStop locked the session. Never publish
                 // repositories from a stale migration epoch into the foreground UI.
-                val runtimePublished = synchronized(this) {
-                    if (migrationEpoch != accessEpoch || !session.isUnlocked()) {
+                val runtimePublished = accessEpochGate.withLock { currentEpoch ->
+                    if (migrationEpoch != currentEpoch || !session.isUnlocked()) {
                         false
                     } else {
                         runtime = next
@@ -431,11 +429,9 @@ internal class VaultAccessController(
             } catch (failure: Exception) {
                 // A stale migration must never lock a newer authenticated session. Guard the
                 // epoch check and key invalidation with the same monitor used by key installation.
-                synchronized(this) {
-                    if (migrationEpoch == accessEpoch) {
-                        try { session.lock() } catch (_: Exception) { }
-                        runtime = null
-                    }
+                accessEpochGate.ifCurrent(migrationEpoch) {
+                    try { session.lock() } catch (_: Exception) { }
+                    runtime = null
                 }
                 try { newProvider?.close() } catch (_: Exception) { }
                 try { oldProvider?.close() } catch (_: Exception) { }
@@ -513,7 +509,7 @@ internal class VaultAccessController(
 
     private fun postStateIfEpoch(value: VaultAccessUiState, expectedEpoch: Long) {
         main.post {
-            if (!disposed && accessEpoch == expectedEpoch) uiState.value = value
+            if (!disposed && accessEpochGate.currentEpoch() == expectedEpoch) uiState.value = value
         }
     }
 }
