@@ -1,3 +1,23 @@
+## 2026-10-22 — Instrumentation setup-ordering fix and Activity-recreation coverage
+
+### Run #532 evidence
+- Exact head `399748db0fe60f96eef064f42941c2129e9359d0`, [run #532](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39733219359): standard debug/release build, JVM tests, lint, Python policy tests and offline-manifest gate passed.
+- The emulator successfully compiled and ran six instrumentation tests. Four passed: auth-per-use rejection with the wrapped Keystore denial, missing-alias fail-closed with unchanged synthetic envelope, synthetic Room/SQLCipher rewrap/reopen/journal COMPLETE/integrity, and the screen-off receiver lock path.
+- Two foreground-loss tests failed because the expected controller UI state was not `Locked` after `ActivityScenario.moveToState(CREATED)`. Both tests set synthetic state before guaranteeing Compose's one-time `LaunchedEffect { controller.initialize() }` had completed. Delayed initial-state discovery can overwrite test state before the lifecycle callback is evaluated.
+
+### Follow-up implemented
+- Added a bounded `awaitControllerInitialization` helper before injecting synthetic state, for all lifecycle/screen-off tests and before/after Activity recreation.
+- Added explicit pre-transition assertions so the tests verify the intended synthetic `Migrating` / `ConfirmRecoveryKey` state was installed.
+- Failure messages now include the actual controller state, making any repeat reproducible.
+- Added `activityRecreationCannotCarryAnUnlockedSyntheticSessionIntoTheNewController`: the destroyed Activity session must be locked and the new controller must not publish `Ready`. This is **Activity recreation** coverage, not proof of process death.
+
+### Verification boundary
+- This follow-up test source has not run on CI yet. Run #532 remains a failed instrumentation run; don't transfer its result to this updated candidate.
+- Actual process death/screen-off OS delivery, authenticated CryptoObject completion/recovery, biometric enrollment changes, production `DatabaseKeyManager` lifecycle, and independent human security review remain open.
+- G2 approval is still needed for the shared branch's fail-closed legacy DB-key fallback change; keep PR #48 draft/unmerged.
+
+---
+
 ## 2026-10-22 — Auth-per-use denial assertion correction and lifecycle instrumentation
 
 ### Verified from run #527

@@ -23,7 +23,7 @@ class MainActivityLifecycleInstrumentedTest {
     fun foregroundLossLocksSessionWhenMigrationIsActive() {
         val syntheticKey = ByteArray(32) { 0x31 }
         val scenario = ActivityScenario.launch(MainActivity::class.java)
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        awaitControllerInitialization(scenario)
         var activeSession: VaultSession? = null
         try {
             scenario.onActivity { activity ->
@@ -31,6 +31,10 @@ class MainActivityLifecycleInstrumentedTest {
                 activeSession = sessionOf(controller)
                 activeSession!!.installVerifiedKey(syntheticKey)
                 controller.uiState.value = VaultAccessUiState.Migrating("synthetic lifecycle fixture")
+                assertTrue(
+                    "Synthetic migration state must be installed before moving Activity lifecycle",
+                    controller.uiState.value is VaultAccessUiState.Migrating
+                )
             }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
@@ -39,7 +43,7 @@ class MainActivityLifecycleInstrumentedTest {
             scenario.onActivity { activity ->
                 val controller = controllerOf(activity)
                 assertTrue(
-                    "MainActivity.onStop must place the controller in Locked state",
+                    "MainActivity.onStop must place the controller in Locked state; actual state=${controller.uiState.value}",
                     controller.uiState.value is VaultAccessUiState.Locked
                 )
                 assertFalse(
@@ -57,6 +61,7 @@ class MainActivityLifecycleInstrumentedTest {
     fun foregroundLossClearsUnconfirmedRecoveryKeyBuffers() {
         val syntheticPendingVek = ByteArray(32) { 0x52 }
         val scenario = ActivityScenario.launch(MainActivity::class.java)
+        awaitControllerInitialization(scenario)
         try {
             scenario.onActivity { activity ->
                 val controller = controllerOf(activity)
@@ -66,6 +71,10 @@ class MainActivityLifecycleInstrumentedTest {
                     "SYNTHETIC-RECOVERY-KEY",
                     "Synthetic test fixture"
                 )
+                assertTrue(
+                    "Synthetic recovery confirmation must be installed before moving Activity lifecycle",
+                    controller.uiState.value is VaultAccessUiState.ConfirmRecoveryKey
+                )
             }
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
 
@@ -74,7 +83,7 @@ class MainActivityLifecycleInstrumentedTest {
             scenario.onActivity { activity ->
                 val controller = controllerOf(activity)
                 assertTrue(
-                    "Interrupted recovery confirmation must lock the controller",
+                    "Interrupted recovery confirmation must lock the controller; actual state=${controller.uiState.value}",
                     controller.uiState.value is VaultAccessUiState.Locked
                 )
                 assertTrue(
@@ -97,9 +106,52 @@ class MainActivityLifecycleInstrumentedTest {
     }
 
     @Test
+    fun activityRecreationCannotCarryAnUnlockedSyntheticSessionIntoTheNewController() {
+        val syntheticKey = ByteArray(32) { 0x74 }
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        awaitControllerInitialization(scenario)
+        var previousSession: VaultSession? = null
+        try {
+            scenario.onActivity { activity ->
+                val controller = controllerOf(activity)
+                previousSession = sessionOf(controller)
+                previousSession!!.installVerifiedKey(syntheticKey)
+                controller.uiState.value = VaultAccessUiState.Migrating("synthetic recreation fixture")
+                assertTrue(
+                    "Synthetic migration state must be installed before Activity recreation",
+                    controller.uiState.value is VaultAccessUiState.Migrating
+                )
+            }
+
+            scenario.recreate()
+            awaitControllerInitialization(scenario)
+
+            scenario.onActivity { activity ->
+                val controller = controllerOf(activity)
+                assertFalse(
+                    "The destroyed Activity session must be locked during recreation",
+                    previousSession!!.isUnlocked()
+                )
+                assertFalse(
+                    "A newly created controller must not publish Ready without authenticated setup",
+                    controller.uiState.value is VaultAccessUiState.Ready
+                )
+                assertFalse(
+                    "The new Activity must begin with a locked in-memory session",
+                    sessionOf(controller).isUnlocked()
+                )
+            }
+        } finally {
+            scenario.close()
+            syntheticKey.fill(0)
+        }
+    }
+
+    @Test
     fun screenOffReceiverLocksSessionAndClearsAuthenticatedAccess() {
         val syntheticKey = ByteArray(32) { 0x61 }
         val scenario = ActivityScenario.launch(MainActivity::class.java)
+        awaitControllerInitialization(scenario)
         try {
             scenario.onActivity { activity ->
                 val controller = controllerOf(activity)
@@ -127,6 +179,24 @@ class MainActivityLifecycleInstrumentedTest {
             scenario.close()
             syntheticKey.fill(0)
         }
+    }
+
+    /**
+     * Wait for MainActivity's Compose LaunchedEffect to finish controller.initialize() before
+     * tests replace the UI state with synthetic lifecycle fixtures. Otherwise delayed state discovery
+     * can overwrite those fixtures before the foreground-loss lifecycle callback is observed.
+     */
+    private fun awaitControllerInitialization(scenario: ActivityScenario<MainActivity>) {
+        var initialized = false
+        repeat(40) {
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            scenario.onActivity { activity ->
+                initialized = controllerOf(activity).uiState.value !is VaultAccessUiState.Initializing
+            }
+            if (initialized) return
+            android.os.SystemClock.sleep(50)
+        }
+        assertTrue("VaultAccessController did not finish initial state discovery", initialized)
     }
 
     private fun controllerOf(activity: MainActivity): VaultAccessController {

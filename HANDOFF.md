@@ -5,19 +5,19 @@ updated: 2026-10-22
 author: GPT-6 via connected GitHub tools
 branch: agent/integration-security-hardening-candidate-2026-10-21
 task: Continue CO-01/CO-02 integration hardening; preserve vault data and keep canonical branch untouched
-state: RUN_527_PIN_SETUP_SUCCESS — ONE_AUTH_ASSERTION_EXCEPTION_WRAPPER_MISMATCH — SQLCIPHER_SYNTHETIC_TEST_NO_FAILURE_REPORTED — AUTH_ASSERTION_AND_LIFECYCLE_TEST_FIX_ADDED — EXACT_HEAD_CI_PENDING — PRODUCTION_KEY_MANAGER_AND_HUMAN_REVIEW_OPEN
+state: RUN_532_STANDARD_GREEN — 4_OF_6_INSTRUMENTED_TESTS_PASSED — TWO_FOREGROUND_LOSS_TESTS_EXPOSE_INITIALIZATION_ORDERING — WAITER_AND_ACTIVITY_RECREATION_COVERAGE_ADDED — EXACT_HEAD_CI_PENDING — G2_KEY_POLICY_APPROVAL_AND_HUMAN_REVIEW_OPEN
 canonical_branch: feat/durable-vault-migration-journal
 candidate_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48
-candidate_head_sha: bcf27b1a0a59a4ed7ae5902e9438b61e4b706718 for run #527; resolve the live PR #48 head after the auth assertion/lifecycle follow-up
+candidate_head_sha: 399748db0fe60f96eef064f42941c2129e9359d0 for run #532; new commit with lifecycle ordering fix and recreation coverage pending
 environment:
   repository_checkout_in_active_execution_environment: NOT_AVAILABLE — GitHub connector used for branch edits
   android_sdk_in_active_execution_environment: NOT_AVAILABLE
   local_gradle_build: NOT_RUN
   independent_reviewer_subagent: NOT_AVAILABLE
 current_release_gate:
-  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39729721807
-  last_completed_source_test_sha: bcf27b1a0a59a4ed7ae5902e9438b61e4b706718
-  observed_status_when_handoff_written: Standard job passed. Emulator PIN setup worked (PIN set to '2468'); the connected test command executed 3 Android tests and reported one failure. The auth-per-use test expected a top-level UserNotAuthenticatedException, while Android 16 wrapped the Keystore "Key user not authenticated" denial in IllegalBlockSizeException. The other two tests (missing-alias fail-closed and synthetic SQLCipher/journal) were not reported as failed. This follow-up checks the cause chain, adds real Activity-stop lifecycle instrumentation, and adds a source guard for the one-shell command. New exact-head CI is pending.
+  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39733219359
+  last_completed_source_test_sha: 399748db0fe60f96eef064f42941c2129e9359d0
+  observed_status_when_handoff_written: Standard CI passed. Emulator ran 6 tests; four passed (auth-per-use denial, absent-alias fail-closed, synthetic SQLCipher/journal integrity, screen-off receiver lock) and two foreground-loss tests failed because controller state was not Locked after ActivityScenario.moveToState(CREATED). The tests may have injected synthetic state before Compose's one-time initialization effect had completed. This commit adds an initialization waiter, pre-transition state assertions and Activity recreation coverage; exact-head CI pending.
   prior_green_run_policy: Older green runs do not verify a later head
 scope_guard:
   - No changes to canonical branch or merge performed.
@@ -87,3 +87,10 @@ independent_review: NOT_AVAILABLE — no fresh-context reviewer sub-agent is ava
 - Three instrumented tests executed. The sole failure was an exception-class assertion in the auth-per-use test: Android 16 produced `IllegalBlockSizeException` wrapping the Keystore denial `Key user not authenticated`. The test now checks the underlying denial in the cause chain.
 - The missing-alias fail-closed and synthetic SQLCipher/journal test were not reported as failed. Fresh exact-head CI is required for the follow-up and Activity lifecycle tests.
 - PR #48's branch does not include PR #49's dependency-verification metadata yet. Review/integrate metadata and checksum pins for the AndroidX Test dependencies before any combined release candidate.
+
+
+## Run #532 instrumentation findings — 2026-10-22
+
+- Exact-head run #532 standard CI passed. Of six emulator tests, four passed; two foreground-loss tests failed when the expected controller state wasn't Locked after moving ActivityScenario to CREATED.
+- Current hypothesis based on test order: synthetic UI state was injected before the Compose initialization effect was conclusively complete. The new `awaitControllerInitialization` helper waits until the controller leaves Initializing before each fixture mutation, and assertions check fixture state before the lifecycle transition.
+- Added Activity recreation coverage; it does not establish actual process-death behavior. Run fresh exact-head CI before counting any follow-up results.

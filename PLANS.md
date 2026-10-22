@@ -60,3 +60,10 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 - One failure: auth-per-use test asserted top-level `UserNotAuthenticatedException`, but Android 16 surfaced `IllegalBlockSizeException` with nested Keystore denial `Key user not authenticated`. The updated test checks the cause chain, preserving the invariant that unauthenticated key use must fail.
 - The absent-alias fail-closed and synthetic SQLCipher/journal test were not reported as failed. Exact-head CI for the revised assertion and MainActivity lifecycle tests is pending.
 - Metadata integration caution: PR #49's dependency verification metadata is not yet on this branch and does not list AndroidX Test components. Before any merge/release, review the combined diff and add verified hashes for all three approved AndroidX Test dependencies.
+
+
+## Run #532 lifecycle instrumentation diagnosis and fix
+- Run #532 standard CI passed; six emulator tests executed. Auth-per-use denial, absent-alias fail-closed, synthetic SQLCipher/journal integrity, and direct screen-off receiver test passed.
+- Two foreground-loss tests failed: state was not Locked after `ActivityScenario.moveToState(CREATED)`. The test had not conclusively synchronized with the initial Compose `LaunchedEffect { controller.initialize() }`.
+- Follow-up adds a bounded initialization waiter, pre-transition state assertions/diagnostics, and Activity recreation test. This is pending exact-head CI and does not imply actual process-death verification.
+- Keep the G2 legacy DB-key fallback decision and independent human security review as release gates.
