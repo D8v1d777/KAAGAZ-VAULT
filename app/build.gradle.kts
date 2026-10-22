@@ -65,6 +65,11 @@ val prepareOcrModels by tasks.registering {
                 connection.inputStream.use { input -> temporary.outputStream().use { output -> input.copyTo(output) } }
             } finally { connection.disconnect() }
             val bytes = temporary.readBytes()
+            // Temporary CO-06 hash discovery: CI logs a digest only after fetching the pinned
+            // bytes; the existing Git-blob SHA-1 check below still fails the build on mismatch.
+            val diagnosticSha256 = MessageDigest.getInstance("SHA-256").digest(bytes)
+                .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+            println("TESSDATA_SHA256_DIAGNOSTIC $name $diagnosticSha256")
             val digest = MessageDigest.getInstance("SHA-1")
             digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
             digest.update(bytes)
