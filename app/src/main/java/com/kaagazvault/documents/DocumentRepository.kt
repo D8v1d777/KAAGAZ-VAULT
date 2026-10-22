@@ -170,7 +170,10 @@ internal class DocumentRepository(
             val replacement = DocumentPayloadCodec.encode(payload.copy(
                 ocrText = correctedText.take(MAX_OCR_CHARACTERS),
                 ocrReviewed = true,
-                ocrTruncated = correctedText.length > MAX_OCR_CHARACTERS
+                ocrTruncated = correctedText.length > MAX_OCR_CHARACTERS,
+                // OCR edits invalidate old suggestions and any confirmations tied to them.
+                // Re-extract from the corrected text; every new suggestion starts unaccepted.
+                structuredFields = StructuredFieldExtractor.extract(correctedText)
             ))
             try {
                 store.replace(id, replacement)
