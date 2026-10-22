@@ -96,6 +96,39 @@ class MainActivityLifecycleInstrumentedTest {
         }
     }
 
+    @Test
+    fun screenOffReceiverLocksSessionAndClearsAuthenticatedAccess() {
+        val syntheticKey = ByteArray(32) { 0x61 }
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            scenario.onActivity { activity ->
+                val controller = controllerOf(activity)
+                val session = sessionOf(controller)
+                session.installVerifiedKey(syntheticKey)
+                controller.uiState.value = VaultAccessUiState.Migrating("synthetic screen-off fixture")
+
+                // Invoke the exact registered receiver callback without broadcasting a protected
+                // system action. This verifies the production receiver-to-controller wiring.
+                val receiverField = MainActivity::class.java.getDeclaredField("screenOffReceiver")
+                receiverField.isAccessible = true
+                val receiver = requireNotNull(receiverField.get(activity) as? android.content.BroadcastReceiver)
+                receiver.onReceive(activity, android.content.Intent(android.content.Intent.ACTION_SCREEN_OFF))
+
+                assertTrue(
+                    "Screen-off receiver must lock the controller",
+                    controller.uiState.value is VaultAccessUiState.Locked
+                )
+                assertFalse(
+                    "Screen-off receiver must clear the active session key",
+                    session.isUnlocked()
+                )
+            }
+        } finally {
+            scenario.close()
+            syntheticKey.fill(0)
+        }
+    }
+
     private fun controllerOf(activity: MainActivity): VaultAccessController {
         val field = MainActivity::class.java.getDeclaredField("accessController")
         field.isAccessible = true
