@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/gojo-portrait.jpg" alt="CC BY-SA Satoru Gojo cosplay portrait" width="260" style="border-radius: 18px;" />
+<img src="docs/images/vault-hero.svg" alt="Kaagaz Vault" width="100%" style="border-radius: 18px;" />
 
 # KAAGAZ-VAULT
 
@@ -18,14 +18,14 @@
 </div>
 
 <p align="center">
-  <img src="docs/images/gojo-wide.jpg" alt="CC BY-SA Satoru Gojo themed vehicle photograph at Comic Con Chile" width="100%" />
+  <img src="docs/images/vault-hero.svg" alt="Kaagaz Vault" width="100%" />
 </p>
 
 <div align="center">
 
 **Your documents. Your device. No cloud document pipeline.**
 
-[Product overview](docs/overview.md) · [Document import notes](docs/engineering/document-import.md) · [Quality gates](docs/engineering/quality-gates.md) · [Asset attribution](docs/images/ATTRIBUTION.md)
+[Product overview](docs/overview.md) · [Document import notes](docs/engineering/document-import.md) · [Quality gates](docs/engineering/quality-gates.md)
 
 </div>
 
@@ -67,7 +67,7 @@ The FOSS core must not add `INTERNET`, analytics, advertising, cloud OCR, hidden
 
 OCR is untrusted evidence. It remains editable and reviewable. The app must never turn uncertain medical text into automatic instructions or actions.
 
-This is active development, not a release-ready security product. Auth-bound vault lock, recovery and rotation evidence, physical-device leakage review, secure deletion expectations, and final licensing still have explicit gates.
+This is active development, not a release-ready security product. Auth-bound vault lock, recovery and rotation evidence, physical-device leakage review, and secure deletion expectations still have explicit gates.
 
 ## Current progress
 
@@ -93,12 +93,6 @@ python3 scripts/check_offline_manifest.py
 ```
 
 Read [AGENTS.md](AGENTS.md) before changing code. The repository contract owns the offline, privacy, accessibility, and evidence boundaries.
-
-## Visual attribution
-
-The Gojo visuals in this landing page are real photographs sourced from Wikimedia Commons under **CC BY-SA 4.0**. The banner is a 5,947 × 3,813 original by [Rjcastillo](https://commons.wikimedia.org/wiki/User:Rjcastillo). The portrait and 4,352 × 3,264 source photograph are by [Solomon203](https://commons.wikimedia.org/wiki/User:Solomon203). Full source URLs, license links, dimensions, and file notes are in [docs/images/ATTRIBUTION.md](docs/images/ATTRIBUTION.md).
-
-The photographs are open-licensed works, but *Jujutsu Kaisen*, Satoru Gojo, associated logos, and underlying character rights remain with their respective rights holders. Kaagaz Vault is not an official or affiliated project.
 
 <div align="center">
 
