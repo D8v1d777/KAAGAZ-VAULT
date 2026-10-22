@@ -44,7 +44,7 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Build debug and release, run unit tests, and lint
-        run: ./gradlew --no-daemon clean assembleDebug assembleRelease testDebugUnitTest lint
+        run: ./gradlew --no-daemon clean assembleDebug assembleRelease assembleDebugAndroidTest testDebugUnitTest lint
 
       - name: Enforce offline merged-manifest policy
         run: python3 scripts/check_offline_manifest.py
