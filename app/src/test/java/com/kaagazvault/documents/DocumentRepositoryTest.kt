@@ -79,6 +79,38 @@ class DocumentRepositoryTest {
     }
 
     @Test
+    fun correctingOcrRebuildsSuggestionsAndClearsOldFieldConfirmations() {
+        val directory = temporaryFolder.newFolder()
+        val key = newKey()
+        val store = EncryptedDocumentStore(directory, DocumentKeyProvider { key })
+        val priorField = StructuredField(
+            type = "date",
+            value = "12/10/2026",
+            sourceExcerpt = "Date: 12/10/2026",
+            method = "bounded date pattern",
+            accepted = true
+        )
+        val encoded = DocumentPayloadCodec.encode(
+            ImportedPayload(
+                "synthetic.png",
+                "image/png",
+                byteArrayOf(1, 2, 3),
+                ocrText = "Date: 12/10/2026",
+                structuredFields = listOf(priorField)
+            )
+        )
+        val id = try { store.save(encoded) } finally { encoded.fill(0) }
+        val repository = DocumentRepository(null, store)
+
+        val updated = repository.saveReviewedOcr(id, "Date: 21/11/2027")
+
+        assertEquals("Date: 21/11/2027", updated.ocrText)
+        assertEquals(1, updated.structuredFields.size)
+        assertEquals("21/11/2027", updated.structuredFields.single().value)
+        assertTrue("Re-extracted fields must require fresh confirmation", updated.structuredFields.none { it.accepted })
+    }
+
+    @Test
     fun listRetainsUnreadableDocumentAndSearchSurfacesItEvenWhenItDoesNotMatch() {
         val directory = temporaryFolder.newFolder()
         val key = newKey()
