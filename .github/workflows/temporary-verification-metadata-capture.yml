@@ -1,0 +1,47 @@
+name: Temporary dependency metadata capture (review only)
+
+on:
+  push:
+    branches: [agent/CO-06-build-integrity-2026-10-22]
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: Capture AndroidX Test artifact hashes for manual review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up pinned Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6
+        with:
+          cache-provider: basic
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: "platform-tools"
+
+      - name: Install required Android SDK packages
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+
+      # TEMPORARY: this workflow only captures checksums for a human-reviewed metadata update.
+      # It is not a release gate and must be deleted after the resulting XML is reviewed/committed.
+      - name: Resolve build and instrumentation dependencies while writing SHA-256 metadata
+        run: ./gradlew --no-daemon --write-verification-metadata sha256 clean assembleDebug assembleRelease assembleDebugAndroidTest testDebugUnitTest lint
+
+      - name: Upload generated metadata for review
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: androidx-test-verification-metadata-review-only
+          path: gradle/verification-metadata.xml
+          if-no-files-found: error
