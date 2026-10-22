@@ -40,11 +40,19 @@ jobs:
       - name: Install required Android SDK packages
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
 
+
       - name: Test offline manifest policy helpers
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Build debug and release, run unit tests, and lint
-        run: ./gradlew --no-daemon clean assembleDebug assembleRelease testDebugUnitTest lint
+        run: ./gradlew --no-daemon clean assembleDebug assembleRelease assembleDebugAndroidTest testDebugUnitTest lint
+
+      - name: Verify OCR model preparation is up-to-date
+        shell: bash
+        run: |
+          output="$(./gradlew --no-daemon :app:prepareOcrModels)"
+          printf '%s\n' "$output"
+          grep -Fq ':app:prepareOcrModels UP-TO-DATE' <<< "$output"
 
       - name: Enforce offline merged-manifest policy
         run: python3 scripts/check_offline_manifest.py
