@@ -697,10 +697,10 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: 
                         editedFields.forEachIndexed { index, field ->
                             OutlinedTextField(
                                 value = field.value,
-                                onValueChange = { value -> editedFields[index] = field.copy(value = value, accepted = false) },
+                                onValueChange = { value -> editedFields[index] = field.copy(value = value, accepted = false, method = if (value == field.value) field.method else "user-edited; original OCR excerpt may not match edited value") },
                                 modifier = Modifier.fillMaxWidth(),
                                 label = { Text(field.type.replaceFirstChar { it.uppercase() }) },
-                                supportingText = { Text("Source: ${field.sourceExcerpt}\nMethod: ${field.method}${if (field.uncertain) " • uncertain" else ""}") },
+                                supportingText = { Text("${if (field.method.startsWith("user-edited")) "Original OCR excerpt (may not match edited value)" else "Source"}: ${field.sourceExcerpt}\nMethod: ${field.method}${if (field.uncertain) " • uncertain" else ""}") },
                                 enabled = !busy,
                                 shape = RoundedCornerShape(16.dp)
                             )
