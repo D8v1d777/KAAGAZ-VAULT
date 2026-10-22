@@ -95,6 +95,7 @@ class SqlCipherMigrationInstrumentedTest {
             session.installVerifiedKey(vek)
             val vekKeyAccess = SessionVekKeyAccess(session)
             val vekKeyStore = VekWrappedDatabaseKeyStore(vekWrapper, vekKeyAccess)
+            var failOnceAfterDatabaseRewrap = true
             val backend = object : VaultMigrationBackend {
                 override fun listLegacyDocumentIds(): List<String> = emptyList()
 
@@ -129,6 +130,10 @@ class SqlCipherMigrationInstrumentedTest {
                 }
 
                 override fun verifyDatabaseIntegrity() {
+                    if (failOnceAfterDatabaseRewrap) {
+                        failOnceAfterDatabaseRewrap = false
+                        throw IOException("synthetic interruption after VEK database-key rewrap")
+                    }
                     val unwrappedDatabaseKey = vekKeyStore.loadOrNull()
                         ?: throw IOException("Synthetic VEK database-key wrapper could not be reopened")
                     try {
@@ -158,10 +163,31 @@ class SqlCipherMigrationInstrumentedTest {
             }
 
             val journal = VaultMigrationJournal(journalDirectory)
-            val completed = VaultMigrationCoordinator(journal, backend).resume()
+            org.junit.Assert.assertThrows(IOException::class.java) {
+                VaultMigrationCoordinator(journal, backend).resume()
+            }
+
+            val interruptedState = VaultMigrationJournal(journalDirectory).load()
+            assertEquals(
+                "Failed integrity verification must durably record RECOVERY_REQUIRED",
+                VaultMigrationPhase.RECOVERY_REQUIRED,
+                interruptedState?.phase
+            )
+            assertTrue("VEK-wrapped database key must survive the interruption", vekWrapper.isFile)
+            assertArrayEquals(
+                "The legacy wrapper must remain byte-identical during recovery",
+                legacyWrapperBefore!!,
+                legacyWrapper.readBytes()
+            )
+
+            // A fresh journal/coordinator instance models process restart from the durable snapshot.
+            val completed = VaultMigrationCoordinator(
+                VaultMigrationJournal(journalDirectory),
+                backend
+            ).resume()
 
             assertEquals(
-                "Journal must reach COMPLETE only after the real SQLCipher integrity path succeeds",
+                "Journal must reach COMPLETE only after resumed real SQLCipher integrity succeeds",
                 VaultMigrationPhase.COMPLETE,
                 completed.phase
             )

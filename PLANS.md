@@ -67,3 +67,9 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 - Two foreground-loss tests failed: state was not Locked after `ActivityScenario.moveToState(CREATED)`. The test had not conclusively synchronized with the initial Compose `LaunchedEffect { controller.initialize() }`.
 - Follow-up adds a bounded initialization waiter, pre-transition state assertions/diagnostics, and Activity recreation test. This is pending exact-head CI and does not imply actual process-death verification.
 - Keep the G2 legacy DB-key fallback decision and independent human security review as release gates.
+
+
+## Run #534 and SQLCipher durable recovery injection
+- Run #534 on exact SHA `a35be52a870e1c94fe971607dd4d0dc16251f559` passed standard and emulator jobs; six Android instrumentation tests completed successfully. Run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39736421084
+- Added next: inject one failure after the VEK-wrapped DB-key side effect; verify the durable journal marks RECOVERY_REQUIRED, then instantiate a fresh journal/coordinator and resume real SQLCipher integrity validation. Keep VEK wrapper and legacy wrapper present/byte-identical through recovery and durable COMPLETE.
+- Fresh exact-head CI required for this new scenario. Real OS lifecycle delivery/process death, production DatabaseKeyManager integration and independent security review remain open.

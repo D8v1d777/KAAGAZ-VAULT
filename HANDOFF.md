@@ -5,19 +5,19 @@ updated: 2026-10-22
 author: GPT-6 via connected GitHub tools
 branch: agent/integration-security-hardening-candidate-2026-10-21
 task: Continue CO-01/CO-02 integration hardening; preserve vault data and keep canonical branch untouched
-state: RUN_532_STANDARD_GREEN — 4_OF_6_INSTRUMENTED_TESTS_PASSED — TWO_FOREGROUND_LOSS_TESTS_EXPOSE_INITIALIZATION_ORDERING — WAITER_AND_ACTIVITY_RECREATION_COVERAGE_ADDED — EXACT_HEAD_CI_PENDING — G2_KEY_POLICY_APPROVAL_AND_HUMAN_REVIEW_OPEN
+state: RUN_534_STANDARD_AND_EMULATOR_GREEN — SIX_INSTRUMENTATION_TESTS_PASSED — SQLCIPHER_DURABLE_RECOVERY_INJECTION_ADDED_NEXT — EXACT_HEAD_CI_PENDING — OS_LIFECYCLE_PROCESS_DEATH_AND_G2_APPROVAL_OPEN
 canonical_branch: feat/durable-vault-migration-journal
 candidate_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48
-candidate_head_sha: 399748db0fe60f96eef064f42941c2129e9359d0 for run #532; new commit with lifecycle ordering fix and recreation coverage pending
+candidate_head_sha: a35be52a870e1c94fe971607dd4d0dc16251f559 passed run #534; new SQLCipher recovery-injection commit requires exact-head CI
 environment:
   repository_checkout_in_active_execution_environment: NOT_AVAILABLE — GitHub connector used for branch edits
   android_sdk_in_active_execution_environment: NOT_AVAILABLE
   local_gradle_build: NOT_RUN
   independent_reviewer_subagent: NOT_AVAILABLE
 current_release_gate:
-  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39733219359
-  last_completed_source_test_sha: 399748db0fe60f96eef064f42941c2129e9359d0
-  observed_status_when_handoff_written: Standard CI passed. Emulator ran 6 tests; four passed (auth-per-use denial, absent-alias fail-closed, synthetic SQLCipher/journal integrity, screen-off receiver lock) and two foreground-loss tests failed because controller state was not Locked after ActivityScenario.moveToState(CREATED). The tests may have injected synthetic state before Compose's one-time initialization effect had completed. This commit adds an initialization waiter, pre-transition state assertions and Activity recreation coverage; exact-head CI pending.
+  last_completed_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39736421084
+  last_completed_source_test_sha: a35be52a870e1c94fe971607dd4d0dc16251f559
+  observed_status_when_handoff_written: Both standard and Android emulator jobs passed. Emulator test summary: six instrumented tests started and finished; Gradle reported BUILD SUCCESSFUL. Covered auth-per-use denial, missing-alias no-change, synthetic SQLCipher/row-preservation/integrity/journal COMPLETE, deterministic controller stop callback cleanup, and screen-off receiver lock. This commit adds a failure injection after VEK database-key rewrap followed by durable journal recovery and SQLCipher integrity verification. New exact-head CI is pending.
   prior_green_run_policy: Older green runs do not verify a later head
 scope_guard:
   - No changes to canonical branch or merge performed.
@@ -40,11 +40,11 @@ unverified:
   - The synthetic SQLCipher test exercises real Room/SQLCipher, VEK wrapper store and durable journal, but deliberately does not exercise `DatabaseKeyManager`'s fixed production Keystore alias. That production integration remains unverified.
   - Independent human security review remains mandatory.
 next_actions:
-  - Verify fresh exact-head CI passes the cause-chain auth-denial check, missing-alias guard, synthetic SQLCipher/journal test and both MainActivity lifecycle tests.
-  - Review lifecycle behavior from the emulator result; then expand screen-off/process-death/recovery coverage where the runner permits.
-  - On a separate reviewed candidate, integrate PR #49 dependency-verification metadata and record checksums for all approved AndroidX Test dependencies.
-  - Review production `DatabaseKeyManager`/legacy Keystore wrapping separately without creating/deleting the production alias in tests.
-  - Keep PR #48 draft/unmerged until P0 gates and independent human security review pass.
+  - Validate the SQLCipher failure-injection recovery path on exact-head emulator CI: durable RECOVERY_REQUIRED, surviving VEK wrapper, unchanged legacy wrapper, fresh-coordinator resume, row preservation, integrity and COMPLETE.
+  - Consider further migration crash points only after the new real-SQLCipher recovery path is green.
+  - Keep OS-driven screen-off/stop and true process-death restart explicitly unverified; do not claim Android lifecycle certification from direct callback tests.
+  - Integrate PR #49 dependency-verification metadata with reviewed hashes for the AndroidX Test dependencies before any combined release candidate.
+  - Obtain explicit G2 owner decision on the fail-closed legacy-key fallback guard. Keep PR #48 draft/unmerged until P0 gates and independent human review pass.
 independent_review: NOT_AVAILABLE — no fresh-context reviewer sub-agent is available through this execution environment; human security review remains a release gate.
 </handoff>
 
@@ -94,3 +94,11 @@ independent_review: NOT_AVAILABLE — no fresh-context reviewer sub-agent is ava
 - Exact-head run #532 standard CI passed. Of six emulator tests, four passed; two foreground-loss tests failed when the expected controller state wasn't Locked after moving ActivityScenario to CREATED.
 - Current hypothesis based on test order: synthetic UI state was injected before the Compose initialization effect was conclusively complete. The new `awaitControllerInitialization` helper waits until the controller leaves Initializing before each fixture mutation, and assertions check fixture state before the lifecycle transition.
 - Added Activity recreation coverage; it does not establish actual process-death behavior. Run fresh exact-head CI before counting any follow-up results.
+
+
+## Run #534 verified and next SQLCipher recovery gate — 2026-10-22
+
+- Run #534 exact head `a35be52a870e1c94fe971607dd4d0dc16251f559`: standard and emulator jobs passed; six instrumented tests completed successfully. Run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39736421084
+- Tests validate auth-per-use denial, absent-alias no-change, real SQLCipher row preservation/integrity, journal COMPLETE, controller stop-handler cleanup and screen-off receiver callback.
+- OS-driven screen-off/stop, actual process death, production `DatabaseKeyManager` key-wrapping lifecycle and human review remain unverified.
+- Next commit adds a deterministic failure after VEK DB-key rewrap and checks durable RECOVERY_REQUIRED -> fresh coordinator resume -> integrity -> COMPLETE, preserving the legacy wrapper. CI pending on the new head.

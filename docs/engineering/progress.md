@@ -1,3 +1,22 @@
+## 2026-10-22 — CI #534 passed; synthetic migration-interruption recovery coverage added
+
+### Verified on the shared candidate
+- Exact head `a35be52a870e1c94fe971607dd4d0dc16251f559`, run [#534](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39736421084): standard debug/release build, JVM tests, lint, Python policy guards and offline merged-manifest gate passed.
+- Emulator job passed and reported `Starting 6 tests`, `Finished 6 tests`, and `BUILD SUCCESSFUL in 4m 20s`.
+- Coverage: auth-per-use KeyStore denial; absent-alias fail-closed with unchanged synthetic envelope; cache-isolated SQLCipher row preservation, VEK wrapper, journal COMPLETE, and `PRAGMA integrity_check`; controller stop callback zeroizes session/recovery buffers; screen-off receiver callback locks the session.
+- This is not OS-level foreground-loss/screen-off or process-death proof: lifecycle tests invoke the controller's stop handler directly, with a separate static source guard for `MainActivity.onStop()` order. Keep these limitations open.
+
+### New coverage in this commit
+- The SQLCipher instrumentation test now injects one synthetic exception after the VEK-wrapped database key has been persisted but before integrity verification completes.
+- It asserts the durable journal records `RECOVERY_REQUIRED`, the VEK wrapper survives, and the legacy wrapper remains byte-identical. A fresh journal/coordinator then resumes, opens the real SQLCipher database, checks row preservation and `PRAGMA integrity_check`, and reaches durable `COMPLETE` without retiring the legacy wrapper.
+- Test fixture stays under a UUID-named cache directory and uses synthetic in-memory wrapping keys; it does not access the fixed production Keystore alias or default database paths.
+
+### Verification boundary
+- The recovery enhancement is newly committed and requires its own exact-head CI.
+- Production `DatabaseKeyManager` integration, actual screen-off/OS-stop delivery, real process death, authenticated CryptoObject/recovery, biometric enrollment change, G2 owner approval and independent human security review remain open.
+
+---
+
 ## 2026-10-22 — Instrumentation setup-ordering fix and Activity-recreation coverage
 
 ### Run #532 evidence
