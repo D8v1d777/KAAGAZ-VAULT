@@ -692,3 +692,21 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Verify the final stable-SDK build configuration through GitHub Actions.
 2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
 3. Start the encrypted-storage prototype only after researching Android Keystore, SQLCipher, Room, and backup/key-lifecycle constraints; keep ADR-0001 Proposed until prototype evidence exists.
+
+
+## 2026-10-22 — Authentication/key lifecycle race fix (candidate; exact-head CI pending)
+
+### Implemented
+- `app/src/main/java/com/kaagazvault/security/VaultAccessController.kt`: serialize verified VEK installation with controller lock/dispose and migration-failure cleanup using the controller monitor. Migration failure now locks/clears runtime only when its captured `migrationEpoch` still equals `accessEpoch`, preventing an older failed worker from locking a newer authenticated session.
+- `scripts/test_vault_access_wiring.py`: add a regression guard requiring the migration epoch check to precede session locking in the failure path and checking that verified-key installation is guarded.
+
+### Verification boundary
+- Candidate branch: `agent/integration-security-hardening-candidate-2026-10-21`; PR #48 remains the review surface.
+- Code commit: `740cb69d9c1fa7027228d50408be842c079166d7`; regression-test commits: `37d4ddc3e0db78436e7afd3d88fc938ab754020b`, followed by assertion correction `ef491bbeef7126d08e0e2efbe8355c8936ba32fd`.
+- The connector currently reports no workflow run or combined status for `ef491bbeef7126d08e0e2efbe8355c8936ba32fd`; therefore no exact-head CI pass is claimed. Local Python/Kotlin/Android tests were not executed in this environment. The source-level regression guard is added but remains unexecuted here.
+- This is a code-level fix candidate, not a completed security sign-off. Device/emulator lock/recovery checks, interrupted-migration tests, full exact-head CI, and independent security review remain release gates. Do not merge or mark the lifecycle item fully complete until those gates pass.
+
+### Next
+1. Trigger/obtain Android CI for the current PR head and fix any failures on the resulting exact SHA.
+2. Add a deterministic concurrency regression test proving stale migration failure cannot lock a newer session, beyond the source-level guard.
+3. Verify lock/unlock, recovery confirmation, app backgrounding, disposal, and interrupted migration on emulator/device; request independent security review.
