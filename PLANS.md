@@ -20,8 +20,11 @@ PR #49: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/49
 5. Independent cold review. Review auth/key lifecycle, recovery failure behavior, migration durability, logging, and dependency/manifest changes. Human security review remains required.
 6. Release decision. Record verified/blocked/unverified items with exact SHA/run URLs; keep PRs draft/unmerged if P0/device/security gates remain open.
 
-## Instrumentation dependency/action gate — G3 approval required
-The repository currently has no `app/src/androidTest` tree and no AndroidX Test runner setup. Adding AndroidX Test dependencies or a third-party emulator action changes dependencies/CI and is gated under root AGENTS.md. Do not commit those dependencies/actions before explicit owner approval. Prepare a concrete memo with exact pinned versions, official docs, licenses, network/data boundaries, and an exact commit-SHA-pinned action before asking once.
+## Instrumentation dependency/action gate — owner approval received 2026-10-22
+- Approved test-only dependencies: AndroidX Test core 1.7.0, runner 1.7.0, and ext.junit 1.3.0. Official stable versions: https://developer.android.com/jetpack/androidx/releases/test (AndroidX Test project uses Apache-2.0).
+- Approved emulator action: `ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d` (v2.38.0, immutable commit pin; release: https://github.com/ReactiveCircus/android-emulator-runner/releases/tag/v2.38.0; Apache-2.0).
+- Implementation adds `AndroidJUnitRunner`, a separate API 36 Google APIs x86_64 emulator job, and two Android Keystore instrumentation checks. The action only provisions a test emulator; CI network activity is limited to normal SDK/Maven/model/build downloads. The app manifest/offline policy remains unchanged.
+- Exact-head CI for the new instrumentation commit is pending. Do not count the baseline CI pass as validation of the new work.
 
 ## Guardrails
 - Never weaken/skip dependency verification or offline-manifest gates to make CI green.
@@ -29,3 +32,8 @@ The repository currently has no `app/src/androidTest` tree and no AndroidX Test 
 - Preserve legacy ciphertext, staging copies and key wrappers until authenticated read-back, durable journal COMPLETE, SQLCipher reopen/integrity, and independent review evidence exist.
 - Do not claim emulator/physical-device validation or independent review unless matching evidence exists.
 - Notion Grok/release pages are append-only: each update goes in a new bracketed section; do not replace prior sections.
+
+## CO-02 instrumentation scope boundary — 2026-10-22
+- Implemented first slice: unauthenticated auth-per-use Keystore operation must fail; absent unique alias must fail closed while a synthetic cache envelope remains byte-identical.
+- Still open: authenticated CryptoObject completion/recovery, biometric enrollment invalidation where supported, Activity background/screen-off/process-death restart, and real SQLCipher rewrap/reopen/PRAGMA integrity on isolated synthetic data. Existing JVM migration crash tests use a fake database collaborator.
+- Human security review and exact-head CI for every final documentation/code head remain release blockers.

@@ -1,3 +1,24 @@
+## 2026-10-22 — CO-02 Android Keystore instrumentation slice added
+
+### Implemented
+- Owner approval recorded for test-only AndroidX Test core/runner 1.7.0 and ext.junit 1.3.0, plus emulator action `ReactiveCircus/android-emulator-runner` pinned to immutable commit `a421e43855164a8197daf9d8d40fe71c6996bb0d` (v2.38.0).
+- Added the `androidTest` runner and dependencies without changing production dependencies, manifest permissions, key policy, ciphertext format, or Room schema.
+- Added on-device tests using unique ephemeral Android Keystore aliases: unauthenticated AES-GCM use must throw `UserNotAuthenticatedException`; a missing alias must fail closed without changing a synthetic cache envelope.
+- Added a separate API 36 Google APIs x86_64 emulator job, with KVM enabled and `:app:connectedDebugAndroidTest`. The emulator action is SHA-pinned; no third-party action tag is used.
+- The tests do not touch the production Keystore alias, production vault files, or user data.
+
+### Verification boundary
+- Baseline PR #48 head `4844c3806a7845c12cd97d92f3f2ba5d6fab16fa` passed CI run [#523](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39724994933).
+- The instrumentation code, new dependency pins, and emulator job are **pending exact-head CI** at the time of this commit. Do not treat the prior run as evidence for these additions.
+- Real prompt-authenticated completion, biometric enrollment change, Activity background/process-death behavior, and SQLCipher migration/reopen/integrity are not covered by this first instrumentation slice. Independent human security review remains required.
+
+### Next
+- Run and fix the new emulator gate on the exact commit.
+- Expand instrumentation for lifecycle/restart, then build SQLCipher rewrap/reopen/integrity tests against isolated synthetic databases before drawing release conclusions.
+- Preserve legacy ciphertext, staging copies and old wrappers until authenticated read-back, durable journal COMPLETE, SQLCipher integrity, and independent review evidence are recorded.
+
+---
+
 ## 2026-10-22 — CO-02 lifecycle wiring regression guards
 
 ### Goal and changes

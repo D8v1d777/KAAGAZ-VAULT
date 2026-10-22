@@ -5,7 +5,7 @@ updated: 2026-10-22
 author: GPT-6 via connected GitHub tools
 branch: agent/integration-security-hardening-candidate-2026-10-21
 task: Continue CO-01/CO-02 integration hardening; preserve vault data and keep canonical branch untouched
-state: INTEGRATION_CANDIDATE — RECOVERY_ALIAS_CLEANUP_CI_VERIFIED_AT_621eca27 — LIFECYCLE_WIRING_GUARDS_ADDED_CI_PENDING — DEVICE_VERIFICATION_REQUIRED — HUMAN_REVIEW_REQUIRED
+state: ANDROID_KEYSTORE_INSTRUMENTATION_SLICE_ADDED — EXACT_HEAD_CI_PENDING — LIFECYCLE_AND_SQLCIPHER_TESTS_OPEN — HUMAN_REVIEW_REQUIRED
 canonical_branch: feat/durable-vault-migration-journal
 candidate_pr: https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48
 candidate_head_sha: resolve from the live PR #48 head after this handoff commit; do not trust a cached SHA here
@@ -15,9 +15,9 @@ environment:
   local_gradle_build: NOT_RUN
   independent_reviewer_subagent: NOT_AVAILABLE
 current_release_gate:
-  exact_head_ci_run: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39724232188
-  verified_source_test_sha: 621eca27ed3f41a3bc5aa7ac84901af93cd734bc
-  observed_status_when_handoff_written: Android CI run #522 completed successfully on exact source/test head 621eca27ed3f41a3bc5aa7ac84901af93cd734bc. Python policy tests, debug/release builds, JVM unit tests, lint, and offline merged-manifest policy all passed, including recovery alias cleanup tests. The current commit adds static lifecycle wiring checks; its exact-head CI is pending.
+  exact_head_ci_run: PENDING — Android CI and emulator instrumentation run for this new commit
+  verified_source_test_sha: 4844c3806a7845c12cd97d92f3f2ba5d6fab16fa (baseline only; not this instrumentation change)
+  observed_status_when_handoff_written: Baseline commit 4844c3806a7845c12cd97d92f3f2ba5d6fab16fa passed exact-head Android CI run #523. This commit adds test-only AndroidX Test dependencies, a pinned emulator action, and two instrumented Android Keystore fail-closed tests. Its exact-head standard and emulator CI results are pending.
   prior_green_run_policy: Older green runs do not verify a later head
 scope_guard:
   - No changes to canonical branch or merge performed.
@@ -47,3 +47,13 @@ next_actions:
   - Keep PR #48 draft and unmerged until all P0 gates pass.
 independent_review: NOT_AVAILABLE — no fresh-context reviewer sub-agent is available through this execution environment; human security review remains a release gate.
 </handoff>
+
+
+## Owner-approved instrumentation implementation — 2026-10-22
+
+- G3 approval received in chat before dependency or workflow edits.
+- Added AndroidX Test core 1.7.0, runner 1.7.0, and ext.junit 1.3.0. Official stable-version table: https://developer.android.com/jetpack/androidx/releases/test
+- Added `ReactiveCircus/android-emulator-runner` pinned to `a421e43855164a8197daf9d8d40fe71c6996bb0d` (v2.38.0; release: https://github.com/ReactiveCircus/android-emulator-runner/releases/tag/v2.38.0).
+- First instrumented slice tests auth-per-use Keystore enforcement and absent-alias fail-closed behavior against a synthetic cache fixture using only unique ephemeral aliases.
+- No manifest permission, production key policy, alias constant, migration format, schema, or canonical branch changes.
+- Exact-head CI for this commit is pending. Do not merge this draft PR; continue to lifecycle/process-restart and isolated SQLCipher migration evidence, then independent human review.
