@@ -79,13 +79,29 @@ val prepareOcrModels by tasks.registering {
             if (validExisting) return@forEach
             val temporary = File(outputDirectory, "$name.download")
             val url = URL("https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/$tessdataRevision/$name")
-            val connection = url.openConnection() as HttpURLConnection
-            connection.connectTimeout = 30_000
-            connection.readTimeout = 60_000
-            try {
-                connection.instanceFollowRedirects = true
-                connection.inputStream.use { input -> temporary.outputStream().use { output -> input.copyTo(output) } }
-            } finally { connection.disconnect() }
+            var downloaded = false
+            var lastDownloadFailure: Exception? = null
+            for (attempt in 1..3) {
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 30_000
+                connection.readTimeout = 120_000
+                try {
+                    connection.instanceFollowRedirects = true
+                    connection.inputStream.use { input -> temporary.outputStream().use { output -> input.copyTo(output) } }
+                    downloaded = true
+                    break
+                } catch (failure: Exception) {
+                    lastDownloadFailure = failure
+                    temporary.delete()
+                    if (attempt < 3) Thread.sleep(2_000L * attempt)
+                } finally {
+                    connection.disconnect()
+                }
+            }
+            if (!downloaded) {
+                temporary.delete()
+                throw GradleException("Could not download pinned OCR model $name after 3 attempts", lastDownloadFailure)
+            }
             val bytes = temporary.readBytes()
             val actualGitBlobSha = gitBlobSha1(bytes)
             val actualSha256 = sha256Hex(bytes)

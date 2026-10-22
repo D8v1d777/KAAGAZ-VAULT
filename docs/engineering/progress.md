@@ -676,3 +676,11 @@ This log records repository work and evidence. It distinguishes documentation ch
 - This is a real verification-metadata completeness failure, not evidence that those dependencies are malicious. The checksum gate remains enabled; do not disable it or add wildcard trusted artifacts.
 - Temporary PR-49-only repair step now runs Gradle's metadata bootstrap with `--refresh-dependencies --write-verification-metadata sha256 help`, then validates and commits the resulting metadata. After a successful run, remove the bootstrap/upload/write-permission job and rerun CI with committed metadata only.
 - Exact-head run #516: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39722439276 . Its Python regression step passed; Gradle dependency verification then failed on the three missing entries above.
+
+
+### 2026-10-22 — CO-06 network resilience follow-up
+
+- Run #517 successfully executed the Gradle metadata refresh bootstrap, but the subsequent Android build failed in `:app:prepareOcrModels` with `java.net.SocketTimeoutException: Read timed out` while fetching a pinned Tesseract model. This was a transient model-download failure, not a checksum mismatch.
+- The model fetch now retries up to three times with a 120-second read timeout, deletes partial downloads between attempts, and still requires exact SHA-256 and Git-blob SHA-1 matches before installation.
+- The temporary metadata artifact upload now runs immediately after the metadata refresh, and its commit job runs after a build failure unless the run was cancelled. This preserves refreshed metadata evidence even if later model/network work fails.
+- Run #517 link: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39722655935 . Do not claim the final dependency-verification gate passed until a fresh run completes with the updated metadata committed and the bootstrap job removed.

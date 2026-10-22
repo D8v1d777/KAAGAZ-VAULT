@@ -46,6 +46,7 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.number == 49
         run: ./gradlew --no-daemon --refresh-dependencies --write-verification-metadata sha256 help
 
+
       - name: Test offline manifest policy helpers
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
@@ -74,7 +75,7 @@ jobs:
   # Temporary CO-06 repair only; remove after the refreshed metadata is committed.
   commit-verification-metadata:
     name: Commit refreshed verification metadata (temporary CO-06)
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 49
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.number == 49 && needs.build.result != 'cancelled'
     needs: build
     runs-on: ubuntu-latest
     permissions:

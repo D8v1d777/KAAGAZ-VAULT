@@ -45,6 +45,12 @@ class OcrModelBuildIntegrityTest(unittest.TestCase):
         self.assertEqual(EXPECTED_MODELS, set(git_blob_pins))
         self.assertEqual(EXPECTED_MODELS, set(sha256_pins))
 
+    def test_model_download_has_bounded_retry_and_longer_read_timeout(self) -> None:
+        self.assertIn("for (attempt in 1..3)", APP_BUILD)
+        self.assertIn("connection.readTimeout = 120_000", APP_BUILD)
+        self.assertIn("temporary.delete()", APP_BUILD)
+        self.assertIn("Could not download pinned OCR model", APP_BUILD)
+
     def test_existing_and_downloaded_models_are_checked_with_sha256_and_git_blob_sha1(self) -> None:
         self.assertIn('MessageDigest.getInstance("SHA-256")', APP_BUILD)
         self.assertIn('MessageDigest.getInstance("SHA-1")', APP_BUILD)
