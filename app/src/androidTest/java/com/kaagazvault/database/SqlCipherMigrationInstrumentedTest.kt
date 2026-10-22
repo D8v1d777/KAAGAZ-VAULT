@@ -217,6 +217,182 @@ class SqlCipherMigrationInstrumentedTest {
         }
     }
 
+    @Test
+    fun sqlCipherRewrapSideEffectBeforeJournalCheckpointIsIdempotentOnResume() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val hardware = Build.HARDWARE.lowercase()
+        val fingerprint = Build.FINGERPRINT.lowercase()
+        assumeTrue(
+            "Run this SQLCipher instrumentation test on an Android emulator",
+            hardware in EMULATOR_HARDWARE || fingerprint.contains("generic")
+        )
+
+        val fixtureRoot = File(context.cacheDir, "sqlcipher-rewrap-crash-${UUID.randomUUID()}")
+        assertTrue("Could not create unique synthetic SQLCipher fixture", fixtureRoot.mkdirs())
+        val databaseFile = File(fixtureRoot, DATABASE_NAME)
+        val legacyWrapper = File(fixtureRoot, "legacy-db-key.synthetic-wrap")
+        val vekWrapper = File(fixtureRoot, "vault-database-key.vek.wrap")
+        val journalDirectory = File(fixtureRoot, "journal")
+        val databaseKey = ByteArray(KEY_BYTES).also(SecureRandom()::nextBytes)
+        val legacyWrappingKey = ByteArray(KEY_BYTES).also(SecureRandom()::nextBytes)
+        val vek = ByteArray(KEY_BYTES).also(SecureRandom()::nextBytes)
+        val session = VaultSession()
+        var legacyWrapperBefore: ByteArray? = null
+
+        try {
+            val envelope = AesGcmEnvelope()
+            val legacyEnvelope = envelope.encrypt(
+                databaseKey,
+                ByteArraySecretKey(legacyWrappingKey),
+                LEGACY_KEY_CONTEXT
+            )
+            try {
+                legacyWrapper.writeBytes(legacyEnvelope)
+                legacyWrapperBefore = legacyWrapper.readBytes()
+            } finally {
+                legacyEnvelope.fill(0)
+            }
+
+            val expectedRow = DocumentMetadataEntity(
+                id = "550e8400-e29b-41d4-a716-446655440001",
+                displayName = "synthetic-rewrap-crash.pdf",
+                mimeType = "application/pdf",
+                byteSize = 567L,
+                updatedAtEpochMillis = 1_791_234_567_891L,
+                normalizedSearchText = "synthetic rewrap crash",
+                ocrConfidence = 87,
+                ocrReviewed = false,
+                ocrTruncated = false
+            )
+            val initialDatabase = openSqlCipherDatabase(context, databaseFile, databaseKey)
+            try {
+                initialDatabase.documentMetadataDao().upsert(expectedRow)
+                assertEquals(listOf(expectedRow), initialDatabase.documentMetadataDao().getAll())
+            } finally {
+                initialDatabase.close()
+            }
+
+            session.installVerifiedKey(vek)
+            val vekKeyStore = VekWrappedDatabaseKeyStore(
+                vekWrapper,
+                SessionVekKeyAccess(session)
+            )
+            var failOnceAfterRewrap = true
+            var rewrapCalls = 0
+            val backend = object : VaultMigrationBackend {
+                override fun listLegacyDocumentIds(): List<String> = emptyList()
+                override fun stageDocument(documentId: String) {
+                    error("This isolated SQLCipher fixture contains no documents")
+                }
+                override fun verifyStagedDocument(documentId: String) {
+                    error("This isolated SQLCipher fixture contains no documents")
+                }
+                override fun publishDocument(documentId: String) {
+                    error("This isolated SQLCipher fixture contains no documents")
+                }
+                override fun rewrapDatabaseKey() {
+                    rewrapCalls++
+                    val encodedLegacyWrapper = legacyWrapper.readBytes()
+                    val unwrapped = try {
+                        envelope.decrypt(
+                            encodedLegacyWrapper,
+                            ByteArraySecretKey(legacyWrappingKey),
+                            LEGACY_KEY_CONTEXT
+                        )
+                    } finally {
+                        encodedLegacyWrapper.fill(0)
+                    }
+                    try {
+                        vekKeyStore.saveIfAbsent(unwrapped)
+                    } finally {
+                        unwrapped.fill(0)
+                    }
+                    if (failOnceAfterRewrap) {
+                        failOnceAfterRewrap = false
+                        throw IOException("synthetic interruption after DB-key rewrap before journal checkpoint")
+                    }
+                }
+                override fun verifyDatabaseIntegrity() {
+                    val unwrapped = vekKeyStore.loadOrNull()
+                        ?: throw IOException("Synthetic VEK database-key wrapper could not be reopened")
+                    try {
+                        val reopened = openSqlCipherDatabase(context, databaseFile, unwrapped)
+                        try {
+                            assertEquals(
+                                "SQLCipher rows must survive an interrupted and repeated rewrap",
+                                listOf(expectedRow),
+                                reopened.documentMetadataDao().getAll()
+                            )
+                            reopened.openHelper.writableDatabase.query("PRAGMA integrity_check").use { cursor ->
+                                assertTrue("PRAGMA integrity_check returned no row", cursor.moveToFirst())
+                                assertEquals("SQLCipher integrity check failed", "ok", cursor.getString(0))
+                                assertFalse("PRAGMA integrity_check returned extra rows", cursor.moveToNext())
+                            }
+                        } finally {
+                            reopened.close()
+                        }
+                    } finally {
+                        unwrapped.fill(0)
+                    }
+                }
+            }
+
+            org.junit.Assert.assertThrows(IOException::class.java) {
+                VaultMigrationCoordinator(
+                    VaultMigrationJournal(journalDirectory),
+                    backend
+                ).resume()
+            }
+            val interrupted = VaultMigrationJournal(journalDirectory).load()
+            assertEquals(VaultMigrationPhase.RECOVERY_REQUIRED, interrupted?.phase)
+            assertEquals(
+                "Recovery must remember that the DB-key rewrap checkpoint was not committed",
+                VaultMigrationPhase.MIGRATING_DATABASE_KEY,
+                interrupted?.recoveryPhase
+            )
+            assertFalse(interrupted?.databaseKeyRewrapped == true)
+            assertTrue("The create-once VEK wrapper must survive the interruption", vekWrapper.isFile)
+            assertArrayEquals(
+                "The legacy wrapper must remain unchanged before recovery",
+                legacyWrapperBefore!!,
+                legacyWrapper.readBytes()
+            )
+
+            val completed = VaultMigrationCoordinator(
+                VaultMigrationJournal(journalDirectory),
+                backend
+            ).resume()
+            assertEquals(VaultMigrationPhase.COMPLETE, completed.phase)
+            assertEquals(
+                "The durable COMPLETE checkpoint must survive a fresh journal read",
+                completed,
+                VaultMigrationJournal(journalDirectory).load()
+            )
+            assertEquals(
+                "Recovery should retry the idempotent DB-key rewrap exactly once",
+                2,
+                rewrapCalls
+            )
+            assertArrayEquals(
+                "The legacy wrapper must remain unchanged through COMPLETE",
+                legacyWrapperBefore!!,
+                legacyWrapper.readBytes()
+            )
+        } finally {
+            try {
+                session.lock()
+            } finally {
+                databaseKey.fill(0)
+                legacyWrappingKey.fill(0)
+                vek.fill(0)
+                legacyWrapperBefore?.fill(0)
+                check(!fixtureRoot.exists() || fixtureRoot.deleteRecursively()) {
+                    "Synthetic SQLCipher fixture cleanup failed"
+                }
+            }
+        }
+    }
+
     private fun openSqlCipherDatabase(context: Context, path: File, key: ByteArray): VaultDatabase {
         check(path.isAbsolute && path.path.startsWith(context.cacheDir.absolutePath + File.separator)) {
             "SQLCipher instrumentation must stay under the disposable cache fixture"
