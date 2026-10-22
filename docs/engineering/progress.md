@@ -657,3 +657,14 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Verify the final stable-SDK build configuration through GitHub Actions.
 2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
 3. Start the encrypted-storage prototype only after researching Android Keystore, SQLCipher, Room, and backup/key-lifecycle constraints; keep ADR-0001 Proposed until prototype evidence exists.
+
+
+### 2026-10-22 — CO-06 OCR and dependency integrity
+
+- Branch: `agent/CO-06-build-integrity-2026-10-22`; metadata commit: `28996d6b32b56b9dd42f48aeb08cc9dbc750c14f`.
+- Exact-head CI run #512 passed on `2579c6d7c82eb64331c6280c167babb372c67d93`: debug/release builds, JVM unit tests, lint, OCR model task `UP-TO-DATE`, offline merged-manifest policy, metadata generation, and artifact upload.
+- Generated metadata artifact was verified against GitHub's artifact digest; XML parsing found 561 components and 952 artifacts, every artifact has SHA-256, no dynamic/latest/SNAPSHOT versions, and Tesseract 4.9.0 plus SQLCipher 4.19.1 are present.
+- Metadata was committed to the branch by the temporary PR-49-only bootstrap job. That job and its artifact/bootstrap steps are removed in the current cleanup change; CI will now exercise dependency verification from the committed file.
+- The OCR build task now validates pinned Git-blob SHA-1 and SHA-256, declares its inputs, and is tested for normal Gradle up-to-date behavior. Static tests now pin exact model revision/hash values and validate the committed dependency-verification file.
+- Separate auth-race source guard commit `185d8c138c54328ef92b62b66f4db8f4fead118b` passed PR #48 CI run #513.
+- Remaining release blockers: physical-device/emulator auth, background lifecycle and migration validation; independent security review. No release-readiness claim is made.
