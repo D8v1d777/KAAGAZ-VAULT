@@ -684,3 +684,11 @@ This log records repository work and evidence. It distinguishes documentation ch
 - The model fetch now retries up to three times with a 120-second read timeout, deletes partial downloads between attempts, and still requires exact SHA-256 and Git-blob SHA-1 matches before installation.
 - The temporary metadata artifact upload now runs immediately after the metadata refresh, and its commit job runs after a build failure unless the run was cancelled. This preserves refreshed metadata evidence even if later model/network work fails.
 - Run #517 link: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39722655935 . Do not claim the final dependency-verification gate passed until a fresh run completes with the updated metadata committed and the bootstrap job removed.
+
+
+### 2026-10-22 — CO-06 dependency verification finalized for exact-head CI
+
+- Refreshed metadata commit: `a25e3a8ef4cf47e567818376fea2a9270afefe76`. It now includes the previously missing plugin-classpath metadata for Guava parent 33.3.1-jre, JUnit BOM 5.11.0-M2, and Kotlin coroutines BOM 1.8.0. The refreshed file contains 566 components, 958 artifacts, and 958 SHA-256 entries.
+- CI run #519 passed with the refreshed metadata generated before the build: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39723096084 . The metadata was then committed by the temporary, PR-49-only bootstrap job.
+- Current cleanup removes all temporary metadata generation/upload/write-permission steps, restores a static test that rejects those bootstrap steps, and leaves dependency verification active from the committed file. The OCR downloader retains three bounded retries and strict SHA-256/Git-blob SHA-1 checks.
+- Final exact-head CI must still pass with the bootstrap removed before calling the dependency-verification gate complete. PR #49 remains draft/unmerged; emulator/device validation and independent security review remain open.

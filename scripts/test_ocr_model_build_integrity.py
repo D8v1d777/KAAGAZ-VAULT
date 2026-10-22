@@ -102,6 +102,16 @@ class OcrModelBuildIntegrityTest(unittest.TestCase):
         self.assertIn(("cz.adaptech.tesseract4android", "tesseract4android", "4.9.0"), coordinates)
         self.assertIn(("net.zetetic", "sqlcipher-android", "4.19.1"), coordinates)
 
+    def test_ci_no_longer_uses_temporary_metadata_bootstrap(self) -> None:
+        self.assertIn("python3 -m unittest discover -s scripts -p 'test_*.py'", WORKFLOW)
+        self.assertIn("Verify OCR model preparation is up-to-date", WORKFLOW)
+        self.assertNotIn("commit-verification-metadata", WORKFLOW)
+        self.assertNotIn("Complete Gradle dependency verification metadata", WORKFLOW)
+        self.assertNotIn("--write-verification-metadata", WORKFLOW)
+        self.assertNotIn("co06-gradle-verification-metadata", WORKFLOW)
+        self.assertIn("contents: read", WORKFLOW)
+        self.assertNotIn("contents: write", WORKFLOW)
+
     def test_readme_documents_build_time_network_and_offline_preseed_path(self) -> None:
         self.assertIn("build-time network requirement", README)
         self.assertIn("app/build/generated/ocr-assets/tessdata/eng.traineddata", README)

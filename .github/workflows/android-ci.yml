@@ -41,21 +41,6 @@ jobs:
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
 
 
-      # Temporary CO-06 repair: refresh cached plugin metadata and add missing SHA-256 entries.
-      - name: Complete Gradle dependency verification metadata (CO-06)
-        if: github.event_name == 'pull_request' && github.event.pull_request.number == 49
-        run: ./gradlew --no-daemon --refresh-dependencies --write-verification-metadata sha256 help
-
-      - name: Upload refreshed Gradle verification metadata (CO-06)
-        if: github.event_name == 'pull_request' && github.event.pull_request.number == 49
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: co06-gradle-verification-metadata
-          path: gradle/verification-metadata.xml
-          if-no-files-found: error
-          retention-days: 1
-
-
       - name: Test offline manifest policy helpers
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
@@ -71,57 +56,3 @@ jobs:
 
       - name: Enforce offline merged-manifest policy
         run: python3 scripts/check_offline_manifest.py
-
-
-
-  # Temporary CO-06 repair only; remove after the refreshed metadata is committed.
-  commit-verification-metadata:
-    name: Commit refreshed verification metadata (temporary CO-06)
-    if: always() && github.event_name == 'pull_request' && github.event.pull_request.number == 49 && needs.build.result != 'cancelled'
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      actions: read
-    steps:
-      - name: Check out exact PR head
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Download refreshed metadata artifact
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh run download "$GITHUB_RUN_ID" --name co06-gradle-verification-metadata --dir "$RUNNER_TEMP/co06-metadata"
-
-      - name: Validate and commit refreshed metadata
-        env:
-          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          metadata="$RUNNER_TEMP/co06-metadata/verification-metadata.xml"
-          test -s "$metadata"
-          python3 - "$metadata" <<'PY'
-          import sys
-          import xml.etree.ElementTree as ET
-          root = ET.parse(sys.argv[1]).getroot()
-          ns = {"g": "https://schema.gradle.org/dependency-verification"}
-          components = root.findall(".//g:component", ns)
-          artifacts = root.findall(".//g:artifact", ns)
-          missing = [a.attrib.get("name", "<unnamed>") for a in artifacts if not a.findall("g:sha256", ns)]
-          if not components or not artifacts or missing:
-              raise SystemExit(f"Invalid metadata: {len(components)} components, {len(artifacts)} artifacts, {len(missing)} missing checksums")
-          print(f"Validated {len(components)} components and {len(artifacts)} artifacts")
-          PY
-          install -D "$metadata" gradle/verification-metadata.xml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add gradle/verification-metadata.xml
-          if git diff --cached --quiet; then
-            echo "No metadata changes required."
-            exit 0
-          fi
-          git commit -m "build(CO-06): pin plugin classpath metadata"
-          git push origin "HEAD:refs/heads/$PR_BRANCH"
-
