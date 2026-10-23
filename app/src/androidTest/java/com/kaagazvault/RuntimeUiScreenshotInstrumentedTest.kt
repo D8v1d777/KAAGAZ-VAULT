@@ -97,10 +97,9 @@ class RuntimeUiScreenshotInstrumentedTest {
                 nonBlack * 100 > sampled * 3
             )
 
-            val externalRoot = requireNotNull(context.getExternalFilesDir(null)) {
-                "App-specific external storage is unavailable for screenshot handoff"
-            }
-            val output = File(externalRoot, "kaagaz-vault-ui/setup-required-android36.png")
+            // Store only this non-sensitive test screenshot in app-private storage. The CI host
+            // retrieves it through adb run-as, avoiding external-storage path/scoped-storage drift.
+            val output = File(context.filesDir, "kaagaz-vault-ui/setup-required-android36.png")
             assertTrue("Could not create screenshot handoff directory", output.parentFile?.mkdirs() == true || output.parentFile?.isDirectory == true)
             output.delete()
             FileOutputStream(output).use { stream ->
