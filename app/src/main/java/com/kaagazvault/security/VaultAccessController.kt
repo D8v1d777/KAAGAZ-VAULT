@@ -227,6 +227,12 @@ internal class VaultAccessController(
 
     fun lockNow(message: String? = null) {
         if (disposed) return
+        // Screen-off and explicit lock can occur while setup/unlock/recovery authentication is
+        // still active. Use the same invalidation and uncommitted-alias cleanup as onStop.
+        if (purpose != null) {
+            cancelPendingPrompt(message ?: "Authentication was interrupted because the vault was locked.")
+            return
+        }
         // Invalidate pending publication atomically with detaching the current runtime.
         val previousRuntime = accessEpochGate.invalidate {
             // Serialize key invalidation with verified-key installation and migration failure
@@ -253,7 +259,7 @@ internal class VaultAccessController(
                 pendingRecoveryText = null
                 state(VaultAccessUiState.Locked("Recovery confirmation was interrupted. Unlock again to redisplay the key."))
             }
-            else -> if (purpose != null) cancelPromptForForegroundLoss()
+            else -> if (purpose != null) cancelPendingPrompt("Authentication was interrupted when the app left the foreground.")
         }
     }
 
@@ -263,7 +269,7 @@ internal class VaultAccessController(
      * aliases created by setup/recovery are eligible for cleanup; persisted records and vault data
      * are never removed here.
      */
-    private fun cancelPromptForForegroundLoss() {
+    private fun cancelPendingPrompt(interruptionMessage: String) {
         val cancelledPurpose = purpose ?: return
         val cancelledKey = authKey
         clearPrompt()
@@ -275,15 +281,15 @@ internal class VaultAccessController(
                     !File(noBackup, "vault-migration").exists()) {
                     try { cancelledKey?.discardAbandonedSetup() } catch (_: Exception) { }
                 }
-                state(VaultAccessUiState.SetupRequired("Authentication was interrupted when the app left the foreground. Retry setup."))
+                state(VaultAccessUiState.SetupRequired("$interruptionMessage Retry setup."))
             }
-            Purpose.UNLOCK -> state(VaultAccessUiState.Locked("Authentication was interrupted when the app left the foreground. Unlock again."))
+            Purpose.UNLOCK -> state(VaultAccessUiState.Locked("$interruptionMessage Unlock again."))
             Purpose.RECOVERY_REWRAP -> {
                 pendingVek?.fill(0)
                 pendingVek = null
                 pendingRecoveryText = null
                 try { cancelledKey?.discardAbandonedSetup() } catch (_: Exception) { }
-                state(VaultAccessUiState.RecoveryRequired("Recovery was interrupted when the app left the foreground. Enter the recovery key again."))
+                state(VaultAccessUiState.RecoveryRequired("$interruptionMessage Enter the recovery key again."))
             }
         }
     }
