@@ -23,6 +23,16 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
             with patch.dict(os.environ, {"GITHUB_EVENT_PATH": event_file.name}, clear=True):
                 self.assertEqual(CAPTURE.pull_request_head_sha(), "expected-pr-head-sha")
 
+    def test_missing_source_sha_fails_closed_before_pull(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(CAPTURE, "OUT", Path(temp)), patch.dict(os.environ, {}, clear=True):
+                code = CAPTURE.main()
+            metadata = json.loads((Path(temp) / "capture-metadata.json").read_text(encoding="utf-8"))
+        self.assertNotEqual(code, 0)
+        self.assertEqual(metadata["source_sha"], "unknown")
+        self.assertIn("SCREENSHOT_REJECTED: pull-request source SHA is unavailable; provenance cannot be trusted", metadata["notes"])
+        self.assertEqual(metadata["screenshots"], [])
+
     def run_in_temp_dir(self, fake_run):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
