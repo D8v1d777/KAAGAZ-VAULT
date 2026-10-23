@@ -72,12 +72,13 @@ internal class VaultAccessController(
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 if (disposed) return
                 val cipher = result.cryptoObject?.cipher
-                // Ignore callbacks from an operation invalidated during foreground loss or
-                // replaced by a later prompt. Never bind a stale CryptoObject to current purpose.
-                if (cipher == null || cipher !== activeCipher || purpose == null) {
-                    onPromptFailure("The authenticated cryptographic operation was unavailable.")
+                if (cipher == null) {
+                    if (purpose != null) onPromptFailure("The authenticated cryptographic operation was unavailable.")
                     return
                 }
+                // Ignore callbacks from an operation invalidated during foreground loss or
+                // replaced by a later prompt. Never bind a stale CryptoObject to current purpose.
+                if (cipher !== activeCipher || purpose == null) return
                 try {
                     when (purpose) {
                         Purpose.SETUP -> finishSetup(cipher)
