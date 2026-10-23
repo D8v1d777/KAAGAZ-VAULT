@@ -187,6 +187,36 @@ class MainActivityLifecycleInstrumentedTest {
     }
 
     @Test
+    fun explicitLockCancelsPendingUnlockPromptButPreservesExistingWrappingAlias() {
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        awaitControllerInitialization(scenario)
+        var testKey: com.kaagazvault.security.AuthBoundVaultKey? = null
+        try {
+            scenario.onActivity { activity ->
+                val controller = controllerOf(activity)
+                val alias = com.kaagazvault.security.AuthBoundVaultKey().newAliasForRecoveryOrSetup()
+                val key = com.kaagazvault.security.AuthBoundVaultKey(alias = alias)
+                val cipher = key.prepareSetupCipher()
+                testKey = key
+                setPrivateField(controller, "purpose", enumPurpose(controller, "UNLOCK"))
+                setPrivateField(controller, "authKey", key)
+                setPrivateField(controller, "authAlias", alias)
+                setPrivateField(controller, "activeCipher", cipher)
+                controller.uiState.value = VaultAccessUiState.Locked("Synthetic unlock prompt")
+                controller.lockNow("Synthetic explicit lock")
+
+                assertTrue("explicit lock must invalidate the pending unlock", privateField(controller, "purpose") == null)
+                assertNull("explicit lock must detach the pending CryptoObject", privateField(controller, "activeCipher"))
+                assertTrue("unlock cancellation must preserve the existing wrapping alias", key.hasWrappingKeyAlias())
+                assertTrue("unlock cancellation must remain locked", controller.uiState.value is VaultAccessUiState.Locked)
+            }
+        } finally {
+            scenario.close()
+            try { testKey?.discardAbandonedSetup() } catch (_: Exception) { }
+        }
+    }
+
+    @Test
     fun screenOffCancelsPendingSetupPromptAndRemovesItsUncommittedAlias() {
         val scenario = ActivityScenario.launch(MainActivity::class.java)
         awaitControllerInitialization(scenario)
