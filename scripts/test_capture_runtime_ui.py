@@ -63,6 +63,30 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
         self.assertIn("SCREENSHOT_REJECTED: invalid PNG signature or unexpectedly small image", metadata["notes"])
         self.assertEqual(metadata["screenshots"], [])
 
+    def test_valid_png_records_hash_and_source_provenance(self):
+        import hashlib
+
+        png = CAPTURE.PNG_SIGNATURE + (b"x" * 4096)
+
+        def write_valid_png(args, **kwargs):
+            Path(args[0][-1]).write_bytes(png)
+            return subprocess.CompletedProcess(args[0], 0, "1 file pulled", "")
+
+        with patch.dict(os.environ, {
+            "GITHUB_PR_HEAD_SHA": "expected-source-sha",
+            "GITHUB_RUN_ID": "123456",
+            "GITHUB_SHA": "workflow-merge-sha",
+        }):
+            code, metadata = self.run_in_temp_dir(write_valid_png)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(metadata["source_sha"], "expected-source-sha")
+        self.assertEqual(metadata["workflow_sha"], "workflow-merge-sha")
+        self.assertEqual(metadata["workflow_run_id"], "123456")
+        self.assertEqual(metadata["sha256"], hashlib.sha256(png).hexdigest())
+        self.assertEqual(metadata["bytes"], len(png))
+        self.assertEqual(metadata["screenshots"], ["docs/images/ui/setup-required-android36.png"])
+
     def test_unexpected_capture_error_is_nonzero(self):
         def raise_error(*args, **kwargs):
             raise RuntimeError("adb unavailable")
