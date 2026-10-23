@@ -24,11 +24,27 @@ LOCAL = OUT / "setup-required-android36.png"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
+def pull_request_head_sha() -> str:
+    explicit = os.environ.get("GITHUB_PR_HEAD_SHA", "").strip()
+    if explicit:
+        return explicit
+    event_path = os.environ.get("GITHUB_EVENT_PATH")
+    if event_path:
+        try:
+            event = json.loads(Path(event_path).read_text(encoding="utf-8"))
+            head_sha = event.get("pull_request", {}).get("head", {}).get("sha")
+            if isinstance(head_sha, str) and head_sha.strip():
+                return head_sha.strip()
+        except (OSError, json.JSONDecodeError):
+            pass
+    return "unknown"
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     metadata = {
         "purpose": "Direct Android UiAutomation screenshot of the installed production MainActivity in SetupRequired state; not generated artwork",
-        "source_sha": os.environ.get("GITHUB_PR_HEAD_SHA", "unknown"),
+        "source_sha": pull_request_head_sha(),
         "workflow_sha": os.environ.get("GITHUB_SHA", "unknown"),
         "workflow_run_id": os.environ.get("GITHUB_RUN_ID", "unknown"),
         "android_api": 36,
