@@ -80,7 +80,7 @@ def main() -> int:
             )
             return write_metadata(metadata, exit_code=1)
 
-        encoded = result.stdout.strip()
+        encoded = b"".join(result.stdout.split())
         if not encoded:
             metadata["notes"].append("SCREENSHOT_PULL_FAILED: app returned an empty screenshot file")
             return write_metadata(metadata, exit_code=1)
