@@ -55,13 +55,13 @@ def main() -> int:
                 "SCREENSHOT_PULL_FAILED: "
                 + (result.stderr.strip() or result.stdout.strip() or f"adb exit {result.returncode}")[:500]
             )
-            return write_metadata(metadata)
+            return write_metadata(metadata, exit_code=1)
 
         data = LOCAL.read_bytes()
         if len(data) < 4096 or not data.startswith(PNG_SIGNATURE):
             LOCAL.unlink(missing_ok=True)
             metadata["notes"].append("SCREENSHOT_REJECTED: invalid PNG signature or unexpectedly small image")
-            return write_metadata(metadata)
+            return write_metadata(metadata, exit_code=1)
 
         metadata["screenshots"].append(LOCAL.as_posix())
         metadata["sha256"] = hashlib.sha256(data).hexdigest()
@@ -71,16 +71,16 @@ def main() -> int:
     except Exception as exc:
         metadata["notes"].append(f"CAPTURE_RETRIEVAL_STOPPED:{type(exc).__name__}:{str(exc)[:250]}")
         print(metadata["notes"][-1])
-        return write_metadata(metadata)
+        return write_metadata(metadata, exit_code=1)
 
 
-def write_metadata(metadata: dict) -> int:
+def write_metadata(metadata: dict, exit_code: int = 0) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "capture-metadata.json").write_text(
         json.dumps(metadata, indent=2) + "\n", encoding="utf-8"
     )
     print("UI_CAPTURE_SUMMARY:" + json.dumps(metadata, separators=(",", ":")))
-    return 0
+    return exit_code
 
 
 if __name__ == "__main__":
