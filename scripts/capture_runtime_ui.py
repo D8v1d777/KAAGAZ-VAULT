@@ -54,6 +54,9 @@ def main() -> int:
         "notes": [],
         "privacy": "Only SetupRequired state is captured. The test must assert this state before temporarily clearing FLAG_SECURE; it does not tap setup or handle recovery-key material.",
     }
+    if metadata["source_sha"] == "unknown":
+        metadata["notes"].append("SCREENSHOT_REJECTED: pull-request source SHA is unavailable; provenance cannot be trusted")
+        return write_metadata(metadata, exit_code=1)
     try:
         # On the disposable workflow emulator the instrumentation test already installs and
         # launches the app. Do not clear package data here: that can fail after instrumentation
