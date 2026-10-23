@@ -102,13 +102,37 @@ jobs:
           script: >-
             set -eu; adb shell locksettings set-pin 2468 && trap 'status=$?; adb shell locksettings clear --old 2468 >/dev/null || status=1; exit "$status"' EXIT && ./gradlew --no-daemon :app:connectedDebugAndroidTest && python3 scripts/capture_runtime_ui.py
 
+      - name: Verify runtime UI screenshot evidence and provenance
+        if: success()
+        run: |
+          set -euo pipefail
+          test -s docs/images/ui/setup-required-android36.png
+          test -s docs/images/ui/capture-metadata.json
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          image = Path("docs/images/ui/setup-required-android36.png")
+          metadata = json.loads(Path("docs/images/ui/capture-metadata.json").read_text(encoding="utf-8"))
+          assert metadata.get("source_sha") not in (None, "", "unknown"), "missing PR source SHA"
+          assert metadata.get("workflow_run_id") == os.environ["GITHUB_RUN_ID"], "workflow run provenance mismatch"
+          assert image.as_posix() in metadata.get("screenshots", []), "PNG absent from screenshot manifest"
+          assert metadata.get("sha256") == hashlib.sha256(image.read_bytes()).hexdigest(), "PNG SHA-256 mismatch"
+          assert image.read_bytes().startswith(b"\\x89PNG\\r\\n\\x1a\\n"), "invalid PNG signature"
+          print("Runtime UI screenshot provenance verified.")
+          PY
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+
       - name: Upload runtime UI screenshot evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: kaagaz-vault-runtime-ui-${{ github.sha }}
+          name: kaagaz-vault-runtime-ui-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             docs/images/ui/*.png
             docs/images/ui/capture-metadata.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
