@@ -27,7 +27,9 @@ class VaultAccessWiringTest(unittest.TestCase):
         job = self.workflow[job_start:]
         marker = "          script: >-\n"
         script_start = job.index(marker) + len(marker)
-        script = job[script_start:].strip()
+        # Bound the script to its own YAML step. Later CI steps (including the screenshot
+        # artifact upload) must not be misread as extra emulator script lines.
+        script = job[script_start:].split("\n      - name:", 1)[0].strip()
 
         # android-emulator-runner executes each newline-delimited script line in a
         # separate shell, so state setup, its EXIT cleanup trap, and Gradle must be one line.
@@ -35,6 +37,11 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("adb shell locksettings set-pin 2468", script)
         self.assertIn("trap 'status=$?; adb shell locksettings clear --old 2468", script)
         self.assertIn("&& ./gradlew --no-daemon :app:connectedDebugAndroidTest", script)
+
+    def test_runtime_ui_capture_is_separate_and_artifact_upload_is_pinned(self):
+        self.assertIn("&& python3 scripts/capture_runtime_ui.py", self.workflow)
+        self.assertIn("uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2", self.workflow)
+        self.assertIn("retention-days: 7", self.workflow)
 
     def test_production_activity_uses_biometric_compatible_host_and_controller(self):
         self.assertIn("class MainActivity : FragmentActivity()", self.main)
