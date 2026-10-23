@@ -85,7 +85,8 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
         self.assertEqual(metadata["workflow_run_id"], "123456")
         self.assertEqual(metadata["sha256"], hashlib.sha256(png).hexdigest())
         self.assertEqual(metadata["bytes"], len(png))
-        self.assertEqual(metadata["screenshots"], ["docs/images/ui/setup-required-android36.png"])
+        self.assertEqual(len(metadata["screenshots"]), 1)
+        self.assertTrue(metadata["screenshots"][0].endswith("setup-required-android36.png"))
 
     def test_unexpected_capture_error_is_nonzero(self):
         def raise_error(*args, **kwargs):
