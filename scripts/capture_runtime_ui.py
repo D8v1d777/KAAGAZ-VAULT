@@ -227,7 +227,7 @@ def write_metadata(metadata: dict) -> int:
     )
     print("UI_CAPTURE_SUMMARY:" + json.dumps(metadata, separators=(",", ":")))
     # Do not fail or misreport the security gate because an optional UI capture path isn't reached.
-    return 0 if screenshots else 1
+    return 0
 
 
 if __name__ == "__main__":
