@@ -46,7 +46,7 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
 
     def test_adb_pull_failure_is_nonzero(self):
         def fail_pull(*args, **kwargs):
-            return subprocess.CompletedProcess(args[0], 1, "", "device file missing")
+            return subprocess.CompletedProcess(args[0], 1, b"", b"device file missing")
 
         code, metadata = self.run_in_temp_dir(fail_pull)
         self.assertNotEqual(code, 0)
@@ -55,8 +55,7 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
 
     def test_invalid_png_is_nonzero(self):
         def write_invalid_png(*args, **kwargs):
-            Path(args[0][-1]).write_bytes(b"not a PNG")
-            return subprocess.CompletedProcess(args[0], 0, "", "")
+            return subprocess.CompletedProcess(args[0], 0, b"not a PNG", b"")
 
         code, metadata = self.run_in_temp_dir(write_invalid_png)
         self.assertNotEqual(code, 0)
@@ -69,8 +68,7 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
         png = CAPTURE.PNG_SIGNATURE + (b"x" * 4096)
 
         def write_valid_png(args, **kwargs):
-            Path(args[-1]).write_bytes(png)
-            return subprocess.CompletedProcess(args[0], 0, "1 file pulled", "")
+            return subprocess.CompletedProcess(args[0], 0, png, b"")
 
         with patch.dict(os.environ, {
             "GITHUB_PR_HEAD_SHA": "expected-source-sha",
