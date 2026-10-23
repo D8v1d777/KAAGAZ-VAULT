@@ -10,6 +10,8 @@ submits, or captures a recovery key.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import json
 import os
@@ -61,10 +63,10 @@ def main() -> int:
         # On the disposable workflow emulator the instrumentation test already installs and
         # launches the app. Do not clear package data here: that can fail after instrumentation
         # teardown and previously prevented any capture attempt.
-        # Read the test-only image from the debuggable app's private files directory.
-        # This avoids scoped-storage/external-storage path differences on API 36.
+        # Transfer base64 text instead of raw PNG bytes. Some adb/host shell combinations
+        # have altered binary exec-out streams; ASCII transport makes corruption detectable.
         result = subprocess.run(
-            ["adb", "exec-out", "run-as", PACKAGE, "cat", REMOTE],
+            ["adb", "exec-out", "run-as", PACKAGE, "base64", REMOTE],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             timeout=30,
@@ -78,9 +80,19 @@ def main() -> int:
             )
             return write_metadata(metadata, exit_code=1)
 
-        data = result.stdout
-        if not data:
+        encoded = result.stdout.strip()
+        if not encoded:
             metadata["notes"].append("SCREENSHOT_PULL_FAILED: app returned an empty screenshot file")
+            return write_metadata(metadata, exit_code=1)
+        try:
+            data = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            metadata["notes"].append(
+                f"SCREENSHOT_PULL_FAILED: base64 transport was corrupted ({type(exc).__name__})"
+            )
+            return write_metadata(metadata, exit_code=1)
+        if not data:
+            metadata["notes"].append("SCREENSHOT_PULL_FAILED: decoded screenshot was empty")
             return write_metadata(metadata, exit_code=1)
         LOCAL.write_bytes(data)
         if len(data) < 4096 or not data.startswith(PNG_SIGNATURE):
