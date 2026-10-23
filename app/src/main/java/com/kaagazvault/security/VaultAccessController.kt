@@ -59,6 +59,8 @@ internal class VaultAccessController(
     private var wrappedVek: ByteArray? = null
     private var pendingVek: ByteArray? = null
     private var pendingRecoveryText: String? = null
+    private var activeCipher: Cipher? = null
+    private var foregroundCancellationPending: Boolean = false
     private var runtime: VaultRuntime? = null
     private val accessEpochGate = VaultAccessEpochGate()
     @Volatile private var disposed: Boolean = false
@@ -70,7 +72,9 @@ internal class VaultAccessController(
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 if (disposed) return
                 val cipher = result.cryptoObject?.cipher
-                if (cipher == null) {
+                // Ignore callbacks from an operation invalidated during foreground loss or
+                // replaced by a later prompt. Never bind a stale CryptoObject to current purpose.
+                if (cipher == null || cipher !== activeCipher || purpose == null) {
                     onPromptFailure("The authenticated cryptographic operation was unavailable.")
                     return
                 }
@@ -88,6 +92,11 @@ internal class VaultAccessController(
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                 if (disposed) return
+                if (foregroundCancellationPending) {
+                    foregroundCancellationPending = false
+                    return
+                }
+                if (purpose == null) return
                 onPromptFailure("Authentication was cancelled or unavailable. Existing vault data was preserved.")
             }
         }
@@ -243,7 +252,38 @@ internal class VaultAccessController(
                 pendingRecoveryText = null
                 state(VaultAccessUiState.Locked("Recovery confirmation was interrupted. Unlock again to redisplay the key."))
             }
-            else -> Unit
+            else -> if (purpose != null) cancelPromptForForegroundLoss()
+        }
+    }
+
+    /**
+     * Invalidate the active authentication operation before asking AndroidX to cancel it.
+     * A late success cannot use the now-detached CryptoObject/purpose. Only fresh, uncommitted
+     * aliases created by setup/recovery are eligible for cleanup; persisted records and vault data
+     * are never removed here.
+     */
+    private fun cancelPromptForForegroundLoss() {
+        val cancelledPurpose = purpose ?: return
+        val cancelledKey = authKey
+        clearPrompt()
+        foregroundCancellationPending = true
+        try { prompt.cancelAuthentication() } catch (_: Exception) { }
+        when (cancelledPurpose) {
+            Purpose.SETUP -> {
+                if (!records.hasArtifacts() && !recovery.hasArtifacts() && !setup.hasArtifacts() &&
+                    !File(noBackup, "vault-migration").exists()) {
+                    try { cancelledKey?.discardAbandonedSetup() } catch (_: Exception) { }
+                }
+                state(VaultAccessUiState.SetupRequired("Authentication was interrupted when the app left the foreground. Retry setup."))
+            }
+            Purpose.UNLOCK -> state(VaultAccessUiState.Locked("Authentication was interrupted when the app left the foreground. Unlock again."))
+            Purpose.RECOVERY_REWRAP -> {
+                pendingVek?.fill(0)
+                pendingVek = null
+                pendingRecoveryText = null
+                try { cancelledKey?.discardAbandonedSetup() } catch (_: Exception) { }
+                state(VaultAccessUiState.RecoveryRequired("Recovery was interrupted when the app left the foreground. Enter the recovery key again."))
+            }
         }
     }
 
@@ -272,6 +312,7 @@ internal class VaultAccessController(
         authKey = key
         authAlias = alias
         wrappedVek = wrapped?.copyOf()
+        activeCipher = cipher
         val authenticators = key.promptAuthenticators()
         val builder = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
@@ -495,6 +536,7 @@ internal class VaultAccessController(
         purpose = null
         authKey = null
         authAlias = null
+        activeCipher = null
     }
 
     private fun safeFailure(error: Exception): String = when (error) {
