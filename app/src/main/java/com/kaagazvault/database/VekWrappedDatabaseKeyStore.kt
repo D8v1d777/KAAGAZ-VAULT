@@ -77,6 +77,12 @@ internal class VekWrappedDatabaseKeyStore(
 
         val wrapped = keyAccess.withKey { vek -> envelope.encrypt(databaseKey, vek, KEY_CONTEXT) }
         try {
+            // Claim the pending path atomically before opening it. Instance-level @Synchronized
+            // does not serialize multiple store instances; FileOutputStream(pending) alone would
+            // truncate another writer's in-flight recovery evidence.
+            if (!pending.createNewFile()) {
+                throw IOException("A database-key pending write already exists; refusing to overwrite it")
+            }
             FileOutputStream(pending).use { output ->
                 output.write(wrapped)
                 output.fd.sync()
