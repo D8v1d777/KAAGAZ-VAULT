@@ -28,7 +28,7 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     metadata = {
         "purpose": "Direct Android UiAutomation screenshot of the installed production MainActivity in SetupRequired state; not generated artwork",
-        "source_sha": os.environ.get("GITHUB_PR_HEAD_SHA", os.environ.get("GITHUB_SHA", "unknown")),
+        "source_sha": os.environ.get("GITHUB_PR_HEAD_SHA", "unknown"),
         "workflow_sha": os.environ.get("GITHUB_SHA", "unknown"),
         "workflow_run_id": os.environ.get("GITHUB_RUN_ID", "unknown"),
         "android_api": 36,
