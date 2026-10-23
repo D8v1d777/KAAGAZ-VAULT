@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 PACKAGE = "com.kaagazvault"
-REMOTE = "/sdcard/Android/data/com.kaagazvault/files/kaagaz-vault-ui/setup-required-android36.png"
+REMOTE = "files/kaagaz-vault-ui/setup-required-android36.png"
 OUT = Path("docs/images/ui")
 LOCAL = OUT / "setup-required-android36.png"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
@@ -61,22 +61,28 @@ def main() -> int:
         # On the disposable workflow emulator the instrumentation test already installs and
         # launches the app. Do not clear package data here: that can fail after instrumentation
         # teardown and previously prevented any capture attempt.
+        # Read the test-only image from the debuggable app's private files directory.
+        # This avoids scoped-storage/external-storage path differences on API 36.
         result = subprocess.run(
-            ["adb", "pull", REMOTE, str(LOCAL)],
+            ["adb", "exec-out", "run-as", PACKAGE, "cat", REMOTE],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
             timeout=30,
             check=False,
         )
         if result.returncode != 0:
+            detail = result.stderr.decode("utf-8", errors="replace").strip()
             metadata["notes"].append(
                 "SCREENSHOT_PULL_FAILED: "
-                + (result.stderr.strip() or result.stdout.strip() or f"adb exit {result.returncode}")[:500]
+                + (detail or f"adb exec-out exit {result.returncode}")[:500]
             )
             return write_metadata(metadata, exit_code=1)
 
-        data = LOCAL.read_bytes()
+        data = result.stdout
+        if not data:
+            metadata["notes"].append("SCREENSHOT_PULL_FAILED: app returned an empty screenshot file")
+            return write_metadata(metadata, exit_code=1)
+        LOCAL.write_bytes(data)
         if len(data) < 4096 or not data.startswith(PNG_SIGNATURE):
             LOCAL.unlink(missing_ok=True)
             metadata["notes"].append("SCREENSHOT_REJECTED: invalid PNG signature or unexpectedly small image")
