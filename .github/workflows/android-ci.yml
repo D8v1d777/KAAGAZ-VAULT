@@ -100,4 +100,15 @@ jobs:
           disable-animations: true
           # The pinned runner executes script lines in separate shells; keep setup, cleanup and tests in one shell.
           script: >-
-            set -eu; adb shell locksettings set-pin 2468 && trap 'status=$?; adb shell locksettings clear --old 2468 >/dev/null || status=1; exit "$status"' EXIT && ./gradlew --no-daemon :app:connectedDebugAndroidTest
+            set -eu; adb shell locksettings set-pin 2468 && trap 'status=$?; adb shell locksettings clear --old 2468 >/dev/null || status=1; exit "$status"' EXIT && ./gradlew --no-daemon :app:connectedDebugAndroidTest && python3 scripts/capture_runtime_ui.py
+
+      - name: Upload runtime UI screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kaagaz-vault-runtime-ui-${{ github.sha }}
+          path: |
+            docs/images/ui/*.png
+            docs/images/ui/capture-metadata.json
+          if-no-files-found: warn
+          retention-days: 7
