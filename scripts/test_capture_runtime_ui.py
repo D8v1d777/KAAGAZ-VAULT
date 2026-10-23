@@ -1,6 +1,7 @@
 """Regression tests for strict runtime UI screenshot evidence capture."""
 import importlib.util
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -15,6 +16,13 @@ SPEC.loader.exec_module(CAPTURE)
 
 
 class CaptureRuntimeUiFailureTests(unittest.TestCase):
+    def test_source_sha_comes_from_pull_request_event_not_merge_sha(self):
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8") as event_file:
+            json.dump({"pull_request": {"head": {"sha": "expected-pr-head-sha"}}}, event_file)
+            event_file.flush()
+            with patch.dict(os.environ, {"GITHUB_EVENT_PATH": event_file.name}, clear=True):
+                self.assertEqual(CAPTURE.pull_request_head_sha(), "expected-pr-head-sha")
+
     def run_in_temp_dir(self, fake_run):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
