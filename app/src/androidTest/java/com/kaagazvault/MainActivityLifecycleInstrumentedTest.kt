@@ -20,6 +20,79 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class MainActivityLifecycleInstrumentedTest {
     @Test
+    fun foregroundLossCancelsPendingSetupPromptAndRemovesOnlyItsUncommittedAlias() {
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        awaitControllerInitialization(scenario)
+        var testKey: com.kaagazvault.security.AuthBoundVaultKey? = null
+        try {
+            scenario.onActivity { activity ->
+                val controller = controllerOf(activity)
+                val alias = com.kaagazvault.security.AuthBoundVaultKey().newAliasForRecoveryOrSetup()
+                val key = com.kaagazvault.security.AuthBoundVaultKey(alias = alias)
+                val cipher = key.prepareSetupCipher()
+                testKey = key
+                setPrivateField(controller, "purpose", enumPurpose(controller, "SETUP"))
+                setPrivateField(controller, "authKey", key)
+                setPrivateField(controller, "authAlias", alias)
+                setPrivateField(controller, "activeCipher", cipher)
+                controller.uiState.value = VaultAccessUiState.SetupRequired()
+                invokeMainActivityOnStop(activity)
+
+                assertTrue("foreground loss must detach the pending prompt purpose", privateField(controller, "purpose") == null)
+                assertNull("foreground loss must detach its CryptoObject cipher", privateField(controller, "activeCipher"))
+                assertFalse("cancelled setup must not leave an orphan test alias", key.hasWrappingKeyAlias())
+                assertTrue("setup remains retryable after prompt cancellation", controller.uiState.value is VaultAccessUiState.SetupRequired)
+            }
+        } finally {
+            scenario.close()
+            try { testKey?.discardAbandonedSetup() } catch (_: Exception) { }
+        }
+    }
+
+    @Test
+    fun foregroundLossCancelsRecoveryPromptAndClearsPendingRecoveryBytes() {
+        val syntheticPendingVek = ByteArray(32) { 0x43 }
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        awaitControllerInitialization(scenario)
+        var testKey: com.kaagazvault.security.AuthBoundVaultKey? = null
+        try {
+            scenario.onActivity { activity ->
+                val controller = controllerOf(activity)
+                val alias = com.kaagazvault.security.AuthBoundVaultKey().newAliasForRecoveryOrSetup()
+                val key = com.kaagazvault.security.AuthBoundVaultKey(alias = alias)
+                val cipher = key.prepareSetupCipher()
+                testKey = key
+                setPrivateField(controller, "purpose", enumPurpose(controller, "RECOVERY_REWRAP"))
+                setPrivateField(controller, "authKey", key)
+                setPrivateField(controller, "authAlias", alias)
+                setPrivateField(controller, "activeCipher", cipher)
+                setPrivateField(controller, "pendingVek", syntheticPendingVek)
+                setPrivateField(controller, "pendingRecoveryText", "SYNTHETIC-RECOVERY-KEY")
+                controller.uiState.value = VaultAccessUiState.RecoveryRequired("Synthetic pending recovery prompt")
+                invokeMainActivityOnStop(activity)
+
+                assertTrue("foreground loss must invalidate the recovery prompt", privateField(controller, "purpose") == null)
+                assertTrue("pending recovery VEK bytes must be zeroed", syntheticPendingVek.all { it == 0.toByte() })
+                assertNull("controller must release pending recovery VEK", privateField(controller, "pendingVek"))
+                assertNull("controller must release pending recovery text", privateField(controller, "pendingRecoveryText"))
+                assertFalse("cancelled recovery must remove only its uncommitted alias", key.hasWrappingKeyAlias())
+                assertTrue("recovery remains explicit and fail-closed", controller.uiState.value is VaultAccessUiState.RecoveryRequired)
+            }
+        } finally {
+            scenario.close()
+            syntheticPendingVek.fill(0)
+            try { testKey?.discardAbandonedSetup() } catch (_: Exception) { }
+        }
+    }
+
+    private fun enumPurpose(controller: VaultAccessController, name: String): Any {
+        val field = VaultAccessController::class.java.getDeclaredField("purpose")
+        field.isAccessible = true
+        val enumType = field.type as Class<out Enum<*>>
+        return enumType.enumConstants.first { it.name == name }
+    }
+
+    @Test
     fun foregroundLossLocksSessionWhenMigrationIsActive() {
         val syntheticKey = ByteArray(32) { 0x31 }
         val scenario = ActivityScenario.launch(MainActivity::class.java)
