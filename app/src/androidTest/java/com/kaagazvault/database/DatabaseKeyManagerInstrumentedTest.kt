@@ -1,6 +1,7 @@
 package com.kaagazvault.database
 
 import android.content.Context
+import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.kaagazvault.security.SessionMigrationVekKeyAccess
@@ -11,7 +12,12 @@ import java.io.IOException
 import java.security.KeyStore
 import java.security.SecureRandom
 import java.util.UUID
+import net.zetetic.database.Logger
+import net.zetetic.database.NoopTarget
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -104,6 +110,115 @@ class DatabaseKeyManagerInstrumentedTest {
                 if (keyStore.containsAlias(alias)) keyStore.deleteEntry(alias)
             } finally {
                 fixture.deleteRecursively()
+            }
+        }
+    }
+
+    @Test
+    fun productionKeyManagerRewrapReopensRealSqlCipherDatabaseWithoutChangingRows() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val fixture = File(context.cacheDir, "database-key-manager-sqlcipher-" + UUID.randomUUID())
+        val storage = File(fixture, "key-storage")
+        assertTrue("Could not create isolated SQLCipher key-manager fixture", storage.mkdirs())
+        val databaseFile = File(fixture, "synthetic-vault-metadata.db")
+        val alias = "kaagaz.vault.database-key-wrap.test." + UUID.randomUUID().toString().replace("-", "")
+        val vek = ByteArray(KEY_BYTES).also(SecureRandom()::nextBytes)
+        val session = VaultSession()
+        var originalKey: ByteArray? = null
+        var migratedKey: ByteArray? = null
+        var legacyWrapperBefore: ByteArray? = null
+        var legacyWrapperAfter: ByteArray? = null
+
+        try {
+            System.loadLibrary("sqlcipher")
+            Logger.setTarget(NoopTarget())
+            val legacyManager = DatabaseKeyManager(
+                context = context,
+                keyStorageDirectoryOverride = storage,
+                databaseFileOverride = databaseFile,
+                wrappingKeyAlias = alias
+            )
+            originalKey = legacyManager.getOrCreateKey()
+            val legacyWrapper = File(storage, LEGACY_WRAPPER_FILE)
+            legacyWrapperBefore = legacyWrapper.readBytes()
+
+            val expectedRow = DocumentMetadataEntity(
+                id = "550e8400-e29b-41d4-a716-446655440099",
+                displayName = "synthetic-key-manager-integration.pdf",
+                mimeType = "application/pdf",
+                byteSize = 4321L,
+                updatedAtEpochMillis = 1_791_234_567_899L,
+                normalizedSearchText = "synthetic key manager integration",
+                ocrConfidence = 91,
+                ocrReviewed = true,
+                ocrTruncated = false
+            )
+            val initial = Room.databaseBuilder(
+                context,
+                VaultDatabase::class.java,
+                databaseFile.absolutePath
+            ).openHelperFactory(SupportOpenHelperFactory(originalKey)).build()
+            try {
+                initial.documentMetadataDao().upsert(expectedRow)
+                assertEquals(listOf(expectedRow), initial.documentMetadataDao().getAll())
+            } finally {
+                initial.close()
+            }
+
+            session.installVerifiedKey(vek)
+            val migratedManager = DatabaseKeyManager(
+                context = context,
+                vekKeyAccess = SessionMigrationVekKeyAccess(session),
+                keyStorageDirectoryOverride = storage,
+                databaseFileOverride = databaseFile,
+                wrappingKeyAlias = alias
+            )
+            migratedManager.rewrapLegacyKeyUnderVek()
+            migratedKey = migratedManager.getOrCreateKey()
+            assertArrayEquals("Production key manager must preserve the SQLCipher database key", originalKey, migratedKey)
+
+            legacyWrapperAfter = legacyWrapper.readBytes()
+            assertArrayEquals("Rewrap must not modify or delete legacy wrapper bytes", legacyWrapperBefore, legacyWrapperAfter)
+
+            val reopened = Room.databaseBuilder(
+                context,
+                VaultDatabase::class.java,
+                databaseFile.absolutePath
+            ).openHelperFactory(SupportOpenHelperFactory(migratedKey)).build()
+            try {
+                assertEquals(
+                    "Real SQLCipher rows must survive production key-manager rewrap and reopen",
+                    listOf(expectedRow),
+                    reopened.documentMetadataDao().getAll()
+                )
+                reopened.openHelper.writableDatabase.query("PRAGMA integrity_check").use { cursor ->
+                    assertTrue("SQLCipher integrity_check returned no row", cursor.moveToFirst())
+                    assertEquals("SQLCipher integrity_check failed", "ok", cursor.getString(0))
+                    assertFalse("SQLCipher integrity_check returned extra rows", cursor.moveToNext())
+                }
+            } finally {
+                reopened.close()
+            }
+
+            session.lock()
+            assertThrows("Locked session must fail closed after rewrap", VaultLockedException::class.java) {
+                migratedManager.getOrCreateKey()
+            }
+            assertTrue("Legacy wrapper must remain available for recovery", legacyWrapper.isFile)
+        } finally {
+            originalKey?.fill(0)
+            migratedKey?.fill(0)
+            legacyWrapperBefore?.fill(0)
+            legacyWrapperAfter?.fill(0)
+            vek.fill(0)
+            try { session.lock() } catch (_: Exception) { }
+            try {
+                val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+                if (keyStore.containsAlias(alias)) keyStore.deleteEntry(alias)
+            } finally {
+                check(!fixture.exists() || fixture.deleteRecursively()) {
+                    "Disposable SQLCipher key-manager fixture cleanup failed"
+                }
             }
         }
     }
