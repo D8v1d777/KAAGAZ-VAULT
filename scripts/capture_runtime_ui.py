@@ -41,20 +41,31 @@ def adb(*args: str, timeout: int = 30, check: bool = True) -> bytes:
 
 
 def hierarchy() -> list[dict[str, str]]:
-    adb("shell", "uiautomator", "dump", "/sdcard/kaagaz-window.xml", timeout=20, check=False)
-    adb("pull", "/sdcard/kaagaz-window.xml", str(TMP), timeout=20)
+    # The XML may contain visible sensitive text. Parse it only in memory, then remove
+    # both device-side and host-side copies before returning any extracted UI labels.
     try:
+        adb("shell", "uiautomator", "dump", "/sdcard/kaagaz-window.xml", timeout=20, check=False)
+        adb("pull", "/sdcard/kaagaz-window.xml", str(TMP), timeout=20)
         root = ET.parse(TMP).getroot()
-    except (ET.ParseError, OSError):
+        return [
+            {
+                "text": node.attrib.get("text", ""),
+                "description": node.attrib.get("content-desc", ""),
+                "bounds": node.attrib.get("bounds", ""),
+            }
+            for node in root.iter("node")
+        ]
+    except (RuntimeError, ET.ParseError, OSError):
         return []
-    return [
-        {
-            "text": node.attrib.get("text", ""),
-            "description": node.attrib.get("content-desc", ""),
-            "bounds": node.attrib.get("bounds", ""),
-        }
-        for node in root.iter("node")
-    ]
+    finally:
+        try:
+            adb("shell", "rm", "-f", "/sdcard/kaagaz-window.xml", check=False)
+        except Exception:
+            pass
+        try:
+            TMP.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def wait_nodes(predicate, seconds: int = 25) -> list[dict[str, str]] | None:
