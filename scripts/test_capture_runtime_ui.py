@@ -55,7 +55,7 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
 
     def test_invalid_png_is_nonzero(self):
         def write_invalid_png(*args, **kwargs):
-            Path(args[-1]).write_bytes(b"not a PNG")
+            Path(args[0][-1]).write_bytes(b"not a PNG")
             return subprocess.CompletedProcess(args[0], 0, "", "")
 
         code, metadata = self.run_in_temp_dir(write_invalid_png)
