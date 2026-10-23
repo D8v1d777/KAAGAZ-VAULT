@@ -55,7 +55,7 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
 
     def test_invalid_png_is_nonzero(self):
         def write_invalid_png(*args, **kwargs):
-            Path(args[0][-1]).write_bytes(b"not a PNG")
+            Path(args[-1]).write_bytes(b"not a PNG")
             return subprocess.CompletedProcess(args[0], 0, "", "")
 
         code, metadata = self.run_in_temp_dir(write_invalid_png)
@@ -69,7 +69,7 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
         png = CAPTURE.PNG_SIGNATURE + (b"x" * 4096)
 
         def write_valid_png(args, **kwargs):
-            Path(args[0][-1]).write_bytes(png)
+            Path(args[-1]).write_bytes(png)
             return subprocess.CompletedProcess(args[0], 0, "1 file pulled", "")
 
         with patch.dict(os.environ, {
