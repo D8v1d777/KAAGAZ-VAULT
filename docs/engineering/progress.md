@@ -1,3 +1,252 @@
+## 2026-10-22 — CO-06 build integrity complete on exact-head run #565
+
+### Exact-head evidence
+- Validated source SHA `bbea1eb7a697d89c06f27fbc725dbfa175ee50e5`, [Android CI run #565](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39758879722): both standard and Android emulator jobs passed.
+- Standard job passed debug/release builds, `assembleDebugAndroidTest`, JVM tests, lint, Python policy guards, offline merged-manifest policy, normal dependency verification, and the separate `prepareOcrModels UP-TO-DATE` assertion.
+- Emulator job ran 11 instrumentation tests and reported `BUILD SUCCESSFUL in 4m 36s`.
+
+### CO-06 implementation
+- OCR model pins now include SHA-256 in addition to the existing Git-blob SHA-1 checks for the three models at the pinned tessdata revision. The download task declares revision/hash inputs and model-file outputs, removes unconditional always-run behavior, retries transient failures with bounded backoff, verifies both hashes, and installs from a temporary file.
+- Tesseract4Android and SQLCipher dependency literals are moved into the version catalog without changing versions or SQLCipher's AAR-only/non-transitive behavior.
+- Dependency verification metadata includes AndroidX Test, AndroidX Biometric, and candidate transitive artifacts. The generated delta comparison preserved all existing trusted checksums; temporary capture workflows were removed. Standard CI now compiles `assembleDebugAndroidTest` with verification enabled.
+- README documents the build-time network requirement, offline runtime OCR, and exact verified model-file pre-seeding for offline builds.
+
+### Remaining release blockers
+- The SQLCipher interruption test uses a synthetic database/key; production `DatabaseKeyManager` fixed-alias migration is not yet exercised.
+- Actual OS-driven screen-off/background delivery, true process-death/restart, biometric enrollment changes, authenticated recovery success, and physical-device behavior remain unverified.
+- Independent human security review and G2 approval for the fail-closed legacy-key fallback remain open. `docs/agent/REVIEW.md` is missing (404); manual review is not independent.
+- PRs #48 and #49 remain draft/unmerged; canonical branch untouched. Overall completion estimate remains 41% pending weighted tracker review.
+---
+
+## 2026-10-22 — Exact-head CI #559 green; OCR boundary and migration crash recovery verified
+
+### Exact-head evidence
+- Candidate SHA `acbe7d8e5092d762d89f202d0d2ad02ef1d60afa`, [Android CI run #559](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39753800533): standard job passed (debug/release builds, JVM tests, lint, Python policy guards, offline merged-manifest gate); emulator job passed with 11 instrumentation tests and `BUILD SUCCESSFUL in 4m 18s`.
+- The prior run #551 on `9fa31012ab0915fc37a4592cd753bb73bad89a3a` was fully green for its six-test emulator suite; run #559 validates the later candidate with the additional SQLCipher crash-point test.
+
+### New bounded OCR extraction guard
+- A new policy assertion failed first on commit `56c2a13456207c718a3346aec8c861653b12dabf`: initial OCR suggestions were extracted from unbounded `result.text`, while only `result.text.take(MAX_OCR_CHARACTERS)` was persisted.
+- Commit `c8d01817871a22f6c28f5fb433657deb511595cd` now bounds initial and corrected OCR extraction to the exact text prefix persisted in the encrypted payload. The regression policy suite passed on run #559.
+- Structured-field edits visibly mark the original excerpt as potentially mismatched and clear the field's accepted flag.
+
+### SQLCipher migration interruption coverage
+- Commit `acbe7d8e5092d762d89f202d0d2ad02ef1d60afa` adds `sqlCipherRewrapSideEffectBeforeJournalCheckpointIsIdempotentOnResume`.
+- The emulator test injects interruption after a synthetic DB key has been create-once wrapped under the VEK but before the journal checkpoint is persisted. It checks RECOVERY_REQUIRED, VEK wrapper survival, byte-identical legacy wrapper, fresh-coordinator resume, preserved SQLCipher row, `PRAGMA integrity_check`, and durable COMPLETE.
+- The fixture uses a UUID-named cache path and synthetic random keys; it does not touch the production database-key alias or default database path.
+
+### Separate dependency-verification gate
+- PR #49 commit `b2ad797238ed89759edefd04348a97b5f68c44b2` adds 10 generated component entries for the approved AndroidX Test dependency graph. The temporary capture run's delta check reported 10 new components and verified no existing trusted checksum entries changed or were removed.
+- The temporary metadata-capture workflow was removed in the same commit. Standard CI now includes `assembleDebugAndroidTest` with ordinary dependency verification enabled.
+- Exact-head run #561 is pending: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39755053774. The earlier run #558 failure specifically listed 10 missing AAR/POM artifacts; do not count the metadata fix green until run #561 completes.
+
+### Remaining release blockers
+- Synthetic SQLCipher coverage does not prove the production `DatabaseKeyManager` fixed-alias migration path.
+- Actual OS-driven screen-off/background delivery, process death/restart, biometric enrollment change, physical-device testing, and authenticated recovery success remain unverified.
+- Independent human security review and G2 approval for the fail-closed legacy-key fallback guard remain open. `docs/agent/REVIEW.md` is missing (404); manual review is not a substitute for an independent reviewer.
+- PRs #48 and #49 remain draft/unmerged. Canonical branch untouched. Completion estimate remains unchanged until weighted objectives and release gates are re-evaluated.
+- superseded_by: 2026-10-22 CO-06 completion entry above; the validated source is now bbea1eb7a697d89c06f27fbc725dbfa175ee50e5 (run #565).
+
+---
+ 
+## 2026-10-22 — CI #534 passed; synthetic migration-interruption recovery coverage added
+
+### Verified on the shared candidate
+- Exact head `a35be52a870e1c94fe971607dd4d0dc16251f559`, run [#534](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39736421084): standard debug/release build, JVM tests, lint, Python policy guards and offline merged-manifest gate passed.
+- Emulator job passed and reported `Starting 6 tests`, `Finished 6 tests`, and `BUILD SUCCESSFUL in 4m 20s`.
+- Coverage: auth-per-use KeyStore denial; absent-alias fail-closed with unchanged synthetic envelope; cache-isolated SQLCipher row preservation, VEK wrapper, journal COMPLETE, and `PRAGMA integrity_check`; controller stop callback zeroizes session/recovery buffers; screen-off receiver callback locks the session.
+- This is not OS-level foreground-loss/screen-off or process-death proof: lifecycle tests invoke the controller's stop handler directly, with a separate static source guard for `MainActivity.onStop()` order. Keep these limitations open.
+
+### New coverage in this commit
+- The SQLCipher instrumentation test now injects one synthetic exception after the VEK-wrapped database key has been persisted but before integrity verification completes.
+- It asserts the durable journal records `RECOVERY_REQUIRED`, the VEK wrapper survives, and the legacy wrapper remains byte-identical. A fresh journal/coordinator then resumes, opens the real SQLCipher database, checks row preservation and `PRAGMA integrity_check`, and reaches durable `COMPLETE` without retiring the legacy wrapper.
+- Test fixture stays under a UUID-named cache directory and uses synthetic in-memory wrapping keys; it does not access the fixed production Keystore alias or default database paths.
+
+### Verification boundary
+- The recovery enhancement is newly committed and requires its own exact-head CI.
+- Production `DatabaseKeyManager` integration, actual screen-off/OS-stop delivery, real process death, authenticated CryptoObject/recovery, biometric enrollment change, G2 owner approval and independent human security review remain open.
+
+---
+
+## 2026-10-22 — Instrumentation setup-ordering fix and Activity-recreation coverage
+
+### Run #532 evidence
+- Exact head `399748db0fe60f96eef064f42941c2129e9359d0`, [run #532](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39733219359): standard debug/release build, JVM tests, lint, Python policy tests and offline-manifest gate passed.
+- The emulator successfully compiled and ran six instrumentation tests. Four passed: auth-per-use rejection with the wrapped Keystore denial, missing-alias fail-closed with unchanged synthetic envelope, synthetic Room/SQLCipher rewrap/reopen/journal COMPLETE/integrity, and the screen-off receiver lock path.
+- Two foreground-loss tests failed because the expected controller UI state was not `Locked` after `ActivityScenario.moveToState(CREATED)`. Both tests set synthetic state before guaranteeing Compose's one-time `LaunchedEffect { controller.initialize() }` had completed. Delayed initial-state discovery can overwrite test state before the lifecycle callback is evaluated.
+
+### Follow-up implemented
+- Added a bounded `awaitControllerInitialization` helper before injecting synthetic state, for all lifecycle/screen-off tests and before/after Activity recreation.
+- Added explicit pre-transition assertions so the tests verify the intended synthetic `Migrating` / `ConfirmRecoveryKey` state was installed.
+- Failure messages now include the actual controller state, making any repeat reproducible.
+- Added `activityRecreationCannotCarryAnUnlockedSyntheticSessionIntoTheNewController`: the destroyed Activity session must be locked and the new controller must not publish `Ready`. This is **Activity recreation** coverage, not proof of process death.
+
+### Verification boundary
+- This follow-up test source has not run on CI yet. Run #532 remains a failed instrumentation run; don't transfer its result to this updated candidate.
+- Actual process death/screen-off OS delivery, authenticated CryptoObject completion/recovery, biometric enrollment changes, production `DatabaseKeyManager` lifecycle, and independent human security review remain open.
+- G2 approval is still needed for the shared branch's fail-closed legacy DB-key fallback change; keep PR #48 draft/unmerged.
+
+---
+
+## 2026-10-22 — Auth-per-use denial assertion correction and lifecycle instrumentation
+
+### Verified from run #527
+- Exact candidate `bcf27b1a0a59a4ed7ae5902e9438b61e4b706718`, run [#527](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39729721807), passed the standard debug/release build, JVM tests, lint, source-policy and offline-manifest job.
+- The emulator runner successfully set temporary PIN `2468`, reached `:app:connectedDebugAndroidTest`, and ran 3 instrumentation tests.
+- Exactly one test failure was reported: `AuthBoundVaultKeyInstrumentedTest.generatedWrappingKeyRejectsCryptographicUseBeforeAuthentication`. Android 16 raised `IllegalBlockSizeException`, with a nested Keystore error `Key user not authenticated`; this is the expected denial signal but the test had required the top-level type to be `UserNotAuthenticatedException`.
+- The missing-alias fail-closed test and synthetic SQLCipher/journal test were the other two tests; neither was reported as failed.
+
+### Follow-up changes included in the next candidate
+- Replaced the brittle concrete-exception assertion with a check that the cryptographic operation fails and its cause chain contains the platform's user-not-authenticated denial.
+- Added `MainActivityLifecycleInstrumentedTest`: drive the real `MainActivity.onStop()` path with synthetic session/recovery state; require the session to lock and pending recovery key/text to be zeroed/dropped. The tests never create a production key alias or open the vault.
+- Added a Python source guard ensuring emulator PIN setup, EXIT cleanup and Gradle invocation remain one folded-shell command.
+- Both lifecycle tests wait for initial Compose/controller setup to become idle before installing synthetic test state.
+
+### Verification boundary
+- These follow-up additions have not yet run on CI. The previous #527 head remains red due to the exception-type expectation; do not transfer that run to the updated source.
+- `DatabaseKeyManager`'s fixed production Keystore alias, screen-off/process death/real prompt recovery, biometric enrollment change and independent human security review remain open.
+- PR #48 does not yet include PR #49's dependency-verification metadata. The eventual combined candidate must verify hashes for the approved AndroidX Test dependencies before release.
+
+---
+
+## 2026-10-22 — Emulator runner shell-isolation correction
+
+### Reproduced
+- Exact-head run [#526](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39728903631) passed the standard build/debug+release/unit/lint/offline-manifest job.
+- Emulator booted, but no Gradle command or Android tests ran. The pinned emulator action executed each script line in its own `/usr/bin/sh -c` process. The `test_pin=2468` variable was local to its own process, so `adb shell locksettings set-pin "$test_pin"` received no PIN and Android's command failed with a NullPointerException. This is a runner-script scope error, not an Android application/test assertion.
+- Fix: YAML folded scalar (`script: >-`) with PIN set, EXIT cleanup trap, and `:app:connectedDebugAndroidTest` in one single shell expression. Uses fixed disposable test credential `2468`, avoids cross-line variables, and always attempts to clear the credential after Gradle exits.
+
+### Current gate
+- Exact-head run after the one-shell correction is pending. Run #526 is a failed setup attempt, not an instrumentation test result.
+- No production key policy/alias, SQLCipher format/schema, app manifest permission, user data path or canonical branch changed.
+
+### Next
+- Verify the command accepts PIN 2468, executes Gradle, and clears the PIN when the script exits.
+- Then debug actual test compilation/assertions, including synthetic SQLCipher row preservation, wrapper retention, `PRAGMA integrity_check`, and durable journal COMPLETE.
+- Lifecycle/restart, production `DatabaseKeyManager`/Keystore integration, biometric enrollment change, and independent security review remain open.
+
+---
+
+## 2026-10-22 — Emulator secure-lockscreen bootstrap and synthetic SQLCipher test
+
+### Changes prepared on this candidate
+- Run [#525](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39727573230) proved that the emulator boots and tests execute, but auth-bound key generation failed because the emulator had no secure lock screen.
+- The PIN/bootstrap follow-up was attempted in run [#526](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39728903631). Standard CI passed; emulator setup failed before Gradle because the pinned runner executes each script line in a separate shell. The PIN variable did not persist, `set-pin` received an empty argument and Android threw a NullPointerException. No Android tests ran in #526.
+- The new cache-only `SqlCipherMigrationInstrumentedTest` remains as described above: it exercises the real Room/SQLCipher engine, VEK wrapper store, row preservation, `PRAGMA integrity_check`, durable journal COMPLETE, and synthetic legacy-wrapper retention while never calling `DatabaseKeyManager` or touching the production alias/default database.
+
+### Verification gate
+- The next run must prove the one-shell folded command sets/clears the disposable PIN and actually executes the test APK. Do not count #525 or #526 as passing instrumentation.
+- Production `DatabaseKeyManager`/Keystore integration, activity lifecycle/process-death, biometric enrollment changes, and independent human review remain open.
+
+---
+
+## 2026-10-22 — Emulator launcher profile compatibility repair
+
+### Reproduced
+- Exact-head CI run [#524](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39726598625) passed the standard build/unit/lint and offline merged-manifest gate on `760f3a3fa738037334739e2ea2db3356e1b77034`.
+- The separate emulator job failed before boot/test execution. The pinned runner's AVD creation reported `Error: No device found matching --device Pixel 6`; no instrumentation assertions ran on this attempt.
+- Reviewed the runner's pinned README: the optional `profile` input expects an SDK hardware-profile ID (for example `pixel_7_pro`), not the display label `Pixel 6`. Removed the profile input so AVD creation can use the SDK's default hardware configuration; did not alter assertions or test scope.
+
+### Follow-up result
+- Correction commit `7d376082dcb316af9826ef04a14e1a7c0727dcd3` removed `profile: Pixel 6`. Run [#525](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39727573230) then provisioned the emulator and executed the instrumented tests.
+- The auth-bound-key test failed at key generation because the emulator had no secure lock screen (`Secure lock screen must be enabled to create keys requiring user authentication`). This was a genuine emulator prerequisite failure; it was not an assertion against the key-authentication policy.
+- Next correction configures a disposable PIN in the emulator runner script and clears it with an EXIT trap before the job ends. No PIN is set on any user or production device.
+
+---
+
+## 2026-10-22 — CO-02 Android Keystore instrumentation slice added
+
+### Implemented
+- Owner approval recorded for test-only AndroidX Test core/runner 1.7.0 and ext.junit 1.3.0, plus emulator action `ReactiveCircus/android-emulator-runner` pinned to immutable commit `a421e43855164a8197daf9d8d40fe71c6996bb0d` (v2.38.0).
+- Added the `androidTest` runner and dependencies without changing production dependencies, manifest permissions, key policy, ciphertext format, or Room schema.
+- Added on-device tests using unique ephemeral Android Keystore aliases: unauthenticated AES-GCM use must throw `UserNotAuthenticatedException`; a missing alias must fail closed without changing a synthetic cache envelope.
+- Added a separate API 36 Google APIs x86_64 emulator job, with KVM enabled and `:app:connectedDebugAndroidTest`. The emulator action is SHA-pinned; no third-party action tag is used.
+- The tests do not touch the production Keystore alias, production vault files, or user data.
+
+### Verification boundary
+- Baseline PR #48 head `4844c3806a7845c12cd97d92f3f2ba5d6fab16fa` passed CI run [#523](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39724994933).
+- The instrumentation code, new dependency pins, and emulator job are **pending exact-head CI** at the time of this commit. Do not treat the prior run as evidence for these additions.
+- Real prompt-authenticated completion, biometric enrollment change, Activity background/process-death behavior, and SQLCipher migration/reopen/integrity are not covered by this first instrumentation slice. Independent human security review remains required.
+
+### Next
+- Run and fix the new emulator gate on the exact commit.
+- Expand instrumentation for lifecycle/restart, then build SQLCipher rewrap/reopen/integrity tests against isolated synthetic databases before drawing release conclusions.
+- Preserve legacy ciphertext, staging copies and old wrappers until authenticated read-back, durable journal COMPLETE, SQLCipher integrity, and independent review evidence are recorded.
+
+---
+
+## 2026-10-22 — CO-02 lifecycle wiring regression guards
+
+### Goal and changes
+- Added source-level regression checks for `MainActivity.onStop()` calling the vault lifecycle hook before `super.onStop()`, and `onDestroy()` disposing the access controller/shutting down I/O before superclass teardown.
+- Added a guard that Ready/Migrating states are locked on foreground loss and that an unconfirmed recovery-key buffer is zeroed/cleared before the UI becomes Locked.
+- This is static wiring coverage only; it is not an Activity instrumentation test and does not prove runtime lifecycle behavior.
+
+### Evidence
+- Previous exact-head CI run #522 passed on `621eca27ed3f41a3bc5aa7ac84901af93cd734bc`: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39724232188
+- This commit adds static lifecycle guards and planning/handoff updates. Its own exact-head CI result is pending and must be checked before these new guards are called green.
+- PR #48 remains draft/open/unmerged. No emulator/device validation or independent human security review is evidenced.
+
+### Next
+- Complete CO-02 P0 by adding an Android instrumented-test source set and a pinned emulator CI gate after explicit approval for new AndroidX Test dependencies and the external emulator action (G3).
+- Exercise real KeyStore auth-per-use operations, Activity background/process restart behavior, and SQLCipher rewrap/reopen/integrity on disposable synthetic data. Keep untested biometric-enrollment/recovery cases explicitly open.
+- Preserve legacy ciphertext, old wrappers, and migration staging files until real authenticated read-back, durable journal COMPLETE, SQLCipher integrity, and reviewer evidence are recorded.
+
+---
+
+## 2026-10-22 — Concurrent migration-cleanup/authentication ordering regression
+
+### Implemented
+- Added `staleMigrationCleanupCannotInterleaveWithNewAuthentication()` to `app/src/test/java/com/kaagazvault/security/VaultAccessEpochGateTest.kt`.
+- The test coordinates a stale cleanup thread and a competing authentication thread with latches. It verifies authentication cannot pass the epoch gate while the cleanup check/action is in progress, and that the newer authenticated state wins after serialization.
+- Code/test commit: `900e9bfedbe469f6c64745999a345354a2382c90`.
+
+### CI verification
+- GitHub Actions [run #506](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39717898077) passed on exact code/test SHA `900e9bfedbe469f6c64745999a345354a2382c90`.
+- Passed steps: Python policy tests; debug and release builds; JVM unit tests; lint; merged-manifest offline policy.
+- The review of this change was limited to the test diff and supporting epoch-gate implementation. No independent reviewer or human security sign-off is recorded.
+
+### Boundaries and next actions
+- This is a JVM regression test for the shared epoch-gate collaborator, not proof of Android Activity lifecycle or controller/device behavior.
+- Still unverified: biometric/device-credential compatibility, recovery UX, background/screen-off/process-death locking, picker/camera return flows, interrupted migration and SQLCipher reopen/integrity on a disposable vault, and independent security review.
+- PR #48 remains draft and unmerged. After this documentation-only refresh, verify the newest CI run against the new live PR head before relying on branch-head status.
+
+---
+
+## 2026-10-21 — Integration security hardening continuation
+
+- Candidate branch `agent/integration-security-hardening-candidate-2026-10-21`, PR #48; consult the live PR head and matching workflow run because follow-up handoff/plan commits continue this documentation pass.
+- Cleared owned plaintext scratch buffers in document import streams, document serialization, OCR/reviewed-OCR reads and replacements, AES-GCM envelope operations, and settings-transfer crypto. Import tests cover plaintext buffer clearing on successful read-back and invalid signature rejection.
+- Controller disposal now marks the controller disposed, invalidates the active prompt purpose, clears retained wrapped-key bytes before cancelling the prompt, and suppresses late authentication/UI-state callbacks. Source-level regression coverage added.
+- Synchronous setup/recovery prompt setup failures now clear pending recovery material and remove only the uncommitted wrapper alias, avoiding orphaned-key lockout on retry; source-level guards cover this cleanup.
+- Reminder cancellation coverage and lock-time UI metadata/settings-buffer cleanup remain part of the candidate. Migration retains legacy/staging data; no retirement or canonical merge was performed.
+- Exact-head full Android CI is required for the final head. At this entry, run #485 was queued on the prior head; verify the new run after this documentation commit. Device/emulator verification and independent human security review remain outstanding.
+
+---
+
+## 2026-10-21 — Session-backed document store seam added to integration candidate
+
+- Added `DocumentPayloadCryptography` with legacy and session-backed implementations. The session-backed path holds `VaultSession` access across the full encrypted-store operation (including atomic file writes and deletion), and store recovery cleanup is deferred until a permitted operation rather than running at construction time.
+- Added regression coverage that locked sessions reject save/read/replace/list/delete and keep existing ciphertext.
+- This adapter is not wired into `MainActivity`; production access paths and SQLCipher/worker locking remain open. Combined exact-head CI on the live PR #48 head is required after these changes.
+
+---
+
+## 2026-10-21 — Combined candidate regression hardening
+
+- Expanded the integration candidate's CO-08 journal tests to cover all legacy v1 phase states and each document-step ordinal, and reject unknown v2 phase/document-step codes even when the CRC is recalculated correctly.
+- Replaced partial stable-code assertions with exact expected code sequences for every persisted phase and document step.
+- These additional regression tests are part of the live [draft integration PR #48](https://github.com/D8v1d777/KAAGAZ-VAULT/pull/48). Its current head's combined exact-head CI is the release gate; earlier CI runs apply only to their named SHAs.
+
+---
+
+## 2026-10-21 — Combined integration candidate created
+
+- Combined CO-08, CO-04, CO-01 document-migration adapter, approved Biometric dependency, VaultSession primitive and CO-02 recovery envelope primitive onto one validation branch created from canonical SHA `6b30ceaf5ab09b2494d82356b08c4bebf7406521`.
+- Integrated source SHA before report: `83aa16a0c29a57962c65d547e1204d14688ddff8`. Exact-head combined CI is pending; isolated green runs do not substitute for this run.
+- See `docs/engineering/INTEGRATION-CANDIDATE-2026-10-21.md` for scope and explicit security blockers. No canonical branch changes or merges performed.
+
+---
+
 ## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
 
 ### Decision recorded
@@ -657,3 +906,97 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Verify the final stable-SDK build configuration through GitHub Actions.
 2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
 3. Start the encrypted-storage prototype only after researching Android Keystore, SQLCipher, Room, and backup/key-lifecycle constraints; keep ADR-0001 Proposed until prototype evidence exists.
+
+
+## 2026-10-22 — Authentication/key lifecycle race fix (candidate; exact-head CI pending)
+
+### Implemented
+- `app/src/main/java/com/kaagazvault/security/VaultAccessController.kt`: serialize verified VEK installation with controller lock/dispose and migration-failure cleanup using the controller monitor. Migration failure now locks/clears runtime only when its captured `migrationEpoch` still equals `accessEpoch`, preventing an older failed worker from locking a newer authenticated session.
+- `scripts/test_vault_access_wiring.py`: add a regression guard requiring the migration epoch check to precede session locking in the failure path and checking that verified-key installation is guarded.
+
+### Verification boundary
+- Candidate branch: `agent/integration-security-hardening-candidate-2026-10-21`; PR #48 remains the review surface.
+- Code commit: `740cb69d9c1fa7027228d50408be842c079166d7`; regression-test commits: `37d4ddc3e0db78436e7afd3d88fc938ab754020b`, followed by assertion correction `ef491bbeef7126d08e0e2efbe8355c8936ba32fd`.
+- The connector currently reports no workflow run or combined status for `ef491bbeef7126d08e0e2efbe8355c8936ba32fd`; therefore no exact-head CI pass is claimed. Local Python/Kotlin/Android tests were not executed in this environment. The source-level regression guard is added but remains unexecuted here.
+- This is a code-level fix candidate, not a completed security sign-off. Device/emulator lock/recovery checks, interrupted-migration tests, full exact-head CI, and independent security review remain release gates. Do not merge or mark the lifecycle item fully complete until those gates pass.
+
+### Next
+1. Trigger/obtain Android CI for the current PR head and fix any failures on the resulting exact SHA.
+2. Add a deterministic concurrency regression test proving stale migration failure cannot lock a newer session, beyond the source-level guard.
+3. Verify lock/unlock, recovery confirmation, app backgrounding, disposal, and interrupted migration on emulator/device; request independent security review.
+
+
+## 2026-10-22 — Exact-head Android CI verified for authentication race-fix candidate
+
+### Verification update
+- GitHub Actions run [39716369173](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39716369173) completed with conclusion **success** for exact candidate head `eba41b870f142f85365855f647fcf4ae1ca320ec`.
+- Job `Build, test tasks, lint, and offline manifest gate` passed all listed steps: Android SDK setup, offline manifest helper tests, debug/release build + unit tests + lint, and merged-manifest offline policy enforcement.
+- This raises confidence in build/integration gates only. The source-level race regression guard ran within CI, but it does not constitute a deterministic concurrency test of the stale-migration/new-session interleaving.
+- No emulator or physical-device lifecycle test or independent security review is evidenced by this run. Do not merge or declare full security sign-off on CI alone.
+
+### Remaining gates
+1. Add a deterministic concurrency regression test for stale migration failure versus a newer authenticated session, preferably by extracting the epoch-guarded publication/cleanup decision into a small unit-testable collaborator or injecting migration/session dependencies.
+2. Run Android emulator/device checks for setup, unlock, recovery confirmation, app backgrounding, disposal/late callbacks, and interrupted migration.
+3. Obtain independent security review and re-check CI on the final reviewed PR head before merge.
+
+
+### 2026-10-22 — Recovery prompt cancellation cleanup (PR #48)
+
+- Work window: started at 10:13 IST after the user's continuation request; ended at the commit timestamp recorded by GitHub for this patch.
+- Code review finding: when `BiometricPrompt` returns an asynchronous cancellation/error during `Purpose.RECOVERY_REWRAP`, `onPromptFailure()` clears the pending VEK/text but previously left the newly generated, uncommitted replacement alias in Android Keystore. The synchronous `recoverWithKey()` failure path already cleaned this alias.
+- Fix: on the recovery re-wrap failure path, zero pending VEK state and then best-effort delete only the attempt's new alias via `discardAbandonedSetup()`. This alias is not persisted in the active vault-key record until successful authenticated re-wrap; no existing VEK, wrapper record, or document ciphertext is replaced by cancellation cleanup.
+- Added a source-wiring regression guard and JVM tests proving the cleanup primitive removes only the requested alias and is safe when already absent.
+- Validation status at patch time: Android CI run #521 for PR #49 was still running on exact head `7b41ffe9c4d845dacf6a945c4ad167e67d40449b`; PR #48's regression commit must be verified by a new exact-head CI run. Device/emulator validation remains unperformed.
+
+
+## 2026-10-22 — Android Keystore AES-GCM IV compatibility fix prepared
+
+### Work claim and scope
+- Start: 2026-10-22 13:24 Asia/Kolkata. Branch: `pr-48`, starting SHA `32fb058e0cf5448fef41bafd4c3ff85b8bd2b2e5`.
+- Workstream A: fix the release-blocking `InvalidAlgorithmParameterException: Caller-provided IV not permitted` failure without weakening randomized encryption, and add production-key instrumentation coverage for round-trip and tamper rejection.
+- Acceptance: Android Keystore generates the AES-GCM nonce; the existing version-1 envelope remains readable; synthetic instrumentation covers authenticated round-trip and tamper failure; exact-head CI is rerun before any release conclusion.
+
+### Implemented
+- `AesGcmEnvelope` now initializes AES-GCM encryption without caller-supplied parameters, copies the provider-generated `Cipher.iv`, validates the existing 12-byte envelope nonce size, and persists that nonce in the unchanged version-1 envelope format.
+- Added `DatabaseKeyManagerInstrumentedTest.productionKeystoreWrappingRoundTripRejectsTamperedEnvelope`, using only a UUID-named cache fixture and an ephemeral Android Keystore alias.
+
+### Verification boundary
+- `python3 -m unittest discover -s scripts -p 'test_*.py'`: **PASS** (26 tests).
+- `git diff --check`: **PASS**.
+- Local Gradle unit test was **BLOCKED** before compilation because this sandbox has no Android SDK (`SDK location not found`); no unit-test pass is claimed.
+- Android emulator instrumentation and exact-head CI are **PENDING** for the resulting commit. Earlier run #538 applies only to SHA `32fb058e0cf5448fef41bafd4c3ff85b8bd2b2e5` and remains a failure.
+- Product feature workstream selection and independent human security review remain open; PR #48 stays draft/unmerged.
+
+
+## 2026-10-22 — Exact-head CI result for Android Keystore IV fix
+
+- Follow-up verification recorded at 2026-10-22 13:44 Asia/Kolkata.
+- Exact commit: `7d543555d0dc5fc0e05c86ffe6b33a59c2dc8f40` — [fix(security): let keystore generate AES-GCM nonces](https://github.com/D8v1d777/KAAGAZ-VAULT/commit/7d543555d0dc5fc0e05c86ffe6b33a59c2dc8f40).
+- GitHub Actions run [#541 / run 39744229710](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39744229710) is associated with this exact commit and completed with conclusion **success**.
+- Both jobs passed: standard build/unit-test/lint/offline-manifest gate, and Android emulator instrumentation (Keystore auth-per-use).
+- This supersedes the earlier **PENDING** CI statement in the preceding entry for this exact SHA. It does not supersede device-level lifecycle validation or independent human security review; PR #48 remains draft and unmerged.
+- Scope boundary: this closes the Android Keystore IV CI blocker only. A substantial additional user-visible feature remains unfinished; no overall product-completion percentage is claimed.
+
+
+## 2026-10-22 — Offline structured-field review and encrypted payload v4
+
+### Implemented on PR #48
+- Added bounded deterministic offline extraction for dates, amounts, labelled identifiers, and names.
+- Added source excerpts, extraction method, and uncertainty flags; fields are editable and require explicit per-field confirmation.
+- Persisted reviewed fields inside the authenticated encrypted document payload. Payload v4 retains decoding compatibility for versions 1–3.
+- Added repository APIs for saving confirmed fields through the existing vault-session boundary and deterministic extraction/encrypted round-trip tests.
+- Preserved the Android Keystore provider-generated AES-GCM nonce fix and its instrumentation coverage.
+- Implementation commit: `63efc305ebc48a763049fd99393f0660c8766522`.
+
+### Verification
+- Python policy tests: **PASS**, 26 tests.
+- `git diff --check`: **PASS**.
+- Local Gradle: **BLOCKED** in the sandbox because Android SDK is unavailable; no local Gradle pass is claimed.
+- Exact-head GitHub Actions run [#544](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39748249619) for the implementation commit: **PASS**. Standard build/release, JVM tests, lint, Python policy tests, offline merged-manifest gate, and Android emulator instrumentation all passed.
+- Earlier run [#543](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39747324819) failed on payload-boundary parsing; the subsequent implementation commit fixed that failure and exact-head run #544 passed.
+- PR #48 remains draft and unmerged.
+
+### Scope and remaining acceptance
+- Updated the weighted product tracker from 35% to a conservative 41%: this credits 6 of the 10 weighted percentage points for the structured-review objective, not the entire objective.
+- Remaining: richer provenance spans/page coordinates, calibrated confidence, downstream action integration, medical-action safeguards, physical-device lifecycle/process-death/screen-off/recovery checks, accessibility/performance, migration/device validation, and independent human security review.
+- This log update and the tracker correction are documentation commits after the verified implementation SHA. Re-run exact-head CI on the new branch head before treating the updated head as verified.

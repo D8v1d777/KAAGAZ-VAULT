@@ -1,6 +1,10 @@
 package com.kaagazvault
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -8,7 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,6 +31,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,6 +50,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -60,15 +66,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.kaagazvault.camera.CameraCaptureScreen
-import com.kaagazvault.database.EncryptedMetadataIndexProvider
-import com.kaagazvault.database.VaultDatabaseProvider
 import com.kaagazvault.documents.DocumentRepository
 import com.kaagazvault.documents.ImportedDocument
+import com.kaagazvault.documents.StructuredField
 import com.kaagazvault.ocr.OfflineOcrEngine
 import com.kaagazvault.reminders.ReminderRepository
 import com.kaagazvault.reminders.ReminderSection
-import com.kaagazvault.security.AndroidKeystoreDocumentKeyProvider
-import com.kaagazvault.security.EncryptedDocumentStore
+import com.kaagazvault.security.MissingEncryptionKeyException
+import com.kaagazvault.security.VaultAccessController
+import com.kaagazvault.security.VaultAccessUiState
+import com.kaagazvault.security.VaultRuntime
+import com.kaagazvault.security.VaultSession
 import com.kaagazvault.sync.SettingsMergeDecision
 import com.kaagazvault.sync.SettingsPairingTicket
 import com.kaagazvault.sync.SettingsSyncCrypto
@@ -82,52 +90,170 @@ import java.io.InputStream
 import java.security.GeneralSecurityException
 import java.util.concurrent.Executors
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     private val ioExecutor = Executors.newSingleThreadExecutor()
-    private var databaseProvider: VaultDatabaseProvider? = null
+    private var accessController: VaultAccessController? = null
+    private var screenOffReceiverRegistered = false
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                accessController?.lockNow("Vault locked because the screen turned off.")
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Keep sensitive document previews out of the app switcher snapshot.
+        // Keep sensitive document previews and the recovery key out of app-switcher snapshots.
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        val store = EncryptedDocumentStore(
-            java.io.File(filesDir, "encrypted_documents"),
-            AndroidKeystoreDocumentKeyProvider {
-                java.io.File(filesDir, "encrypted_documents").listFiles()
-                    ?.any { it.name.endsWith(".kgv") || it.name.endsWith(".backup") } == true
-            }
+
+        val controller = VaultAccessController(this, VaultSession())
+        accessController = controller
+        // Activity stop does not cover every screen-off transition. Keep an explicit system
+        // receiver while this Activity exists, and lock synchronously on the main thread.
+        ContextCompat.registerReceiver(
+            this,
+            screenOffReceiver,
+            IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        val provider = VaultDatabaseProvider(applicationContext)
-        databaseProvider = provider
-        val repository = DocumentRepository(
-            contentResolver,
-            store,
-            EncryptedMetadataIndexProvider(provider)
-        )
-        val ocrEngine = OfflineOcrEngine(applicationContext)
-        val reminderRepository = ReminderRepository(applicationContext, provider)
+        screenOffReceiverRegistered = true
         setContent {
+            val accessState by controller.uiState
+            LaunchedEffect(Unit) { controller.initialize() }
             KaagazTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    VaultHomeScreen(
-                        lifecycleOwner = this@MainActivity,
-                        repository = repository,
-                        ocrEngine = ocrEngine,
-                        reminderRepository = reminderRepository,
-                        submitIo = { work -> ioExecutor.execute(work) }
-                    )
+                    when (val state = accessState) {
+                        is VaultAccessUiState.Ready -> {
+                            val runtime: VaultRuntime = state.runtime
+                            VaultHomeScreen(
+                                lifecycleOwner = this@MainActivity,
+                                repository = runtime.documents,
+                                ocrEngine = runtime.ocr,
+                                reminderRepository = runtime.reminders,
+                                submitIo = { work -> ioExecutor.execute(work) }
+                            )
+                        }
+                        else -> VaultAccessScreen(state = state, controller = controller)
+                    }
                 }
             }
         }
     }
 
+    override fun onStop() {
+        accessController?.onActivityStopped()
+        super.onStop()
+    }
+
     override fun onDestroy() {
-        databaseProvider?.let { provider -> ioExecutor.execute { provider.close() } }
-        ioExecutor.shutdown()
+        if (screenOffReceiverRegistered) {
+            unregisterReceiver(screenOffReceiver)
+            screenOffReceiverRegistered = false
+        }
+        accessController?.dispose()
+        accessController = null
+        ioExecutor.shutdownNow()
         super.onDestroy()
     }
 }
 
+@Composable
+private fun VaultAccessScreen(
+    state: VaultAccessUiState,
+    controller: VaultAccessController
+) {
+    var recoveryKey by remember(state) { mutableStateOf("") }
+    var recoveryConfirmation by remember(state) { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(24.dp))
+        Text("KAAGAZ VAULT", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(
+            "Your documents stay on this device. Unlock access before opening the vault.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        when (state) {
+            VaultAccessUiState.Initializing -> {
+                CircularProgressIndicator()
+                Text("Checking protected vault state…")
+            }
+            is VaultAccessUiState.SetupRequired -> {
+                Text("Set up device authentication and create a recovery key before storing documents.")
+                state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Button(onClick = controller::beginSetup, modifier = Modifier.fillMaxWidth()) {
+                    Text("Set up secure vault")
+                }
+            }
+            is VaultAccessUiState.Locked -> {
+                Text("The vault is locked. Authenticate to access your documents.")
+                state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Button(onClick = controller::beginUnlock, modifier = Modifier.fillMaxWidth()) {
+                    Text("Unlock vault")
+                }
+            }
+            is VaultAccessUiState.ConfirmRecoveryKey -> {
+                Text("Save this recovery key somewhere private and offline. Anyone with it may be able to restore vault access.")
+                Card(Modifier.fillMaxWidth()) {
+                    SelectionContainer {
+                        Text(
+                            state.key,
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+                state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                OutlinedTextField(
+                    value = recoveryConfirmation,
+                    onValueChange = { recoveryConfirmation = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Re-enter the full recovery key") },
+                    supportingText = { Text("Confirmation must match exactly.") }
+                )
+                Button(
+                    onClick = { controller.confirmRecoveryKeyStored(recoveryConfirmation) },
+                    enabled = recoveryConfirmation.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Confirm saved recovery key") }
+            }
+            is VaultAccessUiState.RecoveryRequired -> {
+                Text(
+                    "Normal unlock is unavailable. Enter your existing recovery key. Do not reset or reinstall the app while recovery is unresolved.",
+                    color = MaterialTheme.colorScheme.error
+                )
+                Text(state.message)
+                OutlinedTextField(
+                    value = recoveryKey,
+                    onValueChange = { recoveryKey = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Recovery key") },
+                    supportingText = { Text("The key is used locally and is not sent to a server.") }
+                )
+                Button(
+                    onClick = { controller.recoverWithKey(recoveryKey.trim()) },
+                    enabled = recoveryKey.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Restore access") }
+            }
+            is VaultAccessUiState.Migrating -> {
+                CircularProgressIndicator()
+                Text(state.message)
+                Text("Keep the app open while protected data is verified. Existing files are not intentionally deleted by this screen.")
+            }
+            is VaultAccessUiState.Ready -> Unit
+        }
+    }
+}
 @Composable
 private fun VaultHomeScreen(
     lifecycleOwner: androidx.lifecycle.LifecycleOwner,
@@ -159,15 +285,40 @@ private fun VaultHomeScreen(
     val activeTypography = if (simplifiedMode.value) MaterialTheme.typography.simplified() else MaterialTheme.typography
     val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
+    // The authenticated home tree is removed on lock. Clear document metadata and zero any
+    // pending settings-transfer buffers rather than leaving them referenced by disposed UI state.
+    DisposableEffect(Unit) {
+        onDispose {
+            documents.clear()
+            pendingExportBundle?.fill(0)
+            pendingImportBundle?.fill(0)
+        }
+    }
+
     fun refresh(message: String? = null) {
         submitIo {
             runCatching { repository.list() }.onSuccess { result ->
                 mainHandler.post {
                     documents.clear(); documents.addAll(result)
                     searchAvailable = repository.encryptedSearchAvailable
-                    status = message ?: if (result.isEmpty()) "Your private shelf is ready for its first document." else "${result.size} document(s) safely stored on this device."
+                    val unreadableCount = result.count { !it.isReadable }
+                    status = if (unreadableCount > 0) {
+                        unreadableDocumentNotice(unreadableCount)
+                    } else {
+                        message ?: if (result.isEmpty()) "Your private shelf is ready for its first document." else "${result.size} document(s) safely stored on this device."
+                    }
                 }
-            }.onFailure { mainHandler.post { status = "Could not unlock stored documents. Existing data was left untouched." } }
+            }.onFailure { error ->
+                mainHandler.post {
+                    documents.clear()
+                    searchAvailable = false
+                    status = if (error is MissingEncryptionKeyException) {
+                        "Vault encryption key unavailable. Existing encrypted files were left unchanged; no replacement key was created."
+                    } else {
+                        "Could not read the vault. Existing encrypted files were left untouched."
+                    }
+                }
+            }
         }
     }
 
@@ -231,7 +382,7 @@ private fun VaultHomeScreen(
                     submitIo {
                         runCatching { repository.importBytes("Scan_${System.currentTimeMillis()}.jpg", "image/jpeg", bytes) }
                             .onSuccess { imported -> mainHandler.post { playVaultSuccess(view); busy = false; status = "Captured privately: ${imported.displayName}"; refresh() } }
-                            .onFailure { mainHandler.post { busy = false; status = "Capture could not be encrypted. No document was added." } }
+                            .onFailure { error -> mainHandler.post { busy = false; status = documentFailureMessage(error, "Capture could not be encrypted. No document was added.") } }
                     }
                 }
             )
@@ -292,14 +443,44 @@ private fun VaultHomeScreen(
                     onSearch = {
                         busy = true
                         submitIo {
-                            runCatching { repository.search(query) }.onSuccess { result -> mainHandler.post { documents.clear(); documents.addAll(result); searchAvailable = repository.encryptedSearchAvailable; status = "Found ${result.size} local result(s)."; busy = false } }
-                                .onFailure { mainHandler.post { busy = false; status = "Search failed. Your encrypted documents were left untouched." } }
+                            runCatching { repository.search(query) }.onSuccess { result ->
+                                mainHandler.post {
+                                    documents.clear()
+                                    documents.addAll(result)
+                                    searchAvailable = repository.encryptedSearchAvailable
+                                    val unreadableCount = result.count { !it.isReadable }
+                                    status = if (unreadableCount > 0) {
+                                        unreadableDocumentNotice(unreadableCount)
+                                    } else {
+                                        "Found ${result.count { it.isReadable }} local result(s)."
+                                    }
+                                    busy = false
+                                }
+                            }.onFailure { error ->
+                                mainHandler.post {
+                                    busy = false
+                                    documents.clear()
+                                    searchAvailable = false
+                                    status = if (error is MissingEncryptionKeyException) {
+                                        "Vault encryption key unavailable. Existing encrypted files were left unchanged; no replacement key was created."
+                                    } else {
+                                        "Search failed. Your encrypted documents were left untouched."
+                                    }
+                                }
+                            }
                         }
                     },
                     onClear = { query = ""; refresh("Showing all local documents.") }
                 )
                 ReminderSection(context, reminderRepository, submitIo, mainHandler, simplifiedMode.value)
-                SectionTitle("YOUR DOCUMENTS", "${documents.size} private item${if (documents.size == 1) "" else "s"}", simplifiedMode.value)
+                val readableDocumentCount = documents.count { it.isReadable }
+                val unreadableDocumentCount = documents.size - readableDocumentCount
+                val documentSummary = if (unreadableDocumentCount > 0) {
+                    "$readableDocumentCount readable • $unreadableDocumentCount cannot open"
+                } else {
+                    "$readableDocumentCount private item${if (readableDocumentCount == 1) "" else "s"}"
+                }
+                SectionTitle("YOUR DOCUMENTS", documentSummary, simplifiedMode.value)
                 AnimatedVisibility(visible = documents.isEmpty(), enter = vaultFadeIn(), exit = vaultFadeOut()) {
                     EmptyVaultCard(simplified = simplifiedMode.value, onImport = { playVaultClick(view); picker.launch(arrayOf("application/pdf", "image/*")) })
                 }
@@ -458,9 +639,43 @@ private fun EmptyVaultCard(simplified: Boolean, onImport: () -> Unit) {
     }
 }
 
+private fun unreadableDocumentNotice(count: Int): String =
+    "$count encrypted document(s) cannot be opened. Their names and contents are hidden; stored files were left unchanged."
+
+@Composable
+private fun UnreadableDocumentCard(simplified: Boolean) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+    ) {
+        Column(
+            Modifier.padding(if (simplified) SimplifiedLayout.cardPadding else 18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                "Unreadable encrypted document",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Text(
+                "This item cannot be opened. Its name and contents are hidden, and the encrypted file has not been changed.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+        }
+    }
+}
+
 @Composable
 private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: Boolean, ocrEngine: OfflineOcrEngine, repository: DocumentRepository, submitIo: (() -> Unit) -> Unit, mainHandler: Handler, onDone: (String) -> Unit) {
+    if (!document.isReadable) {
+        UnreadableDocumentCard(simplified)
+        return
+    }
     var editedOcr by remember(document.id, document.ocrText) { mutableStateOf(document.ocrText.orEmpty()) }
+    val editedFields = remember(document.id, document.structuredFields) { mutableStateListOf(*document.structuredFields.toTypedArray()) }
     var showReview by remember(document.id) { mutableStateOf(false) }
     var showDeleteConfirm by remember(document.id) { mutableStateOf(false) }
     val view = LocalView.current
@@ -475,14 +690,33 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: 
                 Text("Text extraction • ${if (document.ocrReviewed) "reviewed" else "needs review"}", style = MaterialTheme.typography.labelMedium, color = if (document.ocrReviewed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary)
                 if (showReview) {
                     OutlinedTextField(editedOcr, { editedOcr = it }, Modifier.fillMaxWidth(), label = { Text("Review extracted text") }, minLines = 3, maxLines = 8, enabled = !busy, shape = RoundedCornerShape(16.dp))
-                    SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { mainHandler.post { onDone("Could not save OCR corrections. Existing data was left untouched.") } } } }, enabled = !busy, simplified = simplified, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
+                    SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedOcr(document.id, editedOcr) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Corrections saved privately. Verify every field before relying on it.") } }.onFailure { error -> mainHandler.post { onDone(documentFailureMessage(error, "Could not save OCR corrections. Existing data was left untouched.")) } } } }, enabled = !busy, simplified = simplified, label = if (document.ocrReviewed) "Save corrections" else "Save and mark reviewed")
                     TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); showReview = false }, enabled = !busy) { Text("Hide extracted text") }
+                    if (editedFields.isNotEmpty()) {
+                        Text("Suggested fields — confirm each value before relying on it", style = MaterialTheme.typography.labelMedium)
+                        editedFields.forEachIndexed { index, field ->
+                            OutlinedTextField(
+                                value = field.value,
+                                onValueChange = { value -> editedFields[index] = field.copy(value = value, accepted = false, method = if (value == field.value) field.method else "user-edited; original OCR excerpt may not match edited value") },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(field.type.replaceFirstChar { it.uppercase() }) },
+                                supportingText = { Text("${if (field.method.startsWith("user-edited")) "Original OCR excerpt (may not match edited value)" else "Source"}: ${field.sourceExcerpt}\nMethod: ${field.method}${if (field.uncertain) " • uncertain" else ""}") },
+                                enabled = !busy,
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(checked = field.accepted, onCheckedChange = { accepted -> editedFields[index] = field.copy(accepted = accepted) }, enabled = !busy)
+                                Text("I confirm this value", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        SoftButton(onClick = { submitIo { runCatching { repository.saveReviewedFields(document.id, editedFields.toList()) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Field review saved inside encrypted document storage.") } }.onFailure { error -> mainHandler.post { onDone(documentFailureMessage(error, "Could not save field review. Existing data was left untouched.")) } } } }, enabled = !busy, simplified = simplified, label = "Save confirmed fields")
+                    }
                 } else {
                     Text("Extracted text is hidden until you choose to review it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SoftButton(onClick = { showReview = true }, enabled = !busy, simplified = simplified, label = "Review extracted text")
                 }
             } else if (document.mimeType.startsWith("image/") || document.mimeType == "application/pdf") {
-                SoftButton(onClick = { submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { mainHandler.post { onDone("Offline text extraction failed. The original remains stored.") } } } }, enabled = !busy, simplified = simplified, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
+                SoftButton(onClick = { submitIo { runCatching { repository.recognizeDocument(document.id, ocrEngine) }.onSuccess { mainHandler.post { playVaultSuccess(view); onDone("Text extracted locally. Review it before relying on any field.") } }.onFailure { error -> mainHandler.post { onDone(documentFailureMessage(error, "Offline text extraction failed. The original remains stored.")) } } } }, enabled = !busy, simplified = simplified, label = if (document.mimeType == "application/pdf") "Extract text offline" else "Recognize text offline")
             }
             TextButton(modifier = Modifier.heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp), onClick = { playVaultClick(view); showDeleteConfirm = true }, enabled = !busy) { Text("Remove document") }
         }
@@ -507,7 +741,14 @@ private fun DocumentCard(document: ImportedDocument, busy: Boolean, simplified: 
 @Composable
 private fun SoftButton(onClick: () -> Unit, enabled: Boolean, simplified: Boolean = false, label: String) { VaultTonalButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = if (simplified) SimplifiedLayout.controlMinHeight else 0.dp)) { Text(label) } }
 
+private fun vaultKeyUnavailableMessage(): String =
+    "Vault encryption key unavailable. Existing encrypted files were left unchanged; no replacement key was created."
+
+private fun documentFailureMessage(error: Throwable, fallback: String): String =
+    if (error is MissingEncryptionKeyException) vaultKeyUnavailableMessage() else fallback
+
 private fun safeMessage(error: Exception): String = when (error) {
+    is MissingEncryptionKeyException -> vaultKeyUnavailableMessage()
     is com.kaagazvault.documents.DocumentTooLargeException -> "This file exceeds the 31 MiB limit. Nothing was saved."
     is com.kaagazvault.documents.UnsupportedDocumentTypeException -> "Choose a supported PDF or image file. Nothing was saved."
     is IOException -> "Import failed. No document was added."

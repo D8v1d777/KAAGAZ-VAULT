@@ -51,12 +51,13 @@ Kaagaz Vault keeps the experience quiet and tactile. Import or scan a paper, let
 - User-selected PDF/image import with no broad storage permission.
 - Offline Tesseract OCR for English, Hindi, and Telugu with pinned model files and integrity checks.
 - Human-editable OCR text and an explicit review state stored with the encrypted payload.
+- Bounded offline suggestions for dates, amounts, labelled identifiers, and names, shown with source excerpts and uncertainty labels; values remain unaccepted until the user edits and confirms them, and reviewed fields stay inside the encrypted payload.
 - SQLCipher-backed metadata search with encrypted-index and in-memory fallback paths.
 - User-initiated CameraX capture with in-memory JPEG handling and direct encrypted import.
 - Calm motion, restrained haptics, accessibility-aware typography, simplified mode, and privacy-safe app-switcher surfaces.
 - Local encrypted transfer of allowlisted accessibility settings only; document images, OCR text, reminders, and recordings stay out of that flow.
 
-**These are implemented code paths, not a claim of release readiness.** The CO-00 settings-sync correction and regression tests passed the full configured Android CI gate on exact code/test SHA `255424c96e3ee1ab88eb6c41b3aec955605f7c3a` in [run #326](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39363536166), including Python policy tests, debug/release builds, JVM unit tests, lint, and the merged-manifest policy gate. Earlier candidate SHA `c2a783385ade3f59144eb282a2983ebf1eab3720` also passed in [run #324](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39361833253), and documentation-only SHA `e6db4d368ccb44499c285888fc2cdadb71bace65` passed in [run #325](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39362435654). The pre-fix source SHA `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489` failed [run #323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) at `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview`; the failing regression is fixed on the cited candidate. These results apply only to the named SHAs and do not establish release readiness. Physical-device camera/OCR tests and on-device database-leakage tests have not been run.
+**These are implemented code paths, not a claim of release readiness.** Candidate source SHA `bbea1eb7a697d89c06f27fbc725dbfa175ee50e5` passed both standard and Android emulator jobs in [run #565](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39758879722). The standard gate passed debug/release builds, JVM tests, lint, Python policy tests, offline-manifest policy, normal dependency verification, `assembleDebugAndroidTest`, and the OCR model task's explicit `UP-TO-DATE` check. The emulator ran 11 instrumentation tests and reported `BUILD SUCCESSFUL in 4m 36s`. The verified dependency metadata includes AndroidX Test and Biometric artifacts; model preparation verifies both SHA-256 and Git-blob SHA-1 pins and is cacheable. This remains emulator evidence using synthetic keys/database; production `DatabaseKeyManager` fixed-alias migration, actual OS-driven screen-off/background delivery, true process death/restart, biometric enrollment changes, and physical-device behavior remain unverified. Independent human security review and the G2 decision on the fail-closed legacy-key fallback remain outstanding. PR #48 and #49 stay draft/unmerged; no release approval is implied.
 
 ## Privacy is the product
 
@@ -86,12 +87,16 @@ The app is not release-approved yet. Secure deletion is not guaranteed, physical
 - compileSdk / targetSdk 36 · provisional minSdk 24
 - Compose BOM 2026.04.01
 
-The Gradle wrapper is checked in. The configured CI sequence runs the script tests, Android build, JVM unit tests, lint, and the offline-manifest check. Never claim a build or test pass without a completed run.
+The Gradle wrapper is checked in. The configured CI sequence runs script tests, debug/release builds, AndroidTest compilation, JVM unit tests, lint, the OCR model task up-to-date check, and the offline-manifest check. Gradle dependency verification is enforced by the committed `gradle/verification-metadata.xml`. SHA-256 checksums cover resolved dependency artifacts and module metadata; metadata verification is enabled, while publisher-signature verification is not. Treat checksum changes as supply-chain-sensitive: for intentional dependency upgrades, regenerate metadata on a dedicated review branch with `./gradlew --no-daemon --refresh-dependencies --write-verification-metadata sha256 assembleDebug assembleRelease assembleDebugAndroidTest testDebugUnitTest lint`, review every changed component and checksum against its source, and commit only the reviewed result. Never blindly accept generated checksums.
+
+The app's runtime OCR path is local/offline, but a fresh build needs network access to retrieve the three pinned Tesseract model files at revision `87416418657359cb625c412a48b6e1d6d41c29bd`. Downloads retry up to three times on transient network failures; the build validates both SHA-256 and Git-blob SHA-1 before adding a model to generated assets. This is a build-time network requirement, not an app INTERNET permission or a runtime cloud OCR dependency.
+
+For an offline build after Gradle dependencies are already cached, pre-seed the exact validated files as `app/build/generated/ocr-assets/tessdata/eng.traineddata`, `hin.traineddata`, and `tel.traineddata`, then run `./gradlew --no-daemon :app:assembleDebug` without `clean`. The task checks both pinned hashes for existing files; invalid or mismatched files fail closed or are replaced by a validated download. If you need a clean offline build, run `clean` first, then copy trusted, previously verified model files into that directory before building. Running `clean` removes generated/pre-seeded outputs. Never commit model binaries. Never claim a build or test pass without a completed run.
 
 ```bash
 git clone https://github.com/D8v1d777/KAAGAZ-VAULT.git
 cd KAAGAZ-VAULT
-./gradlew --no-daemon clean assembleDebug testDebugUnitTest lint
+./gradlew --no-daemon clean assembleDebug assembleRelease assembleDebugAndroidTest testDebugUnitTest lint
 ```
 
 ## Contributing with care

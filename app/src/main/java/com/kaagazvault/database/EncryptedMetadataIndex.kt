@@ -8,22 +8,27 @@ import java.util.Locale
  * Searchable names and OCR text are duplicated only inside the SQLCipher database.
  * This v1 index supports normalized substring/phrase search, not ranked token search.
  */
-internal class EncryptedMetadataIndex(private val dao: DocumentMetadataDao) {
+internal class EncryptedMetadataIndex(
+    private val dao: DocumentMetadataDao,
+    private val provider: VaultDatabaseProvider? = null
+) {
+    private fun <T> withDao(operation: (DocumentMetadataDao) -> T): T =
+        provider?.withDatabase { database -> operation(database.documentMetadataDao()) } ?: operation(dao)
     fun upsert(document: ImportedDocument) {
-        dao.upsert(document.toEntity())
+        withDao { it.upsert(document.toEntity()) }
     }
 
     fun delete(id: String) {
-        dao.deleteById(id)
+        withDao { it.deleteById(id) }
     }
 
     fun rebuild(documents: List<ImportedDocument>) {
-        dao.replaceAll(documents.map { it.toEntity() })
+        withDao { it.replaceAll(documents.map { document -> document.toEntity() }) }
     }
 
     fun search(query: String): List<String> {
         val normalized = normalize(query)
-        return dao.search(normalized).map { it.id }
+        return withDao { dao -> dao.search(normalized).map { it.id } }
     }
 
     private fun ImportedDocument.toEntity() = DocumentMetadataEntity(

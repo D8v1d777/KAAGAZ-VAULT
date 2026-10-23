@@ -6,7 +6,7 @@ import com.kaagazvault.database.EncryptedMetadataIndex
 import com.kaagazvault.database.EncryptedMetadataIndexProvider
 import com.kaagazvault.ocr.OfflineOcrEngine
 import com.kaagazvault.security.EncryptedDocumentStore
-import java.io.ByteArrayOutputStream
+import com.kaagazvault.security.VaultSession
 import java.io.IOException
 import java.security.GeneralSecurityException
 
@@ -15,10 +15,13 @@ import java.security.GeneralSecurityException
  * Names, MIME metadata, and OCR output are stored inside the encrypted payload.
  */
 internal class DocumentRepository(
-    private val resolver: ContentResolver,
+    private val resolver: ContentResolver?,
     private val store: EncryptedDocumentStore,
-    private val metadataIndexProvider: EncryptedMetadataIndexProvider? = null
+    private val metadataIndexProvider: EncryptedMetadataIndexProvider? = null,
+    private val session: VaultSession? = null
 ) {
+    private fun <T> withVaultSession(operation: () -> T): T =
+        session?.withKey { operation() } ?: operation()
     @Volatile
     var encryptedSearchAvailable: Boolean = false
         private set
@@ -33,25 +36,33 @@ internal class DocumentRepository(
             .getOrNull()
     }
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun import(uri: Uri): ImportedDocument {
-        val mimeType = resolver.getType(uri)?.lowercase()
+    fun import(uri: Uri): ImportedDocument = withVaultSession { importInternal(uri) }
+
+    private fun importInternal(uri: Uri): ImportedDocument {
+        val contentResolver = resolver ?: throw IOException("Document import is unavailable")
+        val mimeType = contentResolver.getType(uri)?.lowercase()
             ?: throw IOException("Could not determine the selected file type")
         if (mimeType != PDF_MIME && !mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
 
-        val displayName = queryDisplayName(uri)
-        val content = resolver.openInputStream(uri)?.use { input ->
-            val output = ByteArrayOutputStream()
+        val displayName = queryDisplayName(uri, contentResolver)
+        val content = contentResolver.openInputStream(uri)?.use { input ->
+            val output = WipingByteArrayOutputStream(DEFAULT_BUFFER_SIZE)
             val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-            var total = 0
-            while (true) {
-                val count = input.read(buffer)
-                if (count < 0) break
-                total += count
-                if (total > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
-                output.write(buffer, 0, count)
+            try {
+                var total = 0
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    total += count
+                    if (total > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
+                    output.write(buffer, 0, count)
+                }
+                if (total == 0) throw IOException("The selected document is empty")
+                output.copyAndClear()
+            } finally {
+                buffer.fill(0)
+                output.clear()
             }
-            if (total == 0) throw IOException("The selected document is empty")
-            output.toByteArray()
         } ?: throw IOException("Could not open the selected document")
 
         return saveContent(displayName, mimeType, content)
@@ -59,96 +70,198 @@ internal class DocumentRepository(
 
     @Throws(IOException::class, GeneralSecurityException::class)
     fun importBytes(displayName: String, mimeType: String, content: ByteArray): ImportedDocument =
-        saveContent(displayName, mimeType.lowercase(), content)
+        withVaultSession { saveContent(displayName, mimeType.lowercase(), content) }
 
     @Throws(IOException::class, GeneralSecurityException::class)
     private fun saveContent(displayName: String, mimeType: String, content: ByteArray): ImportedDocument {
-        if (content.isEmpty()) throw IOException("The selected document is empty")
-        if (content.size > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
-        if (mimeType != PDF_MIME && !mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
-        if (!DocumentSignatureValidator.isSupported(mimeType, content)) throw UnsupportedDocumentTypeException()
+        var encodedPayload: ByteArray? = null
+        try {
+            if (content.isEmpty()) throw IOException("The selected document is empty")
+            if (content.size > DocumentPayloadCodec.MAX_CONTENT_BYTES) throw DocumentTooLargeException()
+            if (mimeType != PDF_MIME && !mimeType.startsWith("image/")) throw UnsupportedDocumentTypeException()
+            if (!DocumentSignatureValidator.isSupported(mimeType, content)) throw UnsupportedDocumentTypeException()
 
-        val safeName = displayName.filterNot { it.isISOControl() }
-            .substringAfterLast('/')
-            .trim()
-            .take(MAX_NAME_LENGTH)
-            .ifBlank { "Imported document" }
-        val id = store.save(DocumentPayloadCodec.encode(ImportedPayload(safeName, mimeType, content)))
-        val imported = ImportedDocument(id, safeName, mimeType, content.size)
-        updateIndex { it.upsert(imported) }
-        return imported
+            val safeName = displayName.filterNot { it.isISOControl() }
+                .substringAfterLast('/')
+                .trim()
+                .take(MAX_NAME_LENGTH)
+                .ifBlank { "Imported document" }
+            encodedPayload = DocumentPayloadCodec.encode(ImportedPayload(safeName, mimeType, content))
+            val id = store.save(encodedPayload)
+            val imported = ImportedDocument(id, safeName, mimeType, content.size)
+            updateIndex { it.upsert(imported) }
+            return imported
+        } finally {
+            // Import buffers are consumed by this operation. Do not leave plaintext document bytes
+            // or the serialized payload reachable after success, validation failure, or I/O failure.
+            encodedPayload?.fill(0)
+            content.fill(0)
+        }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun recognizeDocument(id: String, engine: OfflineOcrEngine): ImportedDocument {
-        val payload = DocumentPayloadCodec.decode(store.read(id))
-        val result = when {
-            payload.mimeType.startsWith("image/") -> engine.recognizeImage(payload.content)
-            payload.mimeType == PDF_MIME -> engine.recognizePdf(payload.content)
-            else -> throw UnsupportedDocumentTypeException()
-        }
-        store.replace(
-            id,
-            DocumentPayloadCodec.encode(payload.copy(
+    fun recognizeDocument(id: String, engine: OfflineOcrEngine): ImportedDocument =
+        withVaultSession { recognizeDocumentInternal(id, engine) }
+
+    private fun recognizeDocumentInternal(id: String, engine: OfflineOcrEngine): ImportedDocument {
+        val encoded = store.read(id)
+        val payload = try { DocumentPayloadCodec.decode(encoded) } finally { encoded.fill(0) }
+        try {
+            val result = when {
+                payload.mimeType.startsWith("image/") -> engine.recognizeImage(payload.content)
+                payload.mimeType == PDF_MIME -> engine.recognizePdf(payload.content)
+                else -> throw UnsupportedDocumentTypeException()
+            }
+            val replacement = DocumentPayloadCodec.encode(payload.copy(
                 ocrText = result.text.take(MAX_OCR_CHARACTERS),
                 ocrConfidence = result.meanConfidence,
                 ocrReviewed = false,
                 ocrTruncated = result.truncated || result.text.length > MAX_OCR_CHARACTERS,
                 ocrSource = result.source,
-                ocrLanguages = result.languages
+                ocrLanguages = result.languages,
+                structuredFields = StructuredFieldExtractor.extract(result.text.take(MAX_OCR_CHARACTERS))
             ))
-        )
-        val updated = toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
-        updateIndex { it.upsert(updated) }
-        return updated
+            try {
+                store.replace(id, replacement)
+            } finally {
+                replacement.fill(0)
+            }
+            val updatedEncoded = store.read(id)
+            val updatedPayload = try { DocumentPayloadCodec.decode(updatedEncoded) } finally { updatedEncoded.fill(0) }
+            val updated = try { toDocument(updatedPayload, id) } finally { updatedPayload.content.fill(0) }
+            updateIndex { it.upsert(updated) }
+            return updated
+        } finally {
+            payload.content.fill(0)
+        }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun saveReviewedOcr(id: String, correctedText: String): ImportedDocument {
-        val payload = DocumentPayloadCodec.decode(store.read(id))
-        if (payload.ocrText == null) throw IOException("No OCR result exists for this document")
-        store.replace(
-            id,
-            DocumentPayloadCodec.encode(payload.copy(
+    fun saveReviewedOcr(id: String, correctedText: String): ImportedDocument =
+        withVaultSession { saveReviewedOcrInternal(id, correctedText) }
+
+    @Throws(IOException::class, GeneralSecurityException::class)
+    fun saveReviewedFields(id: String, fields: List<StructuredField>): ImportedDocument =
+        withVaultSession { saveReviewedFieldsInternal(id, fields) }
+
+    private fun saveReviewedFieldsInternal(id: String, fields: List<StructuredField>): ImportedDocument {
+        val encoded = store.read(id)
+        val payload = try { DocumentPayloadCodec.decode(encoded) } finally { encoded.fill(0) }
+        try {
+            if (payload.ocrText == null) throw IOException("No OCR result exists for this document")
+            val bounded = fields.take(8).map { field ->
+                field.copy(value = field.value.trim().take(120), accepted = field.accepted && field.value.isNotBlank())
+            }.filter { it.value.isNotBlank() }
+            val replacement = DocumentPayloadCodec.encode(payload.copy(structuredFields = bounded))
+            try { store.replace(id, replacement) } finally { replacement.fill(0) }
+            val updatedEncoded = store.read(id)
+            val updatedPayload = try { DocumentPayloadCodec.decode(updatedEncoded) } finally { updatedEncoded.fill(0) }
+            val updated = try { toDocument(updatedPayload, id) } finally { updatedPayload.content.fill(0) }
+            updateIndex { it.upsert(updated) }
+            return updated
+        } finally { payload.content.fill(0) }
+    }
+
+    private fun saveReviewedOcrInternal(id: String, correctedText: String): ImportedDocument {
+        val encoded = store.read(id)
+        val payload = try { DocumentPayloadCodec.decode(encoded) } finally { encoded.fill(0) }
+        try {
+            if (payload.ocrText == null) throw IOException("No OCR result exists for this document")
+            val replacement = DocumentPayloadCodec.encode(payload.copy(
                 ocrText = correctedText.take(MAX_OCR_CHARACTERS),
                 ocrReviewed = true,
-                ocrTruncated = correctedText.length > MAX_OCR_CHARACTERS
+                ocrTruncated = correctedText.length > MAX_OCR_CHARACTERS,
+                // OCR edits invalidate old suggestions and any confirmations tied to them.
+                // Re-extract from the corrected text; every new suggestion starts unaccepted.
+                structuredFields = StructuredFieldExtractor.extract(correctedText.take(MAX_OCR_CHARACTERS))
             ))
-        )
-        val updated = toDocument(DocumentPayloadCodec.decode(store.read(id)), id)
-        updateIndex { it.upsert(updated) }
-        return updated
+            try {
+                store.replace(id, replacement)
+            } finally {
+                replacement.fill(0)
+            }
+            val updatedEncoded = store.read(id)
+            val updatedPayload = try { DocumentPayloadCodec.decode(updatedEncoded) } finally { updatedEncoded.fill(0) }
+            val updated = try { toDocument(updatedPayload, id) } finally { updatedPayload.content.fill(0) }
+            updateIndex { it.upsert(updated) }
+            return updated
+        } finally {
+            payload.content.fill(0)
+        }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun list(): List<ImportedDocument> {
-        val documents = store.listIds().mapNotNull { id ->
-            runCatching { toDocument(DocumentPayloadCodec.decode(store.read(id)), id) }.getOrNull()
-        }.sortedByDescending { it.displayName.lowercase() }
-        // The encrypted files remain the source of truth; rebuilding repairs stale index rows.
-        updateIndex { it.rebuild(documents) }
+    fun list(): List<ImportedDocument> = withVaultSession { listInternal() }
+
+    private fun listInternal(): List<ImportedDocument> {
+        val documents = store.listIds()
+            .map(::readDocumentOrUnreadablePlaceholder)
+            .sortedWith(
+                compareByDescending<ImportedDocument> { it.displayName.lowercase() }
+                    .thenBy { it.id }
+            )
+        // The encrypted files remain the source of truth; only authenticated payloads enter the
+        // optional searchable index. An unreadable ciphertext remains represented by opaque ID.
+        updateIndex { it.rebuild(documents.filter(ImportedDocument::isReadable)) }
         return documents
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun search(query: String): List<ImportedDocument> {
-        if (query.isBlank()) return list()
+    fun search(query: String): List<ImportedDocument> = withVaultSession { searchInternal(query) }
+
+    private fun searchInternal(query: String): List<ImportedDocument> {
+        // Reconcile every stored ciphertext before applying a query. Otherwise a corrupt item that
+        // does not match its old indexed name could disappear silently from search results.
+        val allDocuments = list()
+        if (query.isBlank()) return allDocuments
+
+        val unreadable = allDocuments.filterNot(ImportedDocument::isReadable)
         val ids = updateIndex { it.search(query) }
-        if (ids != null) {
-            val matched = ids.mapNotNull { id ->
-                runCatching { toDocument(DocumentPayloadCodec.decode(store.read(id)), id) }.getOrNull()
+        val readableMatches = if (ids != null) {
+            allDocuments.filter { it.isReadable && it.id in ids }
+        } else {
+            val normalized = EncryptedMetadataIndex.normalize(query)
+            allDocuments.filter { document ->
+                document.isReadable &&
+                    EncryptedMetadataIndex.normalize(document.displayName + " " + document.ocrText.orEmpty())
+                        .contains(normalized)
             }
-            return matched
         }
-        val normalized = EncryptedMetadataIndex.normalize(query)
-        return list().filter { document ->
-            EncryptedMetadataIndex.normalize(document.displayName + " " + document.ocrText.orEmpty())
-                .contains(normalized)
+        return readableMatches + unreadable
+    }
+
+    /**
+     * Only per-document I/O/authentication/decode failures become placeholders. Key-provider
+     * failures (GeneralSecurityException, including MissingEncryptionKeyException) deliberately
+     * escape so the caller can distinguish vault-key loss from one damaged ciphertext.
+     */
+    private fun readDocumentOrUnreadablePlaceholder(id: String): ImportedDocument {
+        var encodedPayload: ByteArray? = null
+        try {
+            encodedPayload = store.read(id)
+            val payload = DocumentPayloadCodec.decode(encodedPayload)
+            return try {
+                toDocument(payload, id)
+            } finally {
+                payload.content.fill(0)
+            }
+        } catch (_: IOException) {
+            return ImportedDocument(
+                id = id,
+                displayName = UNREADABLE_DOCUMENT_LABEL,
+                mimeType = UNREADABLE_DOCUMENT_MIME,
+                byteSize = 0,
+                isReadable = false
+            )
+        } finally {
+            encodedPayload?.fill(0)
         }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
-    fun delete(id: String) {
+    fun delete(id: String) { withVaultSession { deleteInternal(id) } }
+
+    private fun deleteInternal(id: String) {
         store.delete(id)
         updateIndex { it.delete(id) }
     }
@@ -163,12 +276,13 @@ internal class DocumentRepository(
         ocrReviewed = payload.ocrReviewed,
         ocrTruncated = payload.ocrTruncated,
         ocrSource = payload.ocrSource,
-        ocrLanguages = payload.ocrLanguages
+        ocrLanguages = payload.ocrLanguages,
+        structuredFields = payload.structuredFields
     )
 
-    private fun queryDisplayName(uri: Uri): String {
+    private fun queryDisplayName(uri: Uri, contentResolver: ContentResolver): String {
         val candidate = runCatching {
-            resolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
                 ?.use { cursor ->
                     val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                     if (cursor.moveToFirst() && index >= 0) cursor.getString(index) else null
@@ -182,6 +296,8 @@ internal class DocumentRepository(
     }
 
     companion object {
+        private const val UNREADABLE_DOCUMENT_LABEL = "Unreadable encrypted document"
+        private const val UNREADABLE_DOCUMENT_MIME = "application/octet-stream"
         private const val MAX_NAME_LENGTH = 180
         private const val MAX_OCR_CHARACTERS = 150_000
         private const val PDF_MIME = "application/pdf"
