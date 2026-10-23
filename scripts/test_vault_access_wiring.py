@@ -80,8 +80,9 @@ class VaultAccessWiringTest(unittest.TestCase):
         self.assertIn("is VaultAccessUiState.Ready, is VaultAccessUiState.Migrating", lifecycle_body)
         self.assertIn("lockNow(", lifecycle_body)
         confirmation_start = lifecycle_body.index("is VaultAccessUiState.ConfirmRecoveryKey")
-        confirmation_end = lifecycle_body.index("\n            else -> Unit", confirmation_start)
+        confirmation_end = lifecycle_body.index("\n            else -> if (purpose != null)", confirmation_start)
         confirmation_body = lifecycle_body[confirmation_start:confirmation_end]
+        self.assertIn("cancelPendingPrompt(", lifecycle_body)
         self.assertIn("pendingVek?.fill(0)", confirmation_body)
         self.assertIn("pendingVek = null", confirmation_body)
         self.assertIn("pendingRecoveryText = null", confirmation_body)
