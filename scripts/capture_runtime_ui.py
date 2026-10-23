@@ -47,10 +47,14 @@ def hierarchy() -> list[dict[str, str]]:
         adb("shell", "uiautomator", "dump", "/sdcard/kaagaz-window.xml", timeout=20, check=False)
         adb("pull", "/sdcard/kaagaz-window.xml", str(TMP), timeout=20)
         root = ET.parse(TMP).getroot()
+        def redact(value: str) -> str:
+            value = value.strip()
+            return "[redacted sensitive text]" if KEY_RE.fullmatch(value) else value
+
         return [
             {
-                "text": node.attrib.get("text", ""),
-                "description": node.attrib.get("content-desc", ""),
+                "text": redact(node.attrib.get("text", "")),
+                "description": redact(node.attrib.get("content-desc", "")),
                 "bounds": node.attrib.get("bounds", ""),
             }
             for node in root.iter("node")
@@ -112,14 +116,15 @@ def save_screenshot(filename: str) -> bool:
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     metadata = {
-        "purpose": "Direct Android emulator screenshots from the installed PR source, never generated mockups",
-        "source_sha": os.environ.get("GITHUB_SHA", "unknown"),
+        "purpose": "Direct Android emulator screenshots from the installed application, not generated mockups",
+        "source_sha": os.environ.get("GITHUB_PR_HEAD_SHA", os.environ.get("GITHUB_SHA", "unknown")),
+        "workflow_sha": os.environ.get("GITHUB_SHA", "unknown"),
         "workflow_run_id": os.environ.get("GITHUB_RUN_ID", "unknown"),
         "android_api": 36,
         "device": "GitHub Actions Android emulator, x86_64, google_apis",
         "screenshots": screenshots,
         "notes": notes,
-        "privacy": "Recovery-key confirmation screen is deliberately never captured; no documents or personal data are created.",
+        "privacy": "Never reads, copies, submits, or captures a recovery key. Sensitive visible text is redacted in parsed hierarchy; temporary XML is removed after every dump.",
     }
     try:
         adb("shell", "pm", "clear", PACKAGE, timeout=30)
@@ -129,7 +134,7 @@ def main() -> int:
             seconds=35,
         )
         if setup_nodes is None:
-            notes.append("SETUP_REQUIRED_SCREEN_NOT_REACHED; no screenshot labelled as setup-required was saved")
+            notes.append("SETUP_REQUIRED_SCREEN_NOT_REACHED; no setup screenshot saved")
             return write_metadata(metadata)
 
         save_screenshot("setup-required-android36.png")
@@ -137,97 +142,46 @@ def main() -> int:
             notes.append("SETUP_BUTTON_NOT_TAPPABLE")
             return write_metadata(metadata)
 
-        # Drive the real system credential prompt only where the emulator exposes it.
-        # Any unknown/error state ends capture rather than creating a substitute screen.
-        key = None
-        pin_sent = False
-        start = time.monotonic()
-        while time.monotonic() - start < 100:
-            nodes = hierarchy()
-            texts = [n["text"].strip() for n in nodes if n["text"].strip()]
-            key = next((value for value in texts if KEY_RE.fullmatch(value)), None)
-            if key:
-                break
-
-            if tap_text(
-                nodes, "Use PIN", "Use screen lock", "Use device screen lock",
-                "Use device credential", "Use password", "Use pattern",
-            ):
-                continue
-
-            pin_prompt = any(
-                marker in " ".join(texts).lower()
-                for marker in ("enter pin", "confirm pin", "screen lock", "device pin", "enter your pin")
-            )
-            if pin_prompt and not pin_sent:
-                adb("shell", "input", "text", PIN)
-                adb("shell", "input", "keyevent", "66")
-                pin_sent = True
-                time.sleep(1.2)
-                # Some Android credential screens expose a confirmation button.
-                next_nodes = hierarchy()
-                tap_text(next_nodes, "OK", "Confirm", "Continue", "Done")
-                continue
-
-            if any("setup failed" in value.lower() or "not available" in value.lower() for value in texts):
-                break
-            time.sleep(0.7)
-
-        if not key:
-            notes.append("FIRST_RUN_AUTH_OR_RECOVERY_FLOW_NOT_REACHED; no recovery screen captured and no key persisted")
-            return write_metadata(metadata)
-
-        # The recovery secret is a generated runtime secret. Use it transiently to complete the
-        # real first-run screen; never save it in a file, screenshot, log, or repository.
-        nodes = hierarchy()
-        field_label = next(
-            (node for node in nodes if node["text"].strip() == "Re-enter the full recovery key"),
-            None,
+        # Capture only the actual authentication prompt. Do not authenticate on behalf of a
+        # user and do not proceed to the screen that displays a recovery secret.
+        recovery_labels = {"Re-enter the full recovery key", "Confirm saved recovery key"}
+        auth_nodes = wait_nodes(
+            lambda ns: (
+                any(
+                    marker in (node["text"] + " " + node["description"]).lower()
+                    for node in ns
+                    for marker in (
+                        "set up kaagaz vault",
+                        "use pin",
+                        "use screen lock",
+                        "use device credential",
+                        "use password",
+                        "confirm your screen lock",
+                        "enter your pin",
+                    )
+                )
+                and not any(
+                    node["text"].strip() in recovery_labels
+                    for node in ns
+                )
+            ),
+            seconds=12,
         )
-        if field_label is None:
-            notes.append("RECOVERY_CONFIRMATION_FIELD_NOT_FOUND; key not captured")
-            key = None
-            return write_metadata(metadata)
-        tap_node(field_label)
-        adb("shell", "input", "text", key)
-        nodes = wait_nodes(lambda ns: any(n["text"].strip() == "Confirm saved recovery key" for n in ns), 8) or hierarchy()
-        if not tap_text(nodes, "Confirm saved recovery key"):
-            notes.append("RECOVERY_CONFIRMATION_BUTTON_NOT_FOUND; home UI not captured")
-            key = None
-            return write_metadata(metadata)
-        key = None
-        nodes = wait_nodes(
-            lambda ns: any("A calmer place" in n["text"] for n in ns)
-            or any(n["text"].strip() == "YOUR DOCUMENTS" for n in ns),
-            seconds=45,
-        )
-        if nodes is None:
-            notes.append("AUTHENTICATED_HOME_NOT_REACHED_AFTER_REAL_SETUP")
-            return write_metadata(metadata)
-        time.sleep(1.5)
-        save_screenshot("vault-home-empty-android36.png")
-
-        # Process restart forces a fresh controller to discover the persisted key record;
-        # the session key is not persisted and must not restore authenticated UI.
-        adb("shell", "am", "force-stop", PACKAGE)
-        adb("shell", "monkey", "-p", PACKAGE, "1", timeout=20)
-        locked_nodes = wait_nodes(
-            lambda ns: any(n["text"].strip() == "Unlock vault" for n in ns),
-            seconds=35,
-        )
-        if locked_nodes is not None:
-            time.sleep(0.8)
-            save_screenshot("vault-locked-after-restart-android36.png")
+        if auth_nodes is not None:
+            save_screenshot("setup-authentication-prompt-android36.png")
+            adb("shell", "input", "keyevent", "4", check=False)
+            notes.append("Authentication prompt captured; setup deliberately left incomplete to avoid handling recovery secret.")
         else:
-            notes.append("RESTARTED_LOCKED_SCREEN_NOT_REACHED; no locked screenshot saved")
+            current_nodes = hierarchy()
+            if any(node["text"].strip() in recovery_labels for node in current_nodes):
+                notes.append("RECOVERY_CONFIRMATION_SCREEN_REACHED_BUT_NOT_CAPTURED; no recovery key read or submitted")
+            else:
+                notes.append("AUTHENTICATION_PROMPT_NOT_REACHED; no prompt screenshot saved")
         return write_metadata(metadata)
     except Exception as exc:
-        # The capture is supplemental evidence. Keep the CI security tests authoritative,
-        # report exactly where capture stopped, and never substitute an illustration.
         notes.append(f"CAPTURE_STOPPED:{type(exc).__name__}:{str(exc)[:250]}")
         print(notes[-1])
         return write_metadata(metadata)
-
 
 def write_metadata(metadata: dict) -> int:
     metadata["screenshots"] = list(screenshots)
