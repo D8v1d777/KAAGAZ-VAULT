@@ -187,6 +187,40 @@ class MainActivityLifecycleInstrumentedTest {
     }
 
     @Test
+    fun screenOffCancelsPendingSetupPromptAndRemovesItsUncommittedAlias() {
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        awaitControllerInitialization(scenario)
+        var testKey: com.kaagazvault.security.AuthBoundVaultKey? = null
+        try {
+            scenario.onActivity { activity ->
+                val controller = controllerOf(activity)
+                val alias = com.kaagazvault.security.AuthBoundVaultKey().newAliasForRecoveryOrSetup()
+                val key = com.kaagazvault.security.AuthBoundVaultKey(alias = alias)
+                val cipher = key.prepareSetupCipher()
+                testKey = key
+                setPrivateField(controller, "purpose", enumPurpose(controller, "SETUP"))
+                setPrivateField(controller, "authKey", key)
+                setPrivateField(controller, "authAlias", alias)
+                setPrivateField(controller, "activeCipher", cipher)
+                controller.uiState.value = VaultAccessUiState.SetupRequired()
+
+                val receiverField = MainActivity::class.java.getDeclaredField("screenOffReceiver")
+                receiverField.isAccessible = true
+                val receiver = requireNotNull(receiverField.get(activity) as? android.content.BroadcastReceiver)
+                receiver.onReceive(activity, android.content.Intent(android.content.Intent.ACTION_SCREEN_OFF))
+
+                assertTrue("screen-off must invalidate the pending setup purpose", privateField(controller, "purpose") == null)
+                assertNull("screen-off must detach the pending CryptoObject", privateField(controller, "activeCipher"))
+                assertFalse("screen-off cancellation must not leave an orphan setup alias", key.hasWrappingKeyAlias())
+                assertTrue("cancelled setup must remain retryable", controller.uiState.value is VaultAccessUiState.SetupRequired)
+            }
+        } finally {
+            scenario.close()
+            try { testKey?.discardAbandonedSetup() } catch (_: Exception) { }
+        }
+    }
+
+    @Test
     fun screenOffReceiverLocksSessionAndClearsAuthenticatedAccess() {
         val syntheticKey = ByteArray(32) { 0x61 }
         val scenario = ActivityScenario.launch(MainActivity::class.java)
