@@ -1,6 +1,6 @@
 # CO-01 / CO-02 — Owner Security Decision Memo
 
-**Status:** Proposed — owner decision required; no production security behavior is approved by this memo.  
+**Status:** Owner policy decision recorded (A2 + B2 + C1); implementation and verification gates remain open. This memo is not implementation or security-verification evidence.  
 **Date:** 2026-10-20  
 **Related:** CO-01 (authentication/session gate), CO-02 (key invalidation/recovery), ADR-0003, Phase 12 plan, Phase 13 lock design.  
 **Decision authority:** Project owner.
@@ -11,7 +11,7 @@
 2. **Recovery:** add an independent, randomly generated high-entropy recovery key that can unwrap the VEK through a separate authenticated envelope. Show it once, require the user to confirm they stored it, and do not silently keep a plaintext copy. Recovery can still fail permanently if the owner loses the recovery key; explain that before vault setup.
 3. **Lock lifecycle:** lock on explicit lock, screen-off, and process restart. Default to immediate lock when the app leaves the foreground; do not add an unrequested inactivity timer in this implementation. In-flight work must drain or be cancelled before the locked state commits, and no repository call may publish plaintext after lock completion.
 4. **Migration:** preserve the existing legacy ciphertext and key material until the new ciphertext has been authenticated by read-back, the SQLCipher database is successfully reopened and checked, and the durable journal records completion. Never silently create replacement keys when protected data already exists.
-5. Keep ADR-0003 Proposed and do not wire the production UI/session until these decisions are explicitly accepted.
+5. ADR-0003 records the accepted policy direction. Do not treat that acceptance as implementation approval: production UI/session wiring remains gated by the API compatibility matrix, instrumented failure tests, migration verification, exact-head CI, physical-device testing, and independent security review.
 
 This is a policy proposal, not a claim that the existing implementation supports all APIs or that the migration is safe today. The API matrix and device tests are acceptance gates.
 
