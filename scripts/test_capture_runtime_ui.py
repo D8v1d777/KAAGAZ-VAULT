@@ -1,4 +1,5 @@
 """Regression tests for strict runtime UI screenshot evidence capture."""
+import base64
 import importlib.util
 import json
 import os
@@ -55,7 +56,7 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
 
     def test_invalid_png_is_nonzero(self):
         def write_invalid_png(*args, **kwargs):
-            return subprocess.CompletedProcess(args[0], 0, b"not a PNG", b"")
+            return subprocess.CompletedProcess(args[0], 0, base64.b64encode(b"not a PNG"), b"")
 
         code, metadata = self.run_in_temp_dir(write_invalid_png)
         self.assertNotEqual(code, 0)
@@ -68,7 +69,7 @@ class CaptureRuntimeUiFailureTests(unittest.TestCase):
         png = CAPTURE.PNG_SIGNATURE + (b"x" * 4096)
 
         def write_valid_png(args, **kwargs):
-            return subprocess.CompletedProcess(args[0], 0, png, b"")
+            return subprocess.CompletedProcess(args[0], 0, base64.b64encode(png), b"")
 
         with patch.dict(os.environ, {
             "GITHUB_PR_HEAD_SHA": "expected-source-sha",
