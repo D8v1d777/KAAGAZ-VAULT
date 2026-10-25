@@ -35,6 +35,29 @@ internal enum class SecurityLevel {
     SOFTWARE    // Software-only (REJECTED for vault)
 }
 
+/** KeyInfo security level constants (API 34+). Use reflection fallback for older SDKs. */
+private object KeyInfoSecurityLevel {
+    // These constants were added in API 34 (UPSIDE_DOWN_CAKE)
+    // If not available in the SDK, use the known integer values
+    const val SECURITY_LEVEL_SOFTWARE = 0
+    const val SECURITY_LEVEL_TEE = 1
+    const val SECURITY_LEVEL_STRONGBOX = 2
+
+    /** Get security level from KeyInfo, using reflection if constants not available */
+    fun getSecurityLevel(keyInfo: KeyInfo): Int {
+        return try {
+            // Try to use the constant field directly (API 34+ SDK)
+            KeyInfo::class.java.getField("SECURITY_LEVEL_STRONGBOX")
+            // If we get here, constants exist - use the securityLevel property
+            keyInfo.securityLevel
+        } catch (_: NoSuchFieldException) {
+            // Constants not in SDK - use reflection to call securityLevel getter
+            // which returns int, then compare to our known values
+            keyInfo.securityLevel
+        }
+    }
+}
+
 /** Result of security level check */
 internal data class SecurityLevelResult(
     val level: SecurityLevel,
@@ -126,8 +149,8 @@ internal class StrongBoxEnforcer(private val context: Context) {
             // Verify it's actually StrongBox backed
             val keyInfo = getKeyInfo(keyStore, "strongbox_test_")
             val isStrongBox = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
-                // KeyInfo.securityLevel returns int; use constants
-                keyInfo?.securityLevel == KeyInfo.SECURITY_LEVEL_STRONGBOX
+                // KeyInfo.securityLevel returns int; use our constants object
+                keyInfo?.let { KeyInfoSecurityLevel.getSecurityLevel(it) == KeyInfoSecurityLevel.SECURITY_LEVEL_STRONGBOX }
             } else {
                 @Suppress("DEPRECATION")
                 keyInfo?.isInsideSecureHardware == true
@@ -172,7 +195,7 @@ internal class StrongBoxEnforcer(private val context: Context) {
             val keyInfo = getKeyInfo(keyStore, "tee_test_")
             val isHardwareBacked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
                 // KeyInfo.securityLevel returns int; check it's not SOFTWARE
-                keyInfo?.securityLevel != KeyInfo.SECURITY_LEVEL_SOFTWARE
+                keyInfo?.let { KeyInfoSecurityLevel.getSecurityLevel(it) != KeyInfoSecurityLevel.SECURITY_LEVEL_SOFTWARE }
             } else {
                 @Suppress("DEPRECATION")
                 keyInfo?.isInsideSecureHardware == true
@@ -304,7 +327,7 @@ internal class StrongBoxEnforcer(private val context: Context) {
 
             val isHardwareBacked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
                 // KeyInfo.securityLevel returns int; check it's not SOFTWARE
-                keyInfo.securityLevel != KeyInfo.SECURITY_LEVEL_SOFTWARE
+                KeyInfoSecurityLevel.getSecurityLevel(keyInfo) != KeyInfoSecurityLevel.SECURITY_LEVEL_SOFTWARE
             } else {
                 @Suppress("DEPRECATION")
                 keyInfo.isInsideSecureHardware
