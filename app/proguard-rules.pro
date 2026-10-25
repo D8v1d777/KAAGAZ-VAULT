@@ -13,9 +13,6 @@
 -verbose
 
 # Maximum obfuscation: rename everything not explicitly kept
--obfuscationdictionary /dev/urandom
--classobfuscationdictionary /dev/urandom
--packageobfuscationdictionary /dev/urandom
 -overloadaggressively
 -allowaccessmodification
 -repackageclasses ''
@@ -23,7 +20,7 @@
 # Flatten package hierarchy to single letter packages
 -flattenpackagehierarchy ''
 
-# Use meaningless names for renamed elements
+# Use meaningless names for renamed elements (default dictionary)
 -useuniqueclassmembernames
 
 # -------------------------------------------------------------------------
