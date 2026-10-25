@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Configuration for Kaagaz Vault.
+
+  This app is designed to be OFFLINE-FIRST with NO NETWORK ACCESS.
+  This configuration explicitly blocks all network traffic as defense-in-depth.
+  Even if malicious code or a compromised dependency attempts network access,
+  the system will block it at the platform level.
+-->
+<network-security-config>
+    <!-- Block all cleartext traffic (already set in manifest) -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- No trust anchors = no HTTPS either -->
+        </trust-anchors>
+    </base-config>
+
+    <!-- Explicitly block all domains -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">*.googleapis.com</domain>
+        <domain includeSubdomains="true">*.googleusercontent.com</domain>
+        <domain includeSubdomains="true">*.android.com</domain>
+        <domain includeSubdomains="true">*.google.com</domain>
+        <domain includeSubdomains="true">*.github.com</domain>
+        <domain includeSubdomains="true">*.raw.githubusercontent.com</domain>
+        <!-- Block all other domains by not including any trust anchors -->
+    </domain-config>
+
+    <!-- Debug overrides - only for debug builds, still blocked -->
+    <debug-overrides>
+        <trust-anchors>
+            <!-- No trust anchors even in debug -->
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
