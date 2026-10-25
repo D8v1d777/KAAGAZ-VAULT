@@ -96,7 +96,7 @@ internal object MemoryProtection {
     fun secureChars(chars: CharArray): SecureBytes {
         val bytes = ByteArray(chars.size)
         for (i in chars.indices) {
-            bytes[i] = chars[i].toByte()
+            bytes[i] = chars[i].code.toByte()
             chars[i] = 0.toChar()
         }
         return SecureBytes(bytes)

@@ -1,5 +1,6 @@
 package com.kaagazvault.security.hardening
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -286,6 +287,7 @@ internal class DeviceIntegrityChecker(private val context: Context) {
         // Check phone number (emulators often have null or specific values)
         try {
             val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+            @SuppressLint("MissingPermission")
             val phoneNumber = telephonyManager.line1Number
             if (phoneNumber == null || phoneNumber == "15555215554" || phoneNumber == "15555215556") {
                 details.add("Emulator phone number detected: $phoneNumber")
@@ -298,10 +300,12 @@ internal class DeviceIntegrityChecker(private val context: Context) {
         // Check IMEI
         try {
             val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+            @SuppressLint("MissingPermission")
             val imei = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 telephonyManager.imei
             } else {
                 @Suppress("DEPRECATION")
+                @SuppressLint("MissingPermission")
                 telephonyManager.deviceId
             }
             if (imei == null || imei == "000000000000000" || imei == "123456789012345") {

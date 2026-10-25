@@ -125,7 +125,12 @@ internal class StrongBoxEnforcer(private val context: Context) {
 
             // Verify it's actually StrongBox backed
             val keyInfo = getKeyInfo(keyStore, "strongbox_test_")
-            val isStrongBox = keyInfo?.isInsideSecureHardware == true
+            val isStrongBox = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
+                keyInfo?.securityLevel == android.security.keystore.KeyInfo.SecurityLevel.STRONGBOX
+            } else {
+                @Suppress("DEPRECATION")
+                keyInfo?.isInsideSecureHardware == true
+            }
 
             // Clean up test key
             try { keyStore.deleteEntry("strongbox_test_${System.currentTimeMillis()}") } catch (_: Exception) {}
@@ -164,7 +169,12 @@ internal class StrongBoxEnforcer(private val context: Context) {
             val testKey = generator.generateKey()
 
             val keyInfo = getKeyInfo(keyStore, "tee_test_")
-            val isHardwareBacked = keyInfo?.isInsideSecureHardware == true
+            val isHardwareBacked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
+                keyInfo?.securityLevel != android.security.keystore.KeyInfo.SecurityLevel.SOFTWARE
+            } else {
+                @Suppress("DEPRECATION")
+                keyInfo?.isInsideSecureHardware == true
+            }
 
             // Clean up
             try { keyStore.deleteEntry("tee_test_${System.currentTimeMillis()}") } catch (_: Exception) {}
@@ -290,7 +300,12 @@ internal class StrongBoxEnforcer(private val context: Context) {
                 return false
             }
 
-            val isHardwareBacked = keyInfo.isInsideSecureHardware
+            val isHardwareBacked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
+                keyInfo.securityLevel != android.security.keystore.KeyInfo.SecurityLevel.SOFTWARE
+            } else {
+                @Suppress("DEPRECATION")
+                keyInfo.isInsideSecureHardware
+            }
             val isStrongBox = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 try {
                     val strongBoxMethod = KeyInfo::class.java.getMethod("isStrongBoxBacked")

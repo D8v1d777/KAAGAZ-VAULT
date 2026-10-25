@@ -3,6 +3,7 @@ package com.kaagazvault.security
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import com.kaagazvault.security.hardening.StrongBoxEnforcer
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
@@ -136,7 +137,9 @@ internal class AuthBoundVaultKey(
 
     private fun generateWrappingKey(): SecretKey {
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
-        val spec = KeyGenParameterSpec.Builder(
+
+        // Build spec with StrongBox enforcement for highest security
+        val specBuilder = KeyGenParameterSpec.Builder(
             alias,
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
         )
@@ -145,16 +148,22 @@ internal class AuthBoundVaultKey(
             .setKeySize(VEK_BYTES * 8)
             .setUserAuthenticationRequired(true)
             .setInvalidatedByBiometricEnrollment(true)
-            .apply {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
-                } else {
-                    @Suppress("DEPRECATION")
-                    setUserAuthenticationValidityDurationSeconds(-1)
-                }
-            }
-            .build()
-        generator.init(spec)
+            .setRandomizedEncryptionRequired(true)
+
+        // Apply authentication parameters
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            specBuilder.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+        } else {
+            @Suppress("DEPRECATION")
+            specBuilder.setUserAuthenticationValidityDurationSeconds(-1)
+        }
+
+        // Enforce StrongBox if available (API 28+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            specBuilder.setIsStrongBoxBacked(true)
+        }
+
+        generator.init(specBuilder.build())
         return generator.generateKey()
     }
 

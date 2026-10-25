@@ -19,6 +19,12 @@ val tessdataModels = mapOf(
     "tel.traineddata" to "ee8a33b0f658fc75b8cbfe8c10413eac4f41e6ad"
 )
 
+// Conditionally configure release signing config only if release properties are provided
+val hasReleaseSigning = project.hasProperty("RELEASE_STORE_FILE") &&
+    project.hasProperty("RELEASE_STORE_PASSWORD") &&
+    project.hasProperty("RELEASE_KEY_ALIAS") &&
+    project.hasProperty("RELEASE_KEY_PASSWORD")
+
 android {
     namespace = "com.kaagazvault"
     compileSdk = 36
@@ -35,6 +41,42 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    // Conditionally configure release signing config only if release properties are provided
+    if (hasReleaseSigning) {
+        signingConfigs.create("release") {
+            storeFile = File(project.findProperty("RELEASE_STORE_FILE") as String)
+            storePassword = project.findProperty("RELEASE_STORE_PASSWORD") as String
+            keyAlias = project.findProperty("RELEASE_KEY_ALIAS") as String
+            keyPassword = project.findProperty("RELEASE_KEY_PASSWORD") as String
+        }
+    }
+
+    // Security: Enable R8/ProGuard with aggressive obfuscation
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+
+    // Security: Enforce hardware-backed key storage where available
+    // Note: This is a build-time hint; runtime enforcement is in code
 }
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 

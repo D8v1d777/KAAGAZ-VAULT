@@ -1,6 +1,7 @@
 package com.kaagazvault.security
 
 import android.os.Build
+import com.kaagazvault.security.hardening.SecureDeletion
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -263,7 +264,12 @@ internal class VaultMigrationJournal(private val directory: File) {
     }
 
     private fun deleteArtifact(file: File) {
-        if (file.exists() && !file.delete()) throw IOException("Could not clean migration journal artifact")
+        if (file.exists()) {
+            // Use secure deletion for migration journal artifacts
+            if (!SecureDeletion.wipe(file)) {
+                throw IOException("Could not securely clean migration journal artifact")
+            }
+        }
     }
 
     private fun syncDirectoryBestEffort() {

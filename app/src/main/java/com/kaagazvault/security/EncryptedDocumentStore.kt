@@ -1,5 +1,6 @@
 package com.kaagazvault.security
 
+import com.kaagazvault.security.hardening.SecureDeletion
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -123,7 +124,12 @@ internal class EncryptedDocumentStore(
     @Throws(IOException::class)
     fun delete(id: String) {
         val file = fileFor(id)
-        if (file.exists() && !file.delete()) throw IOException("Could not delete encrypted document")
+        if (file.exists()) {
+            // Use secure deletion to wipe the encrypted file before removing
+            if (!SecureDeletion.wipe(file)) {
+                throw IOException("Could not securely delete encrypted document")
+            }
+        }
     }
 
     private fun fileFor(id: String): File {

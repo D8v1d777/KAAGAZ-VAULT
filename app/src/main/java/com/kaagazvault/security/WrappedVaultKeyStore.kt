@@ -1,5 +1,6 @@
 package com.kaagazvault.security
 
+import com.kaagazvault.security.hardening.SecureDeletion
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -79,7 +80,12 @@ internal class WrappedVaultKeyStore(private val file: File) {
     }
 
     private fun deleteArtifact(candidate: File) {
-        if (candidate.exists() && !candidate.delete()) throw IOException("Could not clean wrapped-key artifact")
+        if (candidate.exists()) {
+            // Use secure deletion for key artifacts
+            if (!SecureDeletion.wipe(candidate)) {
+                throw IOException("Could not securely clean wrapped-key artifact")
+            }
+        }
     }
 
     private companion object {

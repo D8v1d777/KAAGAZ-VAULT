@@ -145,23 +145,50 @@ internal class RuntimeIntegrity(private val context: Context) {
         val expected = expectedApkSignature ?: return true // Can't verify if we couldn't compute
 
         try {
-            val packageInfo: PackageInfo = context.packageManager.getPackageInfo(
-                context.packageName,
-                PackageManager.GET_SIGNATURES
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // API 28+
+                val packageInfo: PackageInfo = context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.GET_SIGNING_CERTIFICATES
+                )
+                val signingInfo = packageInfo.signingInfo
+                if (signingInfo == null) {
+                    Log.w(TAG, "No signing info found on package")
+                    return false
+                }
+                val certs = signingInfo.apkContentsSigners
+                if (certs.isNullOrEmpty()) {
+                    Log.w(TAG, "No signing certificates found on package")
+                    return false
+                }
+                for (cert in certs) {
+                    val digest = MessageDigest.getInstance("SHA-256")
+                    digest.update(cert.toByteArray())
+                    val actualSig = Base64.encodeToString(digest.digest(), Base64.NO_WRAP)
+                    if (actualSig == expected) {
+                        return true
+                    }
+                }
+            } else {
+                // Fallback for older API
+                @Suppress("DEPRECATION")
+                val packageInfo: PackageInfo = context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.GET_SIGNATURES
+                )
 
-            val signatures = packageInfo.signatures
-            if (signatures.isNullOrEmpty()) {
-                Log.w(TAG, "No signatures found on package")
-                return false
-            }
+                val signatures = packageInfo.signatures
+                if (signatures.isNullOrEmpty()) {
+                    Log.w(TAG, "No signatures found on package")
+                    return false
+                }
 
-            for (sig in signatures!!) {
-                val digest = MessageDigest.getInstance("SHA-256")
-                digest.update(sig.toByteArray())
-                val actualSig = Base64.encodeToString(digest.digest(), Base64.NO_WRAP)
-                if (actualSig == expected) {
-                    return true
+                for (sig in signatures) {
+                    val digest = MessageDigest.getInstance("SHA-256")
+                    digest.update(sig.toByteArray())
+                    val actualSig = Base64.encodeToString(digest.digest(), Base64.NO_WRAP)
+                    if (actualSig == expected) {
+                        return true
+                    }
                 }
             }
 
@@ -176,19 +203,36 @@ internal class RuntimeIntegrity(private val context: Context) {
     /** Compute expected APK signature at init time */
     private fun computeExpectedApkSignature(): String? {
         try {
-            val packageInfo: PackageInfo = context.packageManager.getPackageInfo(
-                context.packageName,
-                PackageManager.GET_SIGNATURES
-            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) { // API 28+
+                val packageInfo: PackageInfo = context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.GET_SIGNING_CERTIFICATES
+                )
+                val signingInfo = packageInfo.signingInfo
+                if (signingInfo == null) return null
+                val certs = signingInfo.apkContentsSigners
+                if (certs.isNullOrEmpty()) return null
+                val cert = certs[0]
+                val digest = MessageDigest.getInstance("SHA-256")
+                digest.update(cert.toByteArray())
+                return Base64.encodeToString(digest.digest(), Base64.NO_WRAP)
+            } else {
+                // Fallback for older API
+                @Suppress("DEPRECATION")
+                val packageInfo: PackageInfo = context.packageManager.getPackageInfo(
+                    context.packageName,
+                    PackageManager.GET_SIGNATURES
+                )
 
-            val signatures = packageInfo.signatures
-            if (signatures.isNullOrEmpty()) return null
+                val signatures = packageInfo.signatures
+                if (signatures.isNullOrEmpty()) return null
 
-            // Use the first signature (should be the release key)
-            val sig = signatures!![0]
-            val digest = MessageDigest.getInstance("SHA-256")
-            digest.update(sig.toByteArray())
-            return Base64.encodeToString(digest.digest(), Base64.NO_WRAP)
+                // Use the first signature (should be the release key)
+                val sig = signatures[0]
+                val digest = MessageDigest.getInstance("SHA-256")
+                digest.update(sig.toByteArray())
+                return Base64.encodeToString(digest.digest(), Base64.NO_WRAP)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Could not compute expected APK signature: ${e.message}")
             return null
