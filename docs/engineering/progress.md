@@ -1,3 +1,246 @@
+## 2026-10-20 — CO-01 / CO-02 owner policy approved; implementation gates opened
+
+### Decision recorded
+- The project owner approved **A2 + B2 + C1**: strong biometric OR device credential only where supported with auth-per-use cryptographic enforcement; independent random 256-bit recovery key with a separate authenticated VEK envelope; immediate lock on explicit lock, foreground loss, screen-off and process restart.
+- Updated ADR-0003 to Accepted for this policy direction. This is architecture-policy acceptance, not feature completion or security certification.
+- Recorded the API constraint from AndroidX primary documentation: `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` via `setAllowedAuthenticators` is unsupported on API 28–29; device-credential-only is unsupported before API 30. Keep the compatibility path explicit and test it; never substitute an unauthenticated or time-window key.
+
+### Verification boundary
+- Exact-head Android CI passed on prior decision-doc head `05dfbe9ba0fc53548d345c9d8de327b35543649c` in [run #382](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39399533594). The owner-acceptance updates after that SHA require the new head’s CI run.
+- No production authentication, key-management, recovery-envelope, or migration code has been changed in this policy update.
+- AndroidX Biometric is not currently in the version catalog. The repository’s separate dependency-approval rule still applies; the next gate is a concrete dependency justification and owner approval before Gradle dependency changes.
+- Android Keystore instrumentation, API matrix verification, migration crash tests, independent security review and physical-device acceptance remain required.
+
+### Next
+- Obtain approval for the necessary AndroidX Biometric dependency after showing exact version, maintenance, license and privacy/network rationale.
+- Begin test-first work in separate CO-01 and CO-02 implementation PRs after dependency/API compatibility is cleared.
+- Rebase/port CO-04 changes onto current canonical and rerun full CI on that new exact head before considering merge.
+
+---
+
+## 2026-10-20 — CO-03 canonical UUID identity corrected
+
+### Reproduced and fixed
+- Added `EncryptedDocumentStoreTest.rejectsUpperCaseUuidAliasForReadReplaceAndDelete` before changing production code.
+- Test-only SHA `27aa8be8942800ea122a9fa764ee6e5ad9d24951` failed in [run #367](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39384857603): the uppercase alias read raised `IOException` rather than `IllegalArgumentException` at `EncryptedDocumentStoreTest.kt:132`; 67 tests completed, one failed.
+- Changed only `EncryptedDocumentStore.fileFor` to require exact equality between `UUID.fromString(id).toString()` and the supplied ID. No file rename/migration, AAD/envelope change, key policy, dependency, manifest, or Room schema change.
+- Reviewed the other UUID parse sites: `VaultMigrationState` and `VaultMigrationJournal` already enforce exact canonical spelling.
+- Primary API reference checked: [Java SE 21 UUID](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/UUID.html).
+
+### Verification
+- Exact code/test SHA `e6ffd2eb571496a8817d45a6c1b31afefa652c5b` passed the full configured Android CI gate in [run #369](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39385455774): Python policy tests, debug/release builds, JVM tests, lint, and merged-manifest policy gate.
+- Full manual review was completed against `docs/agent/REVIEW.md`; no findings. A fresh-context reviewer sub-agent was unavailable, so HANDOFF records `independent_review: NOT_AVAILABLE`.
+- The final documentation-complete commit still requires exact-head CI. No local Gradle build ran because the active container has no Android SDK or repository checkout.
+
+### Next
+- Complete the CO-03 handoff/progress update and verify the resulting exact SHA.
+- Root `AGENTS.md` priority ranks open P0 orders ahead of P1 orders; prepare the CO-01/CO-02 decision memo before starting CO-04 production changes.
+## 2026-10-20 — CO-00 exact-head Android CI gate passed
+
+### Corrected
+- Repaired `SettingsSyncMerger` so spoken guidance remains disabled while incoming voice-navigation enablement is awaiting an explicit user decision; preserved safe-off precedence.
+- Added `confirmedIncomingVoiceEnablementCanPreserveLocallyEnabledSpokenGuidance` to cover the explicit-acceptance path.
+- Corrected README evidence so the historical green run is not misrepresented as the current code head.
+
+### Verification
+- Reproduction: Android CI run [#323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) on baseline SHA `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489` failed `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview` at assertion line 105 (65 tests completed, one failed).
+- Fix commit: `d6083c0c428cc5f2423462bc4c1089cb0c7eee32`. Positive-path regression test commit: `356b4d76ba0ad45f57aedce5b25c60e05d14f548`.
+- Full configured workflow passed on code/test SHA `c2a783385ade3f59144eb282a2983ebf1eab3720` in [run #324](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39361833253).
+- Full configured workflow also passed on documentation-follow-up SHA `e6db4d368ccb44499c285888fc2cdadb71bace65` in [run #325](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39362435654). Build/release, JVM tests, lint, Python manifest-policy tests, and merged-manifest policy steps all report success.
+- PR #18 remains open, draft and unmerged. No physical-device or release-readiness claim is made.
+
+### Next
+- CO-00 gate is closed for the verified SHA above. Continue P0 CO-01/CO-02 as separate Proposed decision work; do not wire or accept an authentication/recovery policy without the owner.
+- Environment limitation remains: no local Android SDK, repository checkout, `sdkmanager`, or `gh` CLI in the active tool container.
+
+## 2026-10-20 — CO-00 candidate repair: settings merge fails closed pending voice review
+
+### Reproduced
+- The recorded baseline source SHA `7b7620f537d03a4f15c18ac80a9c8fa5bf3bc489` failed Android CI run [#323](https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39203140191) at `:app:testDebugUnitTest`.
+- The exact failing test was `SettingsSyncProtocolTest.mergeKeepsLocalByDefaultAndRequiresVoiceReview` at assertion line 105. Gradle reported 65 tests completed, one failed; the Python offline-manifest helper passed. This is the reproduced failure for CO-00, not a pass.
+
+### Changed in candidate branch
+- Branch: `agent/CO-00-settings-sync-review-gate`.
+- `app/src/main/java/com/kaagazvault/sync/SettingsSyncProtocol.kt`: keep spoken guidance off when incoming voice-navigation enablement is awaiting explicit review and the merge leaves navigation disabled. Preserve the requirement that spoken guidance must already be enabled locally and in incoming settings, and preserve safe-off precedence.
+- `app/src/test/java/com/kaagazvault/sync/SettingsSyncProtocolTest.kt`: add a positive-path regression for explicitly accepting incoming voice enablement while spoken guidance is already enabled locally.
+- `README.md`: distinguish historical green run #299 on SHA `6291594886eb6f6fb03c644797afc1217adb90e6` from the later failed baseline run #323. The candidate is not described as green.
+
+### Verification boundary
+- Source fix commit: `d6083c0c428cc5f2423462bc4c1089cb0c7eee32`; the branch also has a plan and evidence-record commits. Final PR head must be checked from live PR metadata.
+- Environment probe: OpenJDK 21.0.12.1 present; `ANDROID_HOME` and `ANDROID_SDK_ROOT` empty; no repository checkout at the active filesystem root; no `gh` CLI or `sdkmanager`.
+- No local Gradle build ran. Exact-head CI for the candidate is pending; this correction is **UNVERIFIED** until the full gate succeeds for the final PR SHA. CO-00 remains open until then.
+
+## 2026-10-19 — Phase 15 elderly-friendly simplified mode design
+
+### Designed
+- Added `docs/PHASE-15-ELDERLY-SIMPLIFIED-MODE-DESIGN.md` with a user-controlled simplified mode, large typography, high-contrast role strategy, layout tokens, 48dp minimum and 56–64dp preferred controls, TalkBack semantics, focus order, dynamic-color interaction, and device acceptance gates.
+- Clarified the Android unit boundary: touch targets are measured in dp, while text is measured in sp; 48sp is reserved for hero typography rather than used as a touch-target unit.
+- Explicitly excluded age inference, profiling, medical claims, patronizing defaults, analytics, pressure mechanics, and changes to encryption/authentication.
+
+### Verification boundary
+- This is a design-only slice; no simplified-mode preference, typography overlay, high-contrast scheme, or layout refactor was implemented.
+- The design requires 2.0x font-scale, TalkBack, switch access, keyboard, dynamic-color, high-contrast, reduced-motion, and physical-device evidence before release claims.
+
+## 2026-10-19 — Phase 19 local encrypted transfer UI implementation
+
+### Implemented
+- Added an elderly-friendly **Sync accessibility settings** card to the home screen with a clear opt-in toggle, 56dp+ simplified-mode controls, local reset, and explicit copy explaining that documents and recordings never transfer.
+- Added encrypted settings export through the Android document picker, a large copyable transfer code, encrypted settings import, code entry, preview-before-apply, Keep local, Use incoming, and Cancel actions.
+- Kept transfer fully local/user-mediated: no account, backend, socket, network permission, document picker access to vault files, or background sync was introduced.
+- Added bounded 64 KiB settings-file reads and preserved the existing document/OCR/reminder/license UI paths.
+
+### Verification boundary
+- `git diff --check`, source-shape checks, original-activity preservation checks, and forbidden-scope audit passed.
+- Android Kotlin compilation was attempted but could not start because the active sandbox has no Android SDK configured.
+- Android device-picker behavior, TalkBack traversal, 2.0x font scale, and two-device transfer must be validated on physical/emulated devices before release claims.
+
+## 2026-10-19 — Phase 19 settings-sync protocol implementation
+
+### Implemented
+- Added `sync/SettingsSyncProtocol.kt` with an allowlisted versioned settings model, deterministic codec, AES-GCM authenticated envelope, one-use expiring pairing ticket, idempotent field-level merge policy, safe-off precedence, and explicit review for incoming voice enablement.
+- Added `sync/SyncableSettingsStore.kt` with a dedicated `syncable_accessibility_settings` store, migration from the legacy simplified-mode preference, local-only sync enablement control, reset support, and an offline encrypted export/import boundary that never opens a socket or touches vault data.
+- Routed `SimplifiedModePreferences` through the dedicated store so the current Phase 15 setting no longer lives in a general preference file that could later become an accidental sync contract.
+- Added JVM tests for deterministic serialization, unknown-field handling, duplicate rejection, AES-GCM round trips/tamper/wrong-key failures, pairing expiry and single use, forbidden-field boundaries, and conflict-safe merges.
+
+### Verification boundary
+- `git diff --check` and source-scope audits passed; no network permission, backend, account, document sync, voice data, or vault-key code was added.
+- `:app:testDebugUnitTest` was attempted but stopped before test execution because the active sandbox has no Android SDK configured.
+- Backup/D2D XML rules, settings UI, pairing screens, account transport, and physical two-device evidence remain separate follow-up slices and are not claimed as implemented by this commit.
+
+## 2026-10-19 — Phase 19 cross-device settings synchronization design
+
+### Designed
+- Added `docs/PHASE-19-CROSS-DEVICE-SETTINGS-SYNC-DESIGN.md` for opt-in synchronization of only simplified view, voice navigation, spoken guidance, and voice-haptic preferences.
+- Defined a separate allowlisted settings record instead of syncing the general Phase 15 `ui_preferences` file, with explicit exclusion of documents, OCR, reminders, raw voice, permissions, keys, tokens, identifiers, and biometric material.
+- Defined new-device restore versus optional live sync as distinct experiences, encrypted user-mediated pairing/transfer, explicit Android cloud/D2D backup rules, conflict-safe resolution, device removal, revocation, local reset, accessibility behavior, and offline-first failure handling.
+
+### Verification boundary
+- This is a design-only slice; no account, backend, network permission, backup rule, settings-sync serializer, pairing flow, or cross-device transport was implemented.
+- Android Auto Backup and Android 12+ cloud/D2D separation requirements are cited in the design and must be validated on API 24/API 31+ and representative manufacturer transfer paths before release claims.
+
+## 2026-10-19 — Phase 18 voice-navigation haptic synchronization design
+
+### Designed
+- Added `docs/PHASE-18-VOICE-HAPTIC-SYNCHRONIZATION-DESIGN.md` with a semantic haptic event model synchronized to Phase 17 voice states, a maximum two-cue normal-command budget, explicit suppression rules, device-default/on/off preference behavior, elderly-friendly settings requirements, lifecycle/session deduplication, privacy boundaries, low-end hardware policy, and acceptance gates.
+- Kept haptics as optional confirmation only: no repeating listening pulses, no document-content encoding, no voice unlock or destructive confirmation, and no replacement for visible text, TalkBack, switch access, keyboard navigation, or TTS.
+- Based the design on Android guidance favoring restrained action-oriented haptics and predefined/fallback effects over long buzzy or legacy one-shot vibration patterns.
+
+### Verification boundary
+- This is a design-only slice; no new haptic event model, preference, voice controller, or vibration API call was implemented.
+- The design requires API 24/API 29+/API 31+, low-end hardware, no-actuator, system-haptics-off, TalkBack, switch-access, 2.0x font-scale, reduced-motion, lock, background, and biometric-prompt evidence before release claims.
+
+## 2026-10-19 — Phase 15 simplified-mode UI implementation
+
+### Implemented
+- Added `SimplifiedMode.kt` with a local, corruption-safe `SharedPreferences` flag, reusable simplified typography minimums, and 24dp/56dp/64dp layout tokens.
+- Added an always-visible, user-controlled “Simplified view” switch to the home screen. It is reversible, does not infer age or ability, and does not touch vault data, encryption, authentication, or network behavior.
+- Added enlarged typography and spacing to the home hierarchy, vertically stacked Import/Scan and Search/Show-all actions, larger empty-state and document/OCR controls, and enlarged reminder actions.
+- Kept standard mode behavior and visual density when the preference is disabled; simplified mode preserves system font scaling rather than overriding it.
+
+### Verification boundary
+- `git diff --check` and source-scope audits passed.
+- `:app:compileDebugKotlin` was attempted but stopped before compilation because the active sandbox has no Android SDK configured.
+- Physical low-end device, TalkBack, switch-access, 2.0x font-scale, and instrumentation validation remain pending.
+
+## 2026-10-19 — elderly-feature integration and accessibility test pass
+
+### Executed
+- Added `docs/reports/ELDERLY-FEATURES-END-TO-END-TEST-REPORT.md` with exact commands, static contrast results, feature-presence audit, and the blocked device matrix.
+- `git diff --check` passed and static contrast recalculation passed; minimum tested static ratio was 5.48:1 and minimum body-text ratio after the ambient overlay was 8.38:1.
+- Attempted `:app:testDebugUnitTest`; Gradle stopped before test execution because the active sandbox has no Android SDK configured.
+
+### Findings
+- The repository has 12 JVM test source files but zero instrumentation-test files and no SDK, ADB, emulator, or AV​​D configuration in the active sandbox.
+- Phase 15 simplified mode and Phase 17 voice navigation are design-only at this head; no `SimplifiedMode`, simplified typography/layout tokens, `SpeechRecognizer`, `TextToSpeech`, `RECORD_AUDIO`, or voice controller exists to integrate or test.
+- Phase 14 source-level behavior and static contrast are reviewable, but low-end-device, TalkBack, switch-access, font-scale, dynamic-wallpaper, and performance evidence remain unrun.
+
+### Verification boundary
+- No end-to-end, instrumentation, physical-device, or release-readiness pass is claimed from this environment.
+
+## 2026-10-19 — Phase 17 voice-assisted navigation design
+
+### Designed
+- Added `docs/PHASE-17-VOICE-ASSISTED-NAVIGATION-DESIGN.md` with a privacy-first push-to-talk model, bounded `SpeechRecognizer` lifecycle, Android 12+ on-device availability check, fixed-phrase Text-to-Speech guidance, elderly-friendly controls, supported command grammar, confirmation rules, accessibility semantics, and acceptance gates.
+- Restricted voice to reversible navigation and explicitly excluded always-listening, voice unlock, voice deletion, voice export, document dictation, OCR dictation, raw content read-aloud, and cloud search.
+- Required complete touch, keyboard, TalkBack, and switch-access alternatives so voice remains optional.
+
+### Verification boundary
+- This is a design-only slice; no microphone permission, recognizer, Text-to-Speech engine, manifest query, or voice preference was added.
+- Android's documented remote-processing possibility, `RECORD_AUDIO` requirement, main-thread lifecycle, on-device availability check, and TTS cleanup requirements are cited in the design and must be verified in implementation tests.
+
+## 2026-10-19 — Android 12+ Material You color extraction
+
+### Implemented
+- Refactored `KaagazTheme` around an explicit `materialYouColorScheme` engine.
+- Android 12+ uses Material 3 `dynamicLightColorScheme`/`dynamicDarkColorScheme` to extract the wallpaper-derived Material You palette.
+- Preserved generated `on-*` and container role pairings without post-processing so dynamic contrast relationships remain intact.
+- Added `dynamicColor` opt-out support and safe fallback to the reviewed calm light/dark palettes when unsupported, disabled, or extraction throws.
+
+### Verification boundary
+- Source-level fallback and API gating are implemented; physical Android 12+ wallpaper, light/dark, font-scale, and contrast-mode validation remains required.
+- `git diff --check` passed; `:app:compileDebugKotlin` could not start because the active sandbox has no Android SDK configured (`SDK location not found`).
+- No dependency, permission, network, persistence, encryption, or authentication changes were introduced.
+
+## 2026-10-19 — UI/UX accessibility and contrast review
+
+### Reviewed
+- Calculated WCAG contrast ratios for explicit light and dark calm-theme role pairings; all tested normal-text pairs passed 4.5:1, with the lowest static result at 5.48:1.
+- Stress-tested the maximum 4.5% ambient backdrop overlay; tested body and action pairings remained above 4.5:1.
+- Reviewed elderly-user risks around font scaling, touch targets, semantics, reduced motion, color-only status, dynamic color, and TalkBack.
+- Added `docs/reports/PHASE-14-ACCESSIBILITY-CONTRAST-REVIEW.md` with results, methodology, fixes, and physical-device acceptance gates.
+
+### Implemented
+- Added a persistent search-field label and a semantic “Live camera preview” description.
+
+### Verification boundary
+- Explicit light/dark palette calculations and source review pass.
+- Android 12+ dynamic-color wallpapers, 2.0x font scale, TalkBack, switch access, high-contrast display, glare, and physical-device checks remain required before a complete accessibility claim.
+
+## 2026-10-19 — Phase 14 ambient vault backdrop
+
+### Implemented
+- Added a low-contrast `AmbientVaultBackdrop` with six fixed, content-independent particles and very slow primary/tertiary color drift.
+- Disabled particle motion when Android's animator duration scale indicates reduced motion; the fallback is a static, low-alpha gradient.
+- Layered the backdrop behind the transparent scaffold so it never intercepts input or competes with document cards, text, and actions.
+
+### Verification boundary
+- Ambient effects are atmosphere only: no document state, OCR text, filenames, counts, identifiers, or reminders influence them.
+- No custom audio, background service, dependency, permission, or network behavior was added.
+
+## 2026-10-19 — Phase 14 calm micro-interactions implementation
+
+### Implemented
+- Added semantic `VaultFeedbackEvent` routing for platform click audio and brief predefined key haptics.
+- Added reusable `VaultPrimaryButton`, `VaultTonalButton`, `VaultOutlinedButton`, and `VaultTextButton` Compose components.
+- Added named motion tokens and reduced-motion-aware `AnimatedVisibility`/`animateContentSize` helpers using the system animator-duration scale.
+- Wired success-only haptic confirmation into import, camera capture, OCR completion/review save, and reminder save without adding custom audio assets or media dependencies.
+- Kept failures, cancellation, typing, scrolling, polling, and progress updates quiet; no sensitive content enters feedback payloads.
+
+### Verification boundary
+- `git diff --check` passed.
+- `./gradlew --no-daemon :app:compileDebugKotlin` could not reach Kotlin compilation because the active sandbox has no Android SDK configured (`SDK location not found`); no build or test pass is claimed.
+- No manifest, dependency, network-permission, persistence, encryption, or authentication changes were introduced.
+
+## 2026-10-19 — Phase 14 calm micro-interactions and audio feedback design
+
+### Designed
+- Added `docs/PHASE-14-CALM-MICROINTERACTIONS-AUDIO-DESIGN.md` with semantic feedback events, platform-respecting sound policy, sparse predefined haptics, named motion tokens, reduced-motion behavior, accessibility requirements, preference guidance, implementation slices, and acceptance gates.
+- Explicitly rejected dark-pattern engagement mechanics, repeated prompt loops, urgency theater, background audio, analytics, and sensory feedback that would make the app harder to leave or understand.
+
+### Verification boundary
+- This is a design-only slice. No new audio assets, haptic implementation, motion system, preference storage, or dependency was added.
+- Existing platform click feedback remains the only implemented audio behavior until the policy and tests are approved.
+
+## 2026-10-19 — Phase 13 biometric authentication and vault-lock UI design
+
+### Designed
+- Added `docs/PHASE-13-BIOMETRIC-VAULT-LOCK-DESIGN.md` covering the auth-per-use `BiometricPrompt.CryptoObject` flow, biometric/device-credential policy choice, locked/authenticating/recovery UI states, session boundaries, lifecycle lock policy, accessibility, error copy, implementation slices, and acceptance gates.
+- Kept the design UI- and coordinator-focused; it does not claim that the existing auth-bound primitive is integrated into production access control.
+
+### Verification boundary
+- No biometric prompt, repository gate, migration runner, or key-policy change was implemented in this design-only slice.
+- Product approval is required before implementation: biometric-only versus biometric-plus-device-credential fallback changes the Keystore flags, prompt configuration, copy, and device-test matrix.
+
 ## 2026-10-18 — Authentication-bound lock design and migration-state foundation
 
 ### Research and source inspection

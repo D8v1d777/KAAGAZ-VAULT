@@ -1,7 +1,9 @@
 package com.kaagazvault.security
 
+import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import com.kaagazvault.security.hardening.StrongBoxEnforcer
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import javax.crypto.KeyGenerator
@@ -19,9 +21,9 @@ internal fun interface DocumentKeyProvider {
 }
 
 /** Raised when encrypted data exists but its Keystore key is missing. */
-internal class MissingEncryptionKeyException : GeneralSecurityException(
-    "Encryption key is missing; existing encrypted data was preserved"
-)
+internal class MissingEncryptionKeyException(
+    message: String = "Encryption key is missing; existing encrypted data was preserved"
+) : GeneralSecurityException(message)
 
 internal fun ensureNewKeyAllowed(hasExistingProtectedData: Boolean) {
     if (hasExistingProtectedData) throw MissingEncryptionKeyException()
@@ -36,6 +38,10 @@ internal class AndroidKeystoreDocumentKeyProvider(
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         val existing = keyStore.getKey(alias, null)
         if (existing != null) {
+            // Verify existing key meets hardware-backed requirements
+            if (!verifyKeyHardwareBacked(keyStore, alias)) {
+                throw GeneralSecurityException("Existing document key does not meet hardware-backed requirements")
+            }
             return existing as? SecretKey
                 ?: throw IllegalStateException("Stored document key has an unexpected type")
         }
@@ -48,18 +54,54 @@ internal class AndroidKeystoreDocumentKeyProvider(
             KeyProperties.KEY_ALGORITHM_AES,
             ANDROID_KEYSTORE
         )
-        generator.init(
-            KeyGenParameterSpec.Builder(
-                alias,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(KEY_SIZE_BITS)
-                .setRandomizedEncryptionRequired(true)
-                .build()
+
+        // Build spec with hardware enforcement (StrongBox/TEE)
+        val specBuilder = KeyGenParameterSpec.Builder(
+            alias,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
         )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(KEY_SIZE_BITS)
+            .setRandomizedEncryptionRequired(true)
+            .setInvalidatedByBiometricEnrollment(true)
+
+        // Enforce StrongBox if available (API 28+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            specBuilder.setIsStrongBoxBacked(true)
+        }
+
+        generator.init(specBuilder.build())
         return generator.generateKey()
+    }
+
+    /**
+     * Verify that an existing key is hardware-backed (TEE or StrongBox).
+     */
+    private fun verifyKeyHardwareBacked(keyStore: KeyStore, alias: String): Boolean {
+        return try {
+            val entry = keyStore.getEntry(alias, null) as? KeyStore.SecretKeyEntry
+                ?: return false
+
+            val key = entry.secretKey
+
+            // Get KeyInfo via reflection
+            val keyFactoryClass = Class.forName("android.security.keystore.KeyFactory")
+            val method = keyFactoryClass.getDeclaredMethod("getKeyInfo", java.security.Key::class.java)
+            method.isAccessible = true
+            val keyInfo = method.invoke(null, key)
+
+            if (keyInfo == null) return false
+
+            // Check isInsideSecureHardware
+            val isInsideSecureHardware = keyInfo.javaClass.getMethod("isInsideSecureHardware")
+                .invoke(keyInfo) as? Boolean == true
+
+            return isInsideSecureHardware
+        } catch (e: Exception) {
+            // If we can't verify, assume it's not hardware-backed
+            false
+        }
     }
 
     private companion object {

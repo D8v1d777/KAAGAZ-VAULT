@@ -33,11 +33,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
+import com.kaagazvault.playVaultClick
+import com.kaagazvault.playVaultSuccess
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import android.util.Size
@@ -129,20 +133,24 @@ internal fun CameraCaptureScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("Scan a document", style = MaterialTheme.typography.titleLarge)
-            OutlinedButton(onClick = onClose, enabled = !captureBusy.value) {
+            OutlinedButton(onClick = { playVaultClick(previewView); onClose() }, enabled = !captureBusy.value) {
                 Text("Close")
             }
         }
 
-        AndroidView(
-            factory = { previewView },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 240.dp, max = 520.dp)
-        )
+            AndroidView(
+                factory = { previewView },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 240.dp, max = 520.dp)
+                    .semantics { contentDescription = "Live camera preview" }
+            )
 
         Text(status.value, style = MaterialTheme.typography.bodyMedium)
 
         Button(
             onClick = {
+                playVaultClick(previewView)
                 val capture = imageCapture.value
                 if (capture == null || captureBusy.value) return@Button
                 captureBusy.value = true
@@ -193,6 +201,7 @@ internal fun CameraCaptureScreen(
                                     }
                                 }
                                 mainHandler.post {
+                                    playVaultSuccess(previewView)
                                     captureBusy.value = false
                                     status.value = "Photo captured. Encrypting locally…"
                                     onCaptured(normalizedBytes)

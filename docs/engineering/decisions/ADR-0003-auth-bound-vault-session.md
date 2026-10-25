@@ -1,7 +1,8 @@
 # ADR-0003: Authentication-Bound Vault Session and Legacy-Key Migration
 
-- **Status:** Proposed; implementation must not begin until migration and fallback decisions are accepted.
-- **Date:** 2026-10-18
+- **Status:** Accepted by the project owner for the policy direction below; implementation remains gated by the verification requirements in this ADR.
+- **Original date:** 2026-10-18
+- **Accepted:** 2026-10-20 (owner approval in ChatGPT conversation)
 - **Scope:** Native Android offline-first vault.
 - **Security classification:** Architecture decision, not security verification.
 
@@ -23,6 +24,23 @@ Use an explicit in-memory vault session whose lifetime is controlled by authenti
 6. Re-wrap the SQLCipher key under the VEK only after the VEK is available; close database handles before changing key wrapping. Retain a recoverable legacy wrapper until the migrated database opens and integrity checks pass.
 7. Route every repository action through an unlocked session. A lock transition must stop new work, cancel or drain queued work, close database handles, remove sensitive UI state, and best-effort clear mutable in-memory key buffers.
 8. Lock on backgrounding according to a documented lifecycle policy, on explicit user action, and after an inactivity timeout. Handle process death as locked by default. Use FLAG_SECURE for sensitive screens where appropriate, but do not treat screenshot protection as a substitute for cryptographic locking.
+
+## Accepted owner policy (2026-10-20)
+
+The project owner explicitly approved the recommended bundle:
+
+- **Authentication A2:** strong biometric OR secure device credential, but only on Android/API combinations where the authenticated cryptographic operation is supported and tested. Keep the unlock path tied to the same auth-per-use `Cipher` delivered through `BiometricPrompt.CryptoObject`; no UI-only success state.
+- **Recovery B2:** a separately generated 256-bit random recovery key, held by the owner and never uploaded or stored as a plaintext app-side copy. Persist a separately versioned, authenticated recovery envelope for the VEK. Display the recovery material once during setup and require the owner to confirm safe storage before setup is considered complete. A lost recovery key can still mean permanent data loss and must be explained plainly.
+- **Locking C1:** lock immediately on explicit lock, screen-off, app foreground loss and process restart. Do not add an inactivity/grace-period setting unless the owner separately approves it. Lock completion must prevent any in-flight repository operation from publishing plaintext after the locked transition completes.
+- **Migration preservation:** never replace a key or discard legacy ciphertext merely because unlock or migration failed. Keep legacy copies and wrappers until authenticated read-back, SQLCipher reopen/integrity verification, and durable journal completion all pass.
+
+### Android compatibility constraint
+
+The supported AndroidX Biometric API documentation reports that `BIOMETRIC_STRONG | DEVICE_CREDENTIAL` is unsupported by `PromptInfo.Builder.setAllowedAuthenticators` on API 28–29, and device-credential-only is unsupported before API 30. Therefore A2 is conditional, not blanket support across minSdk 24. For combinations where device-credential plus auth-per-use `CryptoObject` cannot be proven, keep a supported biometric-only auth-per-use path and the independent recovery route; do not present an unsupported credential fallback, introduce a time-window key, or imply that recovery is equivalent to ordinary unlock. Confirm the precise API 24–29 path using the selected AndroidX version and instrumented tests before production wiring.
+
+The AndroidX Biometric library dependency is not currently in the version catalog. Adding it and any other dependency is separately gated by the repository's dependency-approval rule; the implementation must prepare the version/maintenance/license/privacy justification and obtain the required approval before changing Gradle dependency declarations.
+
+This approval accepts the architecture policy direction only. It does **not** satisfy CI, Android Keystore instrumentation, migration crash tests, independent security review or device acceptance. ADR acceptance does not permit marking the feature complete ahead of those gates.
 
 ## Authentication and accessibility gates
 
@@ -71,4 +89,4 @@ The migration must be resumable and idempotent:
 
 ## Acceptance
 
-This ADR remains Proposed until the migration journal/state design, fallback policy, and API compatibility matrix are reviewed. It becomes Accepted only after the project owner agrees to the recovery and biometric/device-credential behavior. A CI pass alone does not prove the lock is secure.
+This ADR is Accepted for the policy direction recorded above after explicit owner approval. The implementation remains incomplete until the API compatibility matrix, key/recovery-envelope design, crash-point tests, Android Keystore instrumentation, exact-head CI, independent security review, and representative device testing all pass. A CI pass alone does not prove the lock is secure.
