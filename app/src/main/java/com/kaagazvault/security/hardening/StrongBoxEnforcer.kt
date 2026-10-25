@@ -6,7 +6,6 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
 import android.security.keystore.KeyProperties
 import android.util.Log
-import android.security.keystore.SecurityLevel
 import java.security.KeyStore
 import java.security.KeyStoreException
 import java.security.NoSuchAlgorithmException
@@ -127,7 +126,8 @@ internal class StrongBoxEnforcer(private val context: Context) {
             // Verify it's actually StrongBox backed
             val keyInfo = getKeyInfo(keyStore, "strongbox_test_")
             val isStrongBox = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
-                keyInfo?.securityLevel == SecurityLevel.STRONGBOX
+                // KeyInfo.securityLevel returns int; use constants
+                keyInfo?.securityLevel == KeyInfo.SECURITY_LEVEL_STRONGBOX
             } else {
                 @Suppress("DEPRECATION")
                 keyInfo?.isInsideSecureHardware == true
@@ -171,7 +171,8 @@ internal class StrongBoxEnforcer(private val context: Context) {
 
             val keyInfo = getKeyInfo(keyStore, "tee_test_")
             val isHardwareBacked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
-                keyInfo?.securityLevel != SecurityLevel.SOFTWARE
+                // KeyInfo.securityLevel returns int; check it's not SOFTWARE
+                keyInfo?.securityLevel != KeyInfo.SECURITY_LEVEL_SOFTWARE
             } else {
                 @Suppress("DEPRECATION")
                 keyInfo?.isInsideSecureHardware == true
@@ -302,7 +303,8 @@ internal class StrongBoxEnforcer(private val context: Context) {
             }
 
             val isHardwareBacked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34+
-                keyInfo.securityLevel != SecurityLevel.SOFTWARE
+                // KeyInfo.securityLevel returns int; check it's not SOFTWARE
+                keyInfo.securityLevel != KeyInfo.SECURITY_LEVEL_SOFTWARE
             } else {
                 @Suppress("DEPRECATION")
                 keyInfo.isInsideSecureHardware
