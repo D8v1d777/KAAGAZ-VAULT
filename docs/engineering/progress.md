@@ -657,3 +657,38 @@ This log records repository work and evidence. It distinguishes documentation ch
 1. Verify the final stable-SDK build configuration through GitHub Actions.
 2. Add the standard Gradle Wrapper and verify its distribution checksum/provenance.
 3. Start the encrypted-storage prototype only after researching Android Keystore, SQLCipher, Room, and backup/key-lifecycle constraints; keep ADR-0001 Proposed until prototype evidence exists.
+
+
+### 2026-10-22 — CO-06 OCR and dependency integrity
+
+- Branch: `agent/CO-06-build-integrity-2026-10-22`; metadata commit: `28996d6b32b56b9dd42f48aeb08cc9dbc750c14f`.
+- Exact-head CI run #512 passed on `2579c6d7c82eb64331c6280c167babb372c67d93`: debug/release builds, JVM unit tests, lint, OCR model task `UP-TO-DATE`, offline merged-manifest policy, metadata generation, and artifact upload.
+- Generated metadata artifact was verified against GitHub's artifact digest; XML parsing found 561 components and 952 artifacts, every artifact has SHA-256, no dynamic/latest/SNAPSHOT versions, and Tesseract 4.9.0 plus SQLCipher 4.19.1 are present.
+- Metadata was committed to the branch by the temporary PR-49-only bootstrap job. That job and its artifact/bootstrap steps are removed in the current cleanup change; CI will now exercise dependency verification from the committed file.
+- The OCR build task now validates pinned Git-blob SHA-1 and SHA-256, declares its inputs, and is tested for normal Gradle up-to-date behavior. Static tests now pin exact model revision/hash values and validate the committed dependency-verification file.
+- Separate auth-race source guard commit `185d8c138c54328ef92b62b66f4db8f4fead118b` passed PR #48 CI run #513.
+- Remaining release blockers: physical-device/emulator auth, background lifecycle and migration validation; independent security review. No release-readiness claim is made.
+
+
+### 2026-10-22 — CO-06 dependency-verification repair
+
+- Exact cleanup-head CI run #516 failed during Gradle configuration, before compilation, because the committed metadata omitted three plugin-classpath metadata artifacts: `com.google.guava:guava-parent:33.3.1-jre` POM, `org.junit:junit-bom:5.11.0-M2` module metadata, and `org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.8.0` POM.
+- This is a real verification-metadata completeness failure, not evidence that those dependencies are malicious. The checksum gate remains enabled; do not disable it or add wildcard trusted artifacts.
+- Temporary PR-49-only repair step now runs Gradle's metadata bootstrap with `--refresh-dependencies --write-verification-metadata sha256 help`, then validates and commits the resulting metadata. After a successful run, remove the bootstrap/upload/write-permission job and rerun CI with committed metadata only.
+- Exact-head run #516: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39722439276 . Its Python regression step passed; Gradle dependency verification then failed on the three missing entries above.
+
+
+### 2026-10-22 — CO-06 network resilience follow-up
+
+- Run #517 successfully executed the Gradle metadata refresh bootstrap, but the subsequent Android build failed in `:app:prepareOcrModels` with `java.net.SocketTimeoutException: Read timed out` while fetching a pinned Tesseract model. This was a transient model-download failure, not a checksum mismatch.
+- The model fetch now retries up to three times with a 120-second read timeout, deletes partial downloads between attempts, and still requires exact SHA-256 and Git-blob SHA-1 matches before installation.
+- The temporary metadata artifact upload now runs immediately after the metadata refresh, and its commit job runs after a build failure unless the run was cancelled. This preserves refreshed metadata evidence even if later model/network work fails.
+- Run #517 link: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39722655935 . Do not claim the final dependency-verification gate passed until a fresh run completes with the updated metadata committed and the bootstrap job removed.
+
+
+### 2026-10-22 — CO-06 dependency verification finalized for exact-head CI
+
+- Refreshed metadata commit: `a25e3a8ef4cf47e567818376fea2a9270afefe76`. It now includes the previously missing plugin-classpath metadata for Guava parent 33.3.1-jre, JUnit BOM 5.11.0-M2, and Kotlin coroutines BOM 1.8.0. The refreshed file contains 566 components, 958 artifacts, and 958 SHA-256 entries.
+- CI run #519 passed with the refreshed metadata generated before the build: https://github.com/D8v1d777/KAAGAZ-VAULT/actions/runs/39723096084 . The metadata was then committed by the temporary, PR-49-only bootstrap job.
+- Current cleanup removes all temporary metadata generation/upload/write-permission steps, restores a static test that rejects those bootstrap steps, and leaves dependency verification active from the committed file. The OCR downloader retains three bounded retries and strict SHA-256/Git-blob SHA-1 checks.
+- Final exact-head CI must still pass with the bootstrap removed before calling the dependency-verification gate complete. PR #49 remains draft/unmerged; emulator/device validation and independent security review remain open.

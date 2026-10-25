@@ -12,13 +12,6 @@ plugins {
 }
 
 val generatedOcrAssets = layout.buildDirectory.dir("generated/ocr-assets")
-val tessdataRevision = "87416418657359cb625c412a48b6e1d6d41c29bd"
-val tessdataModels = mapOf(
-    "eng.traineddata" to "bbef4675053b5b468cdb477053e28b1c698ba08e",
-    "hin.traineddata" to "a8f0aaec09378115b12a2c6287c57695d082aea2",
-    "tel.traineddata" to "ee8a33b0f658fc75b8cbfe8c10413eac4f41e6ad"
-)
-
 android {
     namespace = "com.kaagazvault"
     compileSdk = 36
@@ -38,38 +31,81 @@ android {
 }
 kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
 
+val tessdataRevision = "87416418657359cb625c412a48b6e1d6d41c29bd"
+val tessdataModels = mapOf(
+    "eng.traineddata" to "bbef4675053b5b468cdb477053e28b1c698ba08e",
+    "hin.traineddata" to "a8f0aaec09378115b12a2c6287c57695d082aea2",
+    "tel.traineddata" to "ee8a33b0f658fc75b8cbfe8c10413eac4f41e6ad"
+)
+val tessdataModelsSha256 = mapOf(
+    "eng.traineddata" to "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+    "hin.traineddata" to "4c73ffc59d497c186b19d1e90f5d721d678ea6b2e277b719bee4e2af12271825",
+    "tel.traineddata" to "d10691fddd5b67802e1c12800ebb321d3b8bcd8d24a2ac3ff206f93188c04ab5"
+)
+
+fun sha256Hex(bytes: ByteArray): String =
+    MessageDigest.getInstance("SHA-256").digest(bytes)
+        .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+
+fun gitBlobSha1(bytes: ByteArray): String {
+    val digest = MessageDigest.getInstance("SHA-1")
+    digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
+    digest.update(bytes)
+    return digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+}
+
 val prepareOcrModels by tasks.registering {
     val modelOutputs = tessdataModels.keys.map { name -> generatedOcrAssets.map { it.file("tessdata/$name") } }
+    inputs.property("tessdataRevision", tessdataRevision)
+    inputs.property(
+        "tessdataGitBlobSha1Pins",
+        tessdataModels.toSortedMap().entries.joinToString("|") { "${it.key}:${it.value}" }
+    )
+    inputs.property(
+        "tessdataSha256Pins",
+        tessdataModelsSha256.toSortedMap().entries.joinToString("|") { "${it.key}:${it.value}" }
+    )
     outputs.files(modelOutputs)
-    outputs.upToDateWhen { false }
     doLast {
         val outputDirectory = generatedOcrAssets.get().file("tessdata").asFile
         if (!outputDirectory.exists() && !outputDirectory.mkdirs()) throw GradleException("Could not create generated OCR model directory")
         tessdataModels.forEach { (name, expectedGitBlobSha) ->
+            val expectedSha256 = tessdataModelsSha256.getValue(name)
             val destination = File(outputDirectory, name)
             val validExisting = destination.isFile && run {
                 val bytes = destination.readBytes()
-                val digest = MessageDigest.getInstance("SHA-1")
-                digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
-                digest.update(bytes)
-                digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) } == expectedGitBlobSha
+                gitBlobSha1(bytes) == expectedGitBlobSha && sha256Hex(bytes) == expectedSha256
             }
             if (validExisting) return@forEach
             val temporary = File(outputDirectory, "$name.download")
             val url = URL("https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/$tessdataRevision/$name")
-            val connection = url.openConnection() as HttpURLConnection
-            connection.connectTimeout = 30_000
-            connection.readTimeout = 60_000
-            try {
-                connection.instanceFollowRedirects = true
-                connection.inputStream.use { input -> temporary.outputStream().use { output -> input.copyTo(output) } }
-            } finally { connection.disconnect() }
+            var downloaded = false
+            var lastDownloadFailure: Exception? = null
+            for (attempt in 1..3) {
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 30_000
+                connection.readTimeout = 120_000
+                try {
+                    connection.instanceFollowRedirects = true
+                    connection.inputStream.use { input -> temporary.outputStream().use { output -> input.copyTo(output) } }
+                    downloaded = true
+                    break
+                } catch (failure: Exception) {
+                    lastDownloadFailure = failure
+                    temporary.delete()
+                    if (attempt < 3) Thread.sleep(2_000L * attempt)
+                } finally {
+                    connection.disconnect()
+                }
+            }
+            if (!downloaded) {
+                temporary.delete()
+                throw GradleException("Could not download pinned OCR model $name after 3 attempts", lastDownloadFailure)
+            }
             val bytes = temporary.readBytes()
-            val digest = MessageDigest.getInstance("SHA-1")
-            digest.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
-            digest.update(bytes)
-            val actualGitBlobSha = digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
-            if (actualGitBlobSha != expectedGitBlobSha) {
+            val actualGitBlobSha = gitBlobSha1(bytes)
+            val actualSha256 = sha256Hex(bytes)
+            if (actualGitBlobSha != expectedGitBlobSha || actualSha256 != expectedSha256) {
                 temporary.delete()
                 throw GradleException("Pinned OCR model integrity check failed for $name")
             }
@@ -87,7 +123,7 @@ val prepareOcrModels by tasks.registering {
 tasks.named("preBuild").configure { dependsOn(prepareOcrModels) }
 
 dependencies {
-    implementation("cz.adaptech.tesseract4android:tesseract4android:4.9.0")
+    implementation(libs.tesseract4android)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.sqlite)
@@ -95,7 +131,13 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
-    implementation("net.zetetic:sqlcipher-android:4.19.1@aar")
+    implementation(libs.sqlcipher.android) {
+        isTransitive = false
+        artifact {
+            name = "sqlcipher-android"
+            type = "aar"
+        }
+    }
     implementation(libs.pdfium.android)
     implementation(libs.androidx.work.runtime)
     ksp(libs.androidx.room.compiler)
@@ -104,5 +146,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.junit)
 }
