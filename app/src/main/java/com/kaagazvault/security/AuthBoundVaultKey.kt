@@ -3,10 +3,12 @@ package com.kaagazvault.security
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import androidx.biometric.BiometricManager
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.security.SecureRandom
+import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -28,6 +30,27 @@ internal class AuthBoundVaultKey(
     private val keyStoreProvider: () -> KeyStore = { loadAndroidKeyStore() },
     private val random: SecureRandom = SecureRandom()
 ) {
+    fun hasWrappingKeyAlias(): Boolean = keyStoreProvider().containsAlias(alias)
+
+    /** Detect orphaned auth-bound aliases so a lost wrapper record never triggers silent setup. */
+    fun hasAnyWrappingKeyAlias(): Boolean {
+        val aliases = keyStoreProvider().aliases()
+        while (aliases.hasMoreElements()) {
+            val candidate = aliases.nextElement()
+            if (candidate == DEFAULT_ALIAS || candidate.startsWith(DEFAULT_ALIAS_PREFIX)) return true
+        }
+        return false
+    }
+
+    /** Match the key's per-use authorization policy to the prompt. API 28-29 use biometric-only. */
+    fun promptAuthenticators(): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        } else {
+            BiometricManager.Authenticators.BIOMETRIC_STRONG
+        }
+
     @Throws(GeneralSecurityException::class, IOException::class)
     fun prepareSetupCipher(): Cipher {
         val keyStore = keyStoreProvider()
@@ -35,36 +58,21 @@ internal class AuthBoundVaultKey(
             throw GeneralSecurityException("Vault wrapping key already exists; setup must not replace it")
         }
         val key = generateWrappingKey()
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, key)
-        return cipher
+        return Cipher.getInstance(TRANSFORMATION).apply { init(Cipher.ENCRYPT_MODE, key) }
     }
 
     /**
      * Call only with the same Cipher instance supplied to CryptoObject and after prompt success.
-     * The callback must durably persist wrapped bytes (without logging them) before this returns
-     * the VEK. If persistence fails, the in-memory VEK is zeroed and the error is propagated.
+     * Wrapped bytes must be durably persisted before this returns the VEK.
      */
     @Throws(GeneralSecurityException::class, IOException::class)
     fun finishSetup(
         authenticatedCipher: Cipher,
         persistWrappedKey: (ByteArray) -> Unit
     ): ByteArray {
-        require(authenticatedCipher.algorithm == TRANSFORMATION) { "Unexpected setup cipher" }
-        val iv = authenticatedCipher.iv
-        if (iv == null || iv.size != IV_BYTES) throw GeneralSecurityException("Setup cipher has an invalid IV")
         val vek = ByteArray(VEK_BYTES).also(random::nextBytes)
         try {
-            val ciphertext = authenticatedCipher.doFinal(vek)
-            val wrapped = ByteArray(iv.size + ciphertext.size)
-            System.arraycopy(iv, 0, wrapped, 0, iv.size)
-            System.arraycopy(ciphertext, 0, wrapped, iv.size, ciphertext.size)
-            try {
-                persistWrappedKey(wrapped)
-            } finally {
-                ciphertext.fill(0)
-                wrapped.fill(0)
-            }
+            finishSetupWithKey(authenticatedCipher, vek, persistWrappedKey)
             return vek
         } catch (error: Exception) {
             vek.fill(0)
@@ -73,6 +81,32 @@ internal class AuthBoundVaultKey(
                 is IOException -> throw error
                 else -> throw IOException("Could not persist wrapped vault key", error)
             }
+        }
+    }
+
+    /**
+     * Recovery-only re-wrap of the existing VEK under a fresh auth-bound alias. The caller must
+     * persist a new alias+envelope record atomically; this method never generates a replacement VEK.
+     */
+    @Throws(GeneralSecurityException::class, IOException::class)
+    fun finishSetupWithKey(
+        authenticatedCipher: Cipher,
+        vek: ByteArray,
+        persistWrappedKey: (ByteArray) -> Unit
+    ) {
+        require(authenticatedCipher.algorithm == TRANSFORMATION) { "Unexpected setup cipher" }
+        require(vek.size == VEK_BYTES) { "Vault encryption key must be 256 bits" }
+        val iv = authenticatedCipher.iv
+        if (iv == null || iv.size != IV_BYTES) throw GeneralSecurityException("Setup cipher has an invalid IV")
+        val ciphertext = authenticatedCipher.doFinal(vek)
+        val wrapped = ByteArray(iv.size + ciphertext.size)
+        System.arraycopy(iv, 0, wrapped, 0, iv.size)
+        System.arraycopy(ciphertext, 0, wrapped, iv.size, ciphertext.size)
+        try {
+            persistWrappedKey(wrapped)
+        } finally {
+            ciphertext.fill(0)
+            wrapped.fill(0)
         }
     }
 
@@ -88,15 +122,16 @@ internal class AuthBoundVaultKey(
         }
         val key = keyStore.getKey(alias, null) as? SecretKey
             ?: throw MissingEncryptionKeyException("Vault wrapping key is unavailable; recovery is required")
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, wrappedKey.copyOfRange(0, IV_BYTES)))
-        return cipher
+        val iv = wrappedKey.copyOfRange(0, IV_BYTES)
+        return try {
+            Cipher.getInstance(TRANSFORMATION).apply {
+                init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(GCM_TAG_BITS, iv))
+            }
+        } finally {
+            iv.fill(0)
+        }
     }
 
-    /**
-     * Call with the Cipher returned by prepareUnlockCipher, after the successful prompt result.
-     * A failed tag check or an unauthenticated operation must leave the caller locked.
-     */
     @Throws(GeneralSecurityException::class, IOException::class)
     fun finishUnlock(authenticatedCipher: Cipher, wrappedKey: ByteArray): ByteArray {
         require(authenticatedCipher.algorithm == TRANSFORMATION) { "Unexpected unlock cipher" }
@@ -106,8 +141,6 @@ internal class AuthBoundVaultKey(
         val ciphertext = wrappedKey.copyOfRange(IV_BYTES, wrappedKey.size)
         val vek = try {
             authenticatedCipher.doFinal(ciphertext)
-        } catch (error: GeneralSecurityException) {
-            throw error
         } finally {
             ciphertext.fill(0)
         }
@@ -121,7 +154,6 @@ internal class AuthBoundVaultKey(
     /**
      * Explicit recovery-only cleanup for an abandoned initial setup. The caller must first prove
      * no wrapped key, document ciphertext, database, WAL, journal, or other protected data exists.
-     * Never call this as an automatic response to an unlock failure.
      */
     @Throws(GeneralSecurityException::class, IOException::class)
     fun discardAbandonedSetup() {
@@ -144,11 +176,14 @@ internal class AuthBoundVaultKey(
             .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
             .setKeySize(VEK_BYTES * 8)
             .setUserAuthenticationRequired(true)
-            .setInvalidatedByBiometricEnrollment(true)
             .apply {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+                    setUserAuthenticationParameters(
+                        0,
+                        KeyProperties.AUTH_BIOMETRIC_STRONG or KeyProperties.AUTH_DEVICE_CREDENTIAL
+                    )
                 } else {
+                    setInvalidatedByBiometricEnrollment(true)
                     @Suppress("DEPRECATION")
                     setUserAuthenticationValidityDurationSeconds(-1)
                 }
@@ -163,6 +198,7 @@ internal class AuthBoundVaultKey(
             KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
 
         const val DEFAULT_ALIAS = "kaagaz_vault_auth_bound_vek_wrap_v1"
+        const val DEFAULT_ALIAS_PREFIX = "kaagaz_vault_auth_bound_vek_wrap_v1_"
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val VEK_BYTES = 32
@@ -170,5 +206,9 @@ internal class AuthBoundVaultKey(
         const val GCM_TAG_BITS = 128
         const val MIN_WRAPPED_KEY_BYTES = IV_BYTES + 16
         const val MAX_WRAPPED_KEY_BYTES = IV_BYTES + VEK_BYTES + 16
+
+        fun newAlias(): String = DEFAULT_ALIAS_PREFIX + UUID.randomUUID().toString().replace("-", "")
     }
+
+    internal fun newAliasForRecoveryOrSetup(): String = newAlias()
 }

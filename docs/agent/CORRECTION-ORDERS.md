@@ -122,6 +122,7 @@ action:
   4 Run `./gradlew --write-verification-metadata sha256 help`, review, commit gradle/verification-metadata.xml, keep CI green.
   5 Document in README.md that the build needs network for the models while runtime stays offline, and how to pre-seed them.
 done_when: gate green on CI for the SHA with verification-metadata.xml enforced.
+verification: source SHA `bbea1eb7a697d89c06f27fbc725dbfa175ee50e5` passed exact-head run #565 (standard and emulator jobs, 11 instrumentation tests); dependency verification and the OCR model `UP-TO-DATE` gate passed; README documents network/offline model handling.
 </order>
 
 <order id="CO-07" sev="P1" needs_human="no">

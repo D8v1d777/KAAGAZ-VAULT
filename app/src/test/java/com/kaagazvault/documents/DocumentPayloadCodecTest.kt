@@ -86,6 +86,39 @@ class DocumentPayloadCodecTest {
     }
 
     @Test
+    fun readsVersionThreePayloadWithOcrProvenanceButNoStructuredFields() {
+        val content = byteArrayOf(4, 3, 2, 1)
+        val text = "Date: 12/10/2026"
+        val textBytes = text.toByteArray(Charsets.UTF_8)
+        val output = ByteArrayOutputStream()
+        DataOutputStream(output).use { data ->
+            data.writeInt(0x4b475044)
+            data.writeInt(3)
+            data.writeUTF("old-v3.png")
+            data.writeUTF("image/png")
+            data.writeInt(content.size)
+            data.write(content)
+            data.writeInt(91)
+            data.writeBoolean(true)
+            data.writeBoolean(false)
+            data.writeUTF("tesseract")
+            data.writeUTF("eng+hin")
+            data.writeInt(textBytes.size)
+            data.write(textBytes)
+        }
+
+        val decoded = DocumentPayloadCodec.decode(output.toByteArray())
+        assertEquals("old-v3.png", decoded.displayName)
+        assertArrayEquals(content, decoded.content)
+        assertEquals(text, decoded.ocrText)
+        assertEquals(91, decoded.ocrConfidence ?: -1)
+        assertTrue(decoded.ocrReviewed)
+        assertEquals("tesseract", decoded.ocrSource)
+        assertEquals("eng+hin", decoded.ocrLanguages)
+        assertTrue(decoded.structuredFields.isEmpty())
+    }
+
+    @Test
     fun rejectsInvalidPayloadLengthsAndVersions() {
         val encoded = DocumentPayloadCodec.encode(
             ImportedPayload("file.png", "image/png", byteArrayOf(1, 2))

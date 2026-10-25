@@ -141,11 +141,15 @@ class SettingsPairingTicket private constructor(
         ): SettingsPairingTicket {
             require(ttlMillis in 1_000L..15 * 60 * 1000L) { "Pairing lifetime is outside the safe range" }
             val bytes = ByteArray(32).also(random::nextBytes)
-            return SettingsPairingTicket(
-                secret = javax.crypto.spec.SecretKeySpec(bytes, "AES"),
-                issuedAtEpochMillis = nowEpochMillis,
-                expiresAtEpochMillis = nowEpochMillis + ttlMillis
-            )
+            return try {
+                SettingsPairingTicket(
+                    secret = javax.crypto.spec.SecretKeySpec(bytes, "AES"),
+                    issuedAtEpochMillis = nowEpochMillis,
+                    expiresAtEpochMillis = nowEpochMillis + ttlMillis
+                )
+            } finally {
+                bytes.fill(0)
+            }
         }
     }
 }
@@ -163,17 +167,25 @@ object SettingsSyncCrypto {
     @Throws(GeneralSecurityException::class)
     fun encrypt(settings: SyncableVaultSettings, key: SecretKey): ByteArray {
         val iv = ByteArray(IV_LENGTH).also(random::nextBytes)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
-        cipher.updateAAD(associatedData())
-        val ciphertext = cipher.doFinal(SettingsSyncCodec.encode(settings))
-        return ByteBuffer.allocate(HEADER_LENGTH + ciphertext.size)
-            .order(ByteOrder.BIG_ENDIAN)
-            .put(magic)
-            .put(FORMAT_VERSION)
-            .put(iv)
-            .put(ciphertext)
-            .array()
+        val plaintext = SettingsSyncCodec.encode(settings)
+        var ciphertext: ByteArray? = null
+        try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
+            cipher.updateAAD(associatedData())
+            ciphertext = cipher.doFinal(plaintext)
+            return ByteBuffer.allocate(HEADER_LENGTH + ciphertext.size)
+                .order(ByteOrder.BIG_ENDIAN)
+                .put(magic)
+                .put(FORMAT_VERSION)
+                .put(iv)
+                .put(ciphertext)
+                .array()
+        } finally {
+            plaintext.fill(0)
+            ciphertext?.fill(0)
+            iv.fill(0)
+        }
     }
 
     @Throws(IOException::class, GeneralSecurityException::class)
@@ -187,14 +199,20 @@ object SettingsSyncCrypto {
         if (buffer.get() != FORMAT_VERSION) throw IOException("Unsupported settings envelope version")
         val iv = ByteArray(IV_LENGTH).also(buffer::get)
         val ciphertext = ByteArray(buffer.remaining()).also(buffer::get)
+        var plaintext: ByteArray? = null
         return try {
-            Cipher.getInstance("AES/GCM/NoPadding").run {
-                init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
-                updateAAD(associatedData())
-                SettingsSyncCodec.decode(doFinal(ciphertext))
-            }
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, iv))
+            cipher.updateAAD(associatedData())
+            plaintext = cipher.doFinal(ciphertext)
+            SettingsSyncCodec.decode(plaintext)
         } catch (error: GeneralSecurityException) {
             throw SettingsSyncAuthenticationException(error)
+        } finally {
+            plaintext?.fill(0)
+            ciphertext.fill(0)
+            iv.fill(0)
+            actualMagic.fill(0)
         }
     }
 
@@ -207,8 +225,12 @@ class SettingsSyncAuthenticationException(cause: Throwable) : IOException("Setti
 object SettingsTransferCode {
     fun encode(key: SecretKey): String {
         val bytes = key.encoded ?: throw IllegalArgumentException("Transfer key is not exportable")
-        require(bytes.size == 32) { "Transfer key must be 256 bits" }
-        return bytes.joinToString(separator = "") { byte -> "%02X".format(byte.toInt() and 0xff) }
+        try {
+            require(bytes.size == 32) { "Transfer key must be 256 bits" }
+            return bytes.joinToString(separator = "") { byte -> "%02X".format(byte.toInt() and 0xff) }
+        } finally {
+            bytes.fill(0)
+        }
     }
 
     fun decode(code: String): SecretKey {
@@ -221,7 +243,11 @@ object SettingsTransferCode {
             val low = normalized[index * 2 + 1].digitToInt(16)
             ((high shl 4) or low).toByte()
         }
-        return javax.crypto.spec.SecretKeySpec(bytes, "AES")
+        return try {
+            javax.crypto.spec.SecretKeySpec(bytes, "AES")
+        } finally {
+            bytes.fill(0)
+        }
     }
 }
 

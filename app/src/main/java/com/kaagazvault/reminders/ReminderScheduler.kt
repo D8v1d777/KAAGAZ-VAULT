@@ -18,7 +18,6 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.kaagazvault.MainActivity
-import com.kaagazvault.database.VaultDatabaseProvider
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -29,6 +28,7 @@ import java.util.concurrent.TimeUnit
 internal object ReminderScheduler {
     const val INPUT_REMINDER_ID = "reminder_uuid"
     private const val WORK_PREFIX = "vault-reminder-"
+    private val deliveryGate = ReminderDeliveryGate()
 
     internal fun buildInputData(reminderId: String): Data {
         require(runCatching { UUID.fromString(reminderId) }.isSuccess) { "Invalid reminder identifier" }
@@ -42,14 +42,48 @@ internal object ReminderScheduler {
             .setInputData(buildInputData(reminderId))
             .setInitialDelay(delay, TimeUnit.MILLISECONDS)
             .build()
-        WorkManager.getInstance(context.applicationContext)
-            .enqueueUniqueWork(WORK_PREFIX + reminderId, androidx.work.ExistingWorkPolicy.REPLACE, request)
+        synchronized(deliveryGate) {
+            deliveryGate.allow(reminderId)
+            WorkManager.getInstance(context.applicationContext)
+                .enqueueUniqueWork(WORK_PREFIX + reminderId, androidx.work.ExistingWorkPolicy.REPLACE, request)
+        }
     }
 
     fun cancel(context: Context, reminderId: String) {
         if (runCatching { UUID.fromString(reminderId) }.isSuccess) {
-            WorkManager.getInstance(context.applicationContext).cancelUniqueWork(WORK_PREFIX + reminderId)
+            synchronized(deliveryGate) {
+                // Gate delivery and cancellation with the same monitor so a running worker cannot
+                // repost a notification after deletion has completed.
+                deliveryGate.cancel(reminderId)
+                WorkManager.getInstance(context.applicationContext).cancelUniqueWork(WORK_PREFIX + reminderId)
+                NotificationManagerCompat.from(context.applicationContext).cancel(reminderId.hashCode())
+            }
         }
+    }
+
+    internal fun deliverIfNotCancelled(reminderId: String, delivery: () -> Unit): Boolean =
+        deliveryGate.deliverIfAllowed(reminderId, delivery)
+}
+
+/** Serializes in-process notification delivery against reminder deletion/cancellation. */
+internal class ReminderDeliveryGate {
+    private val cancelledIds = mutableSetOf<String>()
+
+    @Synchronized
+    fun allow(reminderId: String) {
+        cancelledIds.remove(reminderId)
+    }
+
+    @Synchronized
+    fun cancel(reminderId: String) {
+        cancelledIds.add(reminderId)
+    }
+
+    @Synchronized
+    fun deliverIfAllowed(reminderId: String, delivery: () -> Unit): Boolean {
+        if (reminderId in cancelledIds) return false
+        delivery()
+        return true
     }
 }
 
@@ -62,10 +96,9 @@ internal class ReminderNotificationWorker(
             ?: return Result.failure()
         if (runCatching { UUID.fromString(reminderId) }.isFailure) return Result.failure()
 
-        val provider = VaultDatabaseProvider(applicationContext)
+        // Background work must not open SQLCipher while the interactive vault session is locked.
+        // The only persisted work input is an opaque UUID; notification text is always generic.
         return try {
-            // Deleted reminders become harmless no-ops; notification content stays generic.
-            val reminder = provider.get().reminderDao().findById(reminderId) ?: return Result.success()
             if (Build.VERSION.SDK_INT >= 33 &&
                 ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
             ) return Result.success()
@@ -99,15 +132,15 @@ internal class ReminderNotificationWorker(
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setAutoCancel(true)
                 .build()
-            NotificationManagerCompat.from(applicationContext).notify(reminder.id.hashCode(), notification)
+            ReminderScheduler.deliverIfNotCancelled(reminderId) {
+                NotificationManagerCompat.from(applicationContext).notify(reminderId.hashCode(), notification)
+            }
             Result.success()
         } catch (_: SecurityException) {
             // Permission can change between the permission check and notify().
             Result.success()
         } catch (_: Exception) {
             Result.retry()
-        } finally {
-            provider.close()
         }
     }
 
